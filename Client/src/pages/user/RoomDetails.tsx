@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
-import { payForBooking, outcomeMessage } from '../../utils/payhere';
-import { SITE } from '../../config/site';
-import { toast } from '../../components/ui';
+import { bookUrl } from '../../utils/booking';
 
 type RoomType = {
     _id?: string;
@@ -22,22 +20,7 @@ type RoomType = {
     bedType?: string;
 };
 
-type PhysicalRoom = {
-    _id?: string;
-    id?: string;
-    roomNumber?: string;
-    type?: {
-        _id?: string;
-        name?: string;
-        basePrice?: number;
-        maxOccupancy?: number;
-    } | string;
-};
 
-type BookingDates = {
-    checkInDate: string;
-    checkOutDate: string;
-};
 
 const fallbackHero =
     'https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -45,24 +28,14 @@ const fallbackHero =
 const RoomDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
 
     const [room, setRoom] = useState<RoomType | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // booking state
-    const [showModal, setShowModal] = useState(false);
-    const [bookingStep, setBookingStep] = useState(1);
-    const [selectedPhysicalRoom, setSelectedPhysicalRoom] = useState<PhysicalRoom | null>(null);
-    const [availableRooms, setAvailableRooms] = useState<PhysicalRoom[]>([]);
-    const [loadingRooms, setLoadingRooms] = useState(false);
-    const [bookingDates, setBookingDates] = useState<BookingDates>({
-        checkInDate: searchParams.get('checkIn') || '',
-        checkOutDate: searchParams.get('checkOut') || '',
-    });
 
 
-    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         const fetchRoomDetails = async () => {
@@ -98,121 +71,21 @@ const RoomDetails: React.FC = () => {
         fetchRoomDetails();
     }, [id]);
 
-    const openBookingModal = async () => {
-        if (!room) return;
-
-        // Check if logged in first
-        const token = localStorage.getItem('token');
-        if (!token) {
-            toast.afterRedirect('info', 'Please log in to book');
-            window.location.href = '/login';
-            return;
-        }
-
-        setShowModal(true);
-        setBookingStep(1);
-        setAvailableRooms([]);
-
-    };
-
-    // Arriving from the home search bar with ?book=1 opens the booking modal straight away
-    const [autoOpened, setAutoOpened] = useState(false);
-    useEffect(() => {
-        if (room && !autoOpened && searchParams.get('book') === '1') {
-            setAutoOpened(true);
-            openBookingModal();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [room, autoOpened, searchParams]);
-
-    const closeModal = () => {
-        setShowModal(false);
-        setBookingStep(1);
-        setAvailableRooms([]);
-        setSelectedPhysicalRoom(null);
-    };
-
-    const handleCheckAvailability = async () => {
-        if (!room || !bookingDates.checkInDate || !bookingDates.checkOutDate) return;
-
-        setLoadingRooms(true);
-        try {
-            if (!room.hotel) throw new Error('Hotel infomation missing');
-
-            const hotelId = typeof room.hotel === 'string' ? room.hotel : room.hotel._id || room.hotel;
-            const query = `/api/rooms?hotel=${hotelId}&checkIn=${bookingDates.checkInDate}&checkOut=${bookingDates.checkOutDate}`;
-            const response = await api.get(query);
-
-            if (!response.ok) throw new Error('Failed to fetch rooms');
-
-            const data = await response.json();
-            if (data.success) {
-                // Filter by Room Type
-                const matchingRooms: PhysicalRoom[] = data.data.filter(
-                    (r: PhysicalRoom) =>
-                        (typeof r.type !== 'string' && r.type?._id === room._id) ||
-                        r.type === room._id,
-                );
-                setAvailableRooms(matchingRooms);
-                setBookingStep(2);
-            }
-        } catch (err) {
-            console.error(err);
-            toast.error('Failed to check availability');
-        } finally {
-            setLoadingRooms(false);
-        }
-    };
-
-    const handleSelectRoom = (physRoom: PhysicalRoom) => {
-        setSelectedPhysicalRoom(physRoom);
-        setBookingStep(3);
-    };
-
-    const calculateTotal = () => {
-        if (!bookingDates.checkInDate || !bookingDates.checkOutDate || !room?.basePrice) return 0;
-        const checkIn = new Date(bookingDates.checkInDate);
-        const checkOut = new Date(bookingDates.checkOutDate);
-        const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
-        return nights * room.basePrice;
-    };
-
-    const initiateBooking = async () => {
-        if (!room || !selectedPhysicalRoom) return;
 
 
-        setIsProcessing(true);
 
-        const totalPrice = calculateTotal();
-        const roomId = selectedPhysicalRoom._id || selectedPhysicalRoom.id;
 
-        const bookingData = {
-            room: roomId,
-            checkInDate: bookingDates.checkInDate,
-            checkOutDate: bookingDates.checkOutDate,
-            totalPrice,
-        };
 
-        try {
-            const res = await api.post('/api/bookings', bookingData);
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || 'Booking failed');
-            }
 
-            const result = await res.json();
-            const bookingId: string = result.data._id;
 
-            const outcome = await payForBooking(bookingId);
-            toast.afterRedirect(outcome === 'dismissed' ? 'warning' : 'success', outcomeMessage(outcome));
-            window.location.href = '/bookings';
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Error';
-            toast.error(message);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+    const openBookingModal = () =>
+        navigate(bookUrl({
+            type: room?._id || room?.id,
+            hotel: room?.hotel,
+            checkIn: searchParams.get('checkIn'),
+            checkOut: searchParams.get('checkOut'),
+            guests: searchParams.get('guests'),
+        }));
 
     if (loading) {
         return (
@@ -390,208 +263,6 @@ const RoomDetails: React.FC = () => {
                 </aside>
             </main>
 
-            {/* MODAL */}
-            {showModal && (
-                <div
-                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-                    onClick={closeModal}
-                >
-                    <div
-                        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white dark:bg-gray-800 shadow-2xl flex flex-col"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-sand dark:border-gray-700 px-8 py-5">
-                            <div>
-                                <h2
-                                    className="text-xl md:text-2xl dark:text-cream"
-                                    style={{ fontFamily: 'Playfair Display, serif' }}
-                                >
-                                    {bookingStep === 1
-                                        ? 'Select Dates'
-                                        : bookingStep === 2
-                                            ? 'Select Room'
-                                            : 'Payment Details'}
-                                </h2>
-                                <p className="text-xs text-taupe uppercase tracking-wider dark:text-gray-400 mt-1">
-                                    Step {bookingStep} of 3
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={closeModal}
-                                className="text-3xl leading-none text-taupe dark:text-gray-400 hover:text-bronze transition"
-                            >
-                                ×
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="p-8 flex-1 overflow-y-auto">
-                            {/* STEP 1: DATES */}
-                            {bookingStep === 1 && (
-                                <div className="space-y-6">
-                                    <div className="grid gap-6 sm:grid-cols-2">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-bold uppercase tracking-wider text-taupe dark:text-gray-300">
-                                                Check-in Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                min={new Date().toISOString().split('T')[0]}
-                                                value={bookingDates.checkInDate}
-                                                onChange={e =>
-                                                    setBookingDates(prev => ({
-                                                        ...prev,
-                                                        checkInDate: e.target.value,
-                                                    }))
-                                                }
-                                                className="w-full rounded-lg border border-wheat bg-ivory dark:bg-gray-700 px-4 py-3 text-ink dark:text-cream focus:border-bronze focus:outline-none dark:border-gray-600 dark:focus:border-gold"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-bold uppercase tracking-wider text-taupe dark:text-gray-300">
-                                                Check-out Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                min={bookingDates.checkInDate || new Date().toISOString().split('T')[0]}
-                                                value={bookingDates.checkOutDate}
-                                                onChange={e =>
-                                                    setBookingDates(prev => ({
-                                                        ...prev,
-                                                        checkOutDate: e.target.value,
-                                                    }))
-                                                }
-                                                className="w-full rounded-lg border border-wheat bg-ivory dark:bg-gray-700 px-4 py-3 text-ink dark:text-cream focus:border-bronze focus:outline-none dark:border-gray-600 dark:focus:border-gold"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="rounded-lg bg-cream dark:bg-gray-700/50 p-4 border border-sand dark:border-gray-600">
-                                        <p className="text-sm text-taupe dark:text-gray-300">
-                                            <span className="font-bold">Note:</span> Standard check-in time is {SITE.checkInTime} and check-out time is {SITE.checkOutTime}.
-                                        </p>
-                                    </div>
-
-                                    <div className="pt-4 flex justify-end">
-                                        <button
-                                            onClick={handleCheckAvailability}
-                                            disabled={loadingRooms || !bookingDates.checkInDate || !bookingDates.checkOutDate}
-                                            className="rounded-full bg-bronze px-8 py-3 text-sm font-bold uppercase tracking-wider text-white hover:bg-bronze-deep transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {loadingRooms ? 'Checking...' : 'Check Availability'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* STEP 2: ROOM SELECTION */}
-                            {bookingStep === 2 && (
-                                <div className="space-y-6">
-                                    {availableRooms.length > 0 ? (
-                                        <div className="grid gap-4">
-                                            {availableRooms.map(physRoom => (
-                                                <div
-                                                    key={physRoom._id || physRoom.id}
-                                                    onClick={() => handleSelectRoom(physRoom)}
-                                                    className="group cursor-pointer rounded-xl border border-sand bg-ivory dark:bg-gray-700 p-5 transition hover:border-bronze hover:shadow-md dark:border-gray-600 dark:hover:border-gold"
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <h4
-                                                                className="text-lg font-medium dark:text-cream"
-                                                                style={{ fontFamily: 'Playfair Display, serif' }}
-                                                            >
-                                                                Room {physRoom.roomNumber}
-                                                            </h4>
-                                                            <p className="text-sm text-taupe dark:text-gray-300 mt-1">
-                                                                {[room.view, room.bedType].filter(Boolean).join(' • ') || room.name}
-                                                            </p>
-                                                        </div>
-                                                        <span className="rounded-full border border-bronze px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-bronze group-hover:bg-bronze group-hover:text-white transition dark:text-gold dark:border-gold dark:group-hover:text-ink">
-                                                            Select
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-10">
-                                            <p className="text-taupe dark:text-gray-300 mb-4">No rooms available for the selected dates.</p>
-                                            <button
-                                                onClick={() => setBookingStep(1)}
-                                                className="text-bronze font-bold text-sm uppercase hover:underline dark:text-gold"
-                                            >
-                                                Change Dates
-                                            </button>
-                                        </div>
-                                    )}
-                                    {availableRooms.length > 0 && (
-                                        <button
-                                            onClick={() => setBookingStep(1)}
-                                            className="text-xs font-bold text-taupe uppercase hover:text-ink dark:text-gray-400 dark:hover:text-gray-200"
-                                        >
-                                            ← Back to Dates
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* STEP 3: PAYMENT */}
-                            {bookingStep === 3 && (
-                                <div className="space-y-6 animate-fadeIn">
-                                    <div className="rounded-xl bg-linen dark:bg-gray-700/50 p-4 border border-sand dark:border-gray-600">
-                                        <h4 className="font-bold text-ink dark:text-cream mb-2">Booking Summary</h4>
-                                        <div className="flex justify-between text-sm text-taupe dark:text-gray-300 mb-1">
-                                            <span>Dates</span>
-                                            <span className="font-medium text-ink dark:text-cream">
-                                                {bookingDates.checkInDate} — {bookingDates.checkOutDate}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm text-taupe dark:text-gray-300 mb-1">
-                                            <span>Room</span>
-                                            <span className="font-medium text-ink dark:text-cream">
-                                                {room.name} (#{selectedPhysicalRoom?.roomNumber})
-                                            </span>
-                                        </div>
-                                        <div className="mt-3 text-right">
-                                            <span className="text-xs uppercase tracking-wider text-taupe dark:text-gray-400">Total Price</span>
-                                            <p className="text-xl font-bold text-bronze dark:text-gold" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                                ${calculateTotal()}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-start gap-3 rounded-xl border border-sand bg-white p-4 text-sm text-taupe dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                                        <span aria-hidden="true" className="text-lg">🔒</span>
-                                        <p>
-                                            You&apos;ll complete payment securely with <strong className="text-ink dark:text-cream">PayHere</strong> (Visa, Mastercard, Amex, eZ Cash, mCash, bank apps).
-                                            Card details are entered on PayHere&apos;s page and never touch our servers.
-                                        </p>
-                                    </div>
-
-                                    <div className="flex gap-3 pt-4">
-                                        <button
-                                            onClick={() => setBookingStep(2)}
-                                            className="px-6 py-3 rounded-full border border-bronze text-bronze text-sm font-bold uppercase hover:bg-bronze hover:text-white transition dark:border-gold dark:text-gold dark:hover:bg-gold dark:hover:text-ink"
-                                        >
-                                            Back
-                                        </button>
-                                        <button
-                                            onClick={initiateBooking}
-                                            disabled={isProcessing}
-                                            className="flex-1 rounded-full bg-bronze text-white text-sm font-bold uppercase hover:bg-bronze-deep transition disabled:opacity-50"
-                                        >
-                                            {isProcessing ? 'Opening PayHere…' : `Pay $${calculateTotal()} with PayHere`}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <Footer />
 

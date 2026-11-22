@@ -12,7 +12,9 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { toast, confirmDialog } from '../../components/ui';
+import { toast, confirmDialog, Badge, Button, Input, Modal } from '../../components/ui';
+import { getStoredUser } from '../../utils/auth';
+import { formatMoney, type GuestDetails, type PriceQuote } from '../../utils/booking';
 
 // --- Types based on your data structure ---
 interface User {
@@ -36,7 +38,14 @@ interface Booking {
     totalPrice: number;
     status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
     paymentStatus: 'pending' | 'paid' | 'refunded';
+    confirmationCode?: string;
+    guests?: number;
+    guestDetails?: GuestDetails;
+    pricing?: PriceQuote;
+    refund?: { status?: 'due' | 'completed'; amount?: number; reference?: string };
 }
+
+const refundDue = (b: Booking) => b.refund?.status === 'due' && b.paymentStatus === 'paid';
 
 const isAuthenticated = () => {
     const token = localStorage.getItem('token');
@@ -75,6 +84,32 @@ const ManageBookings: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [showModal, setShowModal] = useState(false);
+    const isAdmin = getStoredUser()?.role === 'admin';
+
+    // --- Refunds ---
+    const [refunding, setRefunding] = useState<Booking | null>(null);
+    const [refundForm, setRefundForm] = useState({ reference: '', amount: '' });
+    const [savingRefund, setSavingRefund] = useState(false);
+    const openRefund = (b: Booking) => {
+        setRefunding(b);
+        setRefundForm({ reference: '', amount: String(b.refund?.amount ?? b.totalPrice) });
+    };
+    const submitRefund = async () => {
+        if (!refunding) return;
+        setSavingRefund(true);
+        try {
+            const res = await api.post(`/api/bookings/${refunding._id}/refund`, { reference: refundForm.reference, amount: refundForm.amount });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Could not record the refund');
+            setBookings(prev => prev.map(b => (b._id === refunding._id ? data.data : b)));
+            toast.success('Refund recorded. The guest has been emailed.');
+            setRefunding(null);
+        } catch (caught: unknown) {
+            toast.error(toError(caught).message);
+        } finally {
+            setSavingRefund(false);
+        }
+    };
 
     // --- Pagination State ---
     const [currentPage, setCurrentPage] = useState(1);
@@ -209,7 +244,8 @@ const ManageBookings: React.FC = () => {
     // --- Derived Metrics for Dashboard ---
     const metrics = useMemo(() => {
         const total = bookings.length;
-        const revenue = bookings.reduce((sum, b) => sum + (Number(b.totalPrice) || 0), 0);
+        // Money actually collected and kept: paid bookings that have not been refunded
+        const revenue = bookings.filter(b => b.paymentStatus === 'paid' && !refundDue(b)).reduce((sum, b) => sum + (Number(b.totalPrice) || 0), 0);
         const confirmed = bookings.filter(b => ['confirmed', 'checked_in'].includes(b.status)).length;
         const pending = bookings.filter(b => b.status === 'pending').length;
 
@@ -234,12 +270,15 @@ const ManageBookings: React.FC = () => {
 
     // --- Filtering ---
     const filteredBookings = bookings.filter(b => {
-        const userName = b.user && typeof b.user === 'object' ? b.user.name : 'Unknown';
-        const roomNum = b.room && typeof b.room === 'object' ? b.room.roomNumber : 'Unknown';
-
-        const matchesSearch = userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            roomNum.toString().includes(searchTerm);
-        const matchesStatus = filterStatus === 'all' || b.status === filterStatus;
+        const haystack = [
+            b.user && typeof b.user === 'object' ? `${b.user.name} ${b.user.email}` : '',
+            b.guestDetails ? `${b.guestDetails.name || ''} ${b.guestDetails.email || ''} ${b.guestDetails.phone || ''}` : '',
+            b.room && typeof b.room === 'object' ? b.room.roomNumber : '',
+            b.confirmationCode || '',
+        ].join(' ').toLowerCase();
+        const matchesSearch = haystack.includes(searchTerm.trim().toLowerCase());
+        const matchesStatus = filterStatus === 'all'
+            || (filterStatus === 'refund_due' ? refundDue(b) : b.status === filterStatus);
         return matchesSearch && matchesStatus;
     });
 
@@ -318,7 +357,7 @@ const ManageBookings: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                     {[
                         { label: 'Total Bookings', value: metrics.total, icon: BsHouseDoor, color: 'text-blue-600', bg: 'bg-blue-50' },
-                        { label: 'Total Revenue', value: `$${metrics.revenue.toLocaleString()}`, icon: BsCurrencyDollar, color: 'text-clay', bg: 'bg-pearl' },
+                        { label: 'Revenue (paid)', value: formatMoney(metrics.revenue, bookings.find(b => b.pricing?.currency)?.pricing?.currency), icon: BsCurrencyDollar, color: 'text-clay', bg: 'bg-pearl' },
                         { label: 'Confirmed', value: metrics.confirmed, icon: BsCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
                         { label: 'Pending', value: metrics.pending, icon: BsClock, color: 'text-yellow-600', bg: 'bg-yellow-50' },
                     ].map((stat, idx) => (
@@ -363,7 +402,7 @@ const ManageBookings: React.FC = () => {
                             <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-clay transition-colors" />
                             <input
                                 type="text"
-                                placeholder="Search guests or rooms..."
+                                placeholder="Search code, guest, email or room…"
                                 className="pl-10 pr-4 py-2.5 w-full lg:w-64 bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none transition-all"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -380,7 +419,10 @@ const ManageBookings: React.FC = () => {
                                 <option value="all">All Status</option>
                                 <option value="confirmed">Confirmed</option>
                                 <option value="pending">Pending</option>
+                                <option value="checked_in">Checked in</option>
+                                <option value="checked_out">Checked out</option>
                                 <option value="cancelled">Cancelled</option>
+                                <option value="refund_due">Refund due ({bookings.filter(refundDue).length})</option>
                             </select>
                         </div>
                     </div>
@@ -455,6 +497,7 @@ const ManageBookings: React.FC = () => {
                                                     <p className="text-sm text-gray-500">
                                                         {(booking.user && typeof booking.user === 'object') ? booking.user.email : ''}
                                                     </p>
+                                                    {booking.confirmationCode && <p className="mt-1 font-mono text-xs font-semibold tracking-wider text-clay">{booking.confirmationCode}</p>}
                                                 </div>
                                                 {getStatusBadge(booking.status)}
                                             </div>
@@ -473,8 +516,11 @@ const ManageBookings: React.FC = () => {
                                             </div>
 
                                             <div className="mt-4 flex justify-between items-center">
-                                                <span className="text-xl font-bold text-clay">${booking.totalPrice}</span>
+                                                <span className="text-xl font-bold text-clay">{formatMoney(booking.totalPrice, booking.pricing?.currency)}</span>
                                                 <div className="flex gap-2">
+                                                    {refundDue(booking) && isAdmin && (
+                                                        <Button size="sm" variant="secondary" onClick={() => openRefund(booking)}>Refund</Button>
+                                                    )}
                                                     <button onClick={() => handleEdit(booking)} className="p-2 text-blue-600 hover:text-umber hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
                                                         <BsPencil />
                                                     </button>
@@ -515,6 +561,12 @@ const ManageBookings: React.FC = () => {
                                                         <div className="text-xs text-gray-500">
                                                             {(booking.user && typeof booking.user === 'object') ? booking.user.email : ''}
                                                         </div>
+                                                        {booking.confirmationCode && <div className="mt-1 font-mono text-xs font-semibold tracking-wider text-clay">{booking.confirmationCode}</div>}
+                                                        {booking.guestDetails?.specialRequests && (
+                                                            <div className="mt-1 max-w-[220px] truncate text-xs italic text-umber" title={booking.guestDetails.specialRequests}>
+                                                                “{booking.guestDetails.specialRequests}”
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="p-5">
                                                         <span className="px-2 py-1 bg-gray-100 rounded text-sm font-medium">
@@ -527,14 +579,18 @@ const ManageBookings: React.FC = () => {
                                                     </td>
                                                     <td className="p-5">{getStatusBadge(booking.status)}</td>
                                                     <td className="p-5">
-                                                        <span className={`text-sm font-semibold ${booking.paymentStatus === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>
+                                                        <span className={`text-sm font-semibold ${booking.paymentStatus === 'paid' ? 'text-green-600' : booking.paymentStatus === 'refunded' ? 'text-sky-700' : 'text-yellow-600'}`}>
                                                             {booking.paymentStatus.toUpperCase()}
                                                         </span>
+                                                        {refundDue(booking) && <div className="mt-1"><Badge tone="danger">Refund due</Badge></div>}
                                                     </td>
-                                                    <td className="p-5 text-right font-bold text-clay">${booking.totalPrice}</td>
+                                                    <td className="p-5 text-right font-bold text-clay">{formatMoney(booking.totalPrice, booking.pricing?.currency)}</td>
                                                     <td className="p-5 text-center">
                                                         <div className="flex justify-center gap-2">
-                                                            <button onClick={() => handleEdit(booking)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer">
+                                                            {refundDue(booking) && isAdmin && (
+                                                                <Button size="sm" variant="secondary" onClick={() => openRefund(booking)}>Refund</Button>
+                                                            )}
+                                                            <button onClick={() => handleEdit(booking)} aria-label="Edit booking" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer">
                                                                 <BsPencil />
                                                             </button>
                                                             <button onClick={() => handleDelete(booking._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer">
@@ -600,6 +656,27 @@ const ManageBookings: React.FC = () => {
                 </div>
             )}
 
+
+            {/* --- REFUND DIALOG --- */}
+            <Modal
+                open={!!refunding}
+                onClose={() => setRefunding(null)}
+                title="Record a refund"
+                description={refunding ? `${refunding.confirmationCode || 'Booking'} · paid ${formatMoney(refunding.totalPrice, refunding.pricing?.currency)}. Send the money back in PayHere (or your bank) first, then record it here. The guest is emailed.` : undefined}
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setRefunding(null)}>Cancel</Button>
+                        <Button loading={savingRefund} onClick={submitRefund}>Record refund</Button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <Input label="Amount refunded" type="number" min={0} step="0.01" value={refundForm.amount}
+                        onChange={e => setRefundForm(f => ({ ...f, amount: e.target.value }))} />
+                    <Input label="Refund reference" placeholder="PayHere refund ID or bank reference" value={refundForm.reference}
+                        onChange={e => setRefundForm(f => ({ ...f, reference: e.target.value }))} hint="Optional, but helps when the guest asks" />
+                </div>
+            </Modal>
 
             {/* --- 5. ADD/EDIT MODAL --- */}
             {showModal && (

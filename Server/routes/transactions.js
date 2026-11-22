@@ -5,6 +5,8 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { protect, admin, authorize } = require('../middleware/auth');
 const { pick } = require('../middleware/sanitize');
+const { populateBooking } = require('../utils/bookingService');
+const { sendBookingEmail } = require('../utils/mailer');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
 
@@ -14,7 +16,7 @@ const TYPES = ['credit_card', 'cash', 'debit_card', 'bank_transfer'];
 const populateTxn = (query) =>
   query.populate({
     path: 'booking',
-    select: 'user room checkInDate checkOutDate totalPrice status paymentStatus',
+    select: 'user room checkInDate checkOutDate totalPrice status paymentStatus confirmationCode',
     populate: [
       { path: 'user', select: 'name email' },
       { path: 'room', select: 'roomNumber type', populate: { path: 'type', select: 'name' } },
@@ -149,6 +151,12 @@ router.post('/', protect, authorize('admin', 'receptionist'), async (req, res) =
     } catch (err) {
       console.error('Error saving card to user:', err);
     }
+  }
+
+  if (claimed.status === 'confirmed') {
+    populateBooking(Booking.findById(booking._id))
+      .then(b => b && sendBookingEmail('confirmed', b))
+      .catch(() => undefined);
   }
 
   const populated = await populateTxn(Transaction.findById(transaction._id));

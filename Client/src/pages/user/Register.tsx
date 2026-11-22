@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../utils/api';
+import { safeRedirect } from '../../utils/auth';
 
 const registerVideo =
     'https://www.pexels.com/download/video/34867881/';
@@ -26,6 +27,8 @@ type RegisterErrors = {
 
 const Register: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirect = safeRedirect(searchParams.get('redirect'));
 
     const [formData, setFormData] = useState<RegisterForm>({
         name: '',
@@ -186,7 +189,7 @@ const Register: React.FC = () => {
                         console.error('Profile photo upload failed:', photoErr);
                     }
                 }
-                navigate('/');
+                navigate(redirect || '/');
             } else {
                 setErrors({ server: data.message || 'Registration failed' });
             }
@@ -432,7 +435,7 @@ const Register: React.FC = () => {
                             <p>
                                 Already have an account?{' '}
                                 <Link
-                                    to="/login"
+                                    to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'}
                                     className="font-semibold text-bronze hover:underline dark:text-gold dark:hover:text-gold"
                                 >
                                     Sign in

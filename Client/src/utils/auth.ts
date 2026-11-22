@@ -44,3 +44,17 @@ export const clearSession = () => {
     localStorage.removeItem('user');
     sessionStorage.removeItem('token');
 };
+
+/**
+ * Where to go after signing in. Only same-site paths are allowed (never "//evil.com"
+ * or "https://..."), so a crafted ?redirect= link can't send users off-site.
+ */
+export const safeRedirect = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return null;
+    return value;
+};
+
+/** /login link that brings the user back to the given page (default: the current one) afterwards. */
+export const loginUrl = (returnTo: string = window.location.pathname + window.location.search) =>
+    `/login?redirect=${encodeURIComponent(returnTo)}`;

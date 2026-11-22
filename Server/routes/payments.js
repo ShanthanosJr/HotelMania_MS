@@ -8,7 +8,9 @@ const {
   HOLD_MINUTES,
   findOverlap,
   withRoomLock,
+  populateBooking,
 } = require('../utils/bookingService');
+const { sendBookingEmail } = require('../utils/mailer');
 const router = express.Router();
 
 const splitName = (name = '') => {
@@ -54,7 +56,7 @@ router.post('/payhere/checkout', protect, async (req, res) => {
     const nights = Math.round((booking.checkOutDate - booking.checkInDate) / 86400000);
     const roomName = (booking.room.type && booking.room.type.name) || 'Room';
     const hotelName = (booking.room.hotel && booking.room.hotel.name) || 'HotelMania';
-    const { first, last } = splitName(req.user.name);
+    const { first, last } = splitName((booking.guestDetails && booking.guestDetails.name) || req.user.name);
 
     const notifyBase = cfg.publicApiUrl || `${req.protocol}://${req.get('host')}`;
 
@@ -67,14 +69,14 @@ router.post('/payhere/checkout', protect, async (req, res) => {
         cancel_url: `${cfg.clientUrl}/bookings?payment=cancelled`,
         notify_url: `${notifyBase}/api/payments/payhere/notify`,
         order_id: orderId,
-        items: `${hotelName} - ${roomName} #${booking.room.roomNumber} (${nights} night${nights === 1 ? '' : 's'})`.slice(0, 250),
+        items: `${hotelName} - ${roomName} (${nights} night${nights === 1 ? '' : 's'}) ${booking.confirmationCode || ''}`.trim().slice(0, 250),
         amount,
         currency: cfg.currency,
         hash: payhere.checkoutHash({ orderId, amount, currency: cfg.currency }),
         first_name: first,
         last_name: last,
-        email: req.user.email,
-        phone: req.user.phone || '0000000000',
+        email: (booking.guestDetails && booking.guestDetails.email) || req.user.email,
+        phone: (booking.guestDetails && booking.guestDetails.phone) || req.user.phone || '0000000000',
         address: 'N/A',
         city: 'Colombo',
         country: 'Sri Lanka',
@@ -165,6 +167,12 @@ router.post('/payhere/notify', async (req, res) => {
         $unset: { holdExpiresAt: 1 },
       }
     );
+
+    if (!conflict) {
+      populateBooking(Booking.findById(booking._id))
+        .then(b => b && sendBookingEmail('confirmed', b))
+        .catch(() => undefined);
+    }
 
     return res.status(200).send('ok');
   } catch (error) {

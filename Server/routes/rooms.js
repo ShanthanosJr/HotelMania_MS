@@ -115,7 +115,7 @@ router.post('/', protect, admin, async (req, res) => {
       return res.status(400).json({ success: false, message: messages.join(', ') });
     }
     if (error.code === 11000) {
-      return res.status(400).json({ success: false, message: 'Room number already exists' });
+      return res.status(400).json({ success: false, message: 'This room number already exists in this hotel' });
     }
     res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -146,7 +146,7 @@ router.put('/:id', protect, staff, async (req, res) => {
       return res.status(400).json({ success: false, message: messages.join(', ') });
     }
     if (error.code === 11000) {
-      return res.status(400).json({ success: false, message: 'Room number already exists' });
+      return res.status(400).json({ success: false, message: 'This room number already exists in this hotel' });
     }
     res.status(500).json({ success: false, message: 'Server error' });
   }

@@ -4,6 +4,7 @@ export type { ButtonProps } from './Button';
 export { Input, Select, Textarea } from './Field';
 export { default as Modal } from './Modal';
 export { default as Spinner } from './Spinner';
+export { default as Stepper } from './Stepper';
 export { default as Toaster } from './Toaster';
 export { Badge, Card, Skeleton, EmptyState } from './Display';
 export { statusTone } from './status';

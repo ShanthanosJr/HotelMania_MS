@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
-import { payForBooking, outcomeMessage } from '../../utils/payhere';
-import { toast } from '../../components/ui';
+import { bookUrl } from '../../utils/booking';
 
 const heroImage =
     'https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -46,25 +45,7 @@ type RoomTypeTransformed = {
     hotel?: { _id?: string } | string;
 };
 
-type RoomInstance = {
-    _id?: string;
-    id?: string;
-    roomNumber?: string;
-    status?: string;
-    type?:
-    | {
-        _id?: string;
-        name?: string;
-        basePrice?: number;
-        maxOccupancy?: number;
-    }
-    | string;
-};
 
-type BookingDates = {
-    checkInDate: string;
-    checkOutDate: string;
-};
 
 const Rooms: React.FC = () => {
     // Animation Variants
@@ -81,6 +62,7 @@ const Rooms: React.FC = () => {
     const [roomsData, setRoomsData] = useState<RoomTypeTransformed[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const guestsParam = searchParams.get('guests');
     const [occupancyFilter, setOccupancyFilter] = useState<'any' | '1' | '2' | '3' | '4'>(
         guestsParam && ['1', '2', '3', '4'].includes(guestsParam)
@@ -94,16 +76,6 @@ const Rooms: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const roomsPerPage = 6; // Show 6 rooms per page
 
-    // booking state
-    const [showModal, setShowModal] = useState(false);
-    const [selectedRoomType, setSelectedRoomType] = useState<RoomTypeTransformed | null>(null);
-    const [availableRooms, setAvailableRooms] = useState<RoomInstance[]>([]);
-    const [loadingRooms, setLoadingRooms] = useState(false);
-    const [bookingDates, setBookingDates] = useState<BookingDates>({
-        checkInDate: searchParams.get('checkIn') || '',
-        checkOutDate: searchParams.get('checkOut') || '',
-    });
-    const [isProcessing, setIsProcessing] = useState(false);
 
     // fetch room types
     useEffect(() => {
@@ -193,111 +165,18 @@ const Rooms: React.FC = () => {
         if (index >= 0) setActiveIndex(index);
     };
 
-    // modal & booking
-
-    const openModal = async (roomType: RoomTypeTransformed) => {
-        setSelectedRoomType(roomType);
-        setLoadingRooms(true);
-        setShowModal(true);
-        setAvailableRooms([]);
-
-        try {
-            if (!roomType.hotel) {
-                throw new Error('Hotel information missing for this room type');
-            }
-            const hotelId =
-                typeof roomType.hotel === 'string' ? roomType.hotel : roomType.hotel._id || roomType.hotel;
-
-            const response = await api.get(`/api/rooms?hotel=${hotelId}`);
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch rooms');
-            }
-
-            const data = await response.json();
-            if (!data.success) {
-                throw new Error('Failed to get rooms data');
-            }
-
-            const matchingRooms: RoomInstance[] = data.data.filter(
-                (r: RoomInstance) =>
-                    (typeof r.type !== 'string' && r.type?._id === roomType.id) || r.type === roomType.id,
-            );
-
-            setAvailableRooms(matchingRooms);
-        } catch (err) {
-            console.error('Error fetching rooms:', err);
-            setAvailableRooms([]);
-        } finally {
-            setLoadingRooms(false);
-        }
-    };
-
-    const closeModal = () => {
-        setShowModal(false);
-        setSelectedRoomType(null);
-        setAvailableRooms([]);
-    };
-
-    const initiateBooking = async (room: RoomInstance) => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            toast.afterRedirect('info', 'Please log in to make a booking');
-            window.location.href = '/login';
-            return;
-        }
-
-        if (!bookingDates.checkInDate || !bookingDates.checkOutDate) {
-            toast.warning('Please select check-in and check-out dates');
-            return;
-        }
+    // Booking happens on /book; pass along anything the guest already chose
+    const openModal = (roomType: RoomTypeTransformed) =>
+        navigate(bookUrl({
+            type: roomType.id,
+            hotel: roomType.hotel,
+            checkIn: searchParams.get('checkIn'),
+            checkOut: searchParams.get('checkOut'),
+            guests: guestsParam,
+        }));
 
 
-        setIsProcessing(true);
 
-        const checkIn = new Date(bookingDates.checkInDate);
-        const checkOut = new Date(bookingDates.checkOutDate);
-        const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-
-        const basePrice =
-            typeof room.type !== 'string' && room.type?.basePrice ? room.type.basePrice : 0;
-
-        const totalPrice = nights * basePrice;
-
-        const roomId = room._id || room.id;
-
-        const bookingData = {
-            room: roomId,
-            checkInDate: bookingDates.checkInDate,
-            checkOutDate: bookingDates.checkOutDate,
-            totalPrice,
-        };
-
-        try {
-            const response = await api.post('/api/bookings', bookingData);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error((errorData && errorData.message) || 'Booking failed');
-            }
-
-            const bookingResult = await response.json();
-            const bookingId: string = bookingResult.data._id;
-
-            const outcome = await payForBooking(bookingId);
-            toast.afterRedirect(outcome === 'dismissed' ? 'warning' : 'success', outcomeMessage(outcome));
-            window.location.href = '/bookings';
-        } catch (err: unknown) {
-            console.error('Booking/Transaction error:', err);
-            const message =
-                err && typeof err === 'object' && 'message' in err
-                    ? String((err as Error).message)
-                    : 'Processing failed';
-            toast.error(`Error: ${message}`);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
 
     return (
         <div className="min-h-screen bg-ivory dark:bg-night text-ink dark:text-cream font-body transition-colors duration-300">
@@ -818,140 +697,6 @@ const Rooms: React.FC = () => {
                         </motion.div>
                     </motion.section>
 
-                    {/* MODAL */}
-                    {showModal && selectedRoomType && (
-                        <div
-                            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4"
-                            onClick={closeModal}
-                        >
-                            <div
-                                className="w-full max-w-3xl rounded-2xl bg-white dark:bg-charcoal shadow-2xl max-h-[90vh] overflow-y-auto"
-                                onClick={e => e.stopPropagation()}
-                            >
-                                <div className="flex items-center justify-between border-b border-sand dark:border-gray-600 px-6 py-4">
-                                    <h2
-                                        className="text-lg md:text-xl text-ink dark:text-cream"
-                                        style={{ fontFamily: 'Playfair Display, serif' }}
-                                    >
-                                        {selectedRoomType.name} - Available Rooms
-                                    </h2>
-                                    <button
-                                        type="button"
-                                        onClick={closeModal}
-                                        className="text-2xl leading-none text-taupe dark:text-gray-300 hover:text-bronze dark:hover:text-gold"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-
-                                <div className="px-6 py-5">
-                                    {loadingRooms ? (
-                                        <div className="py-10 text-center text-sm text-taupe dark:text-gray-300">
-                                            Loading available rooms...
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {availableRooms.length > 0 ? (
-                                                availableRooms.map(room => {
-                                                    const typeObj =
-                                                        typeof room.type === 'string' ? undefined : room.type;
-                                                    return (
-                                                        <div
-                                                            key={room._id || room.id}
-                                                            className="flex flex-col md:flex-row gap-4 rounded-xl border border-sand dark:border-gray-600 bg-ivory dark:bg-graphite p-4"
-                                                        >
-                                                            <div className="flex-1 space-y-2 text-[0.9rem] text-ink dark:text-cream">
-                                                                <h4
-                                                                    className="text-[1rem] font-semibold text-ink dark:text-cream"
-                                                                    style={{ fontFamily: 'Playfair Display, serif' }}
-                                                                >
-                                                                    {typeObj?.name || selectedRoomType.name}
-                                                                </h4>
-                                                                <p>Room Number: {room.roomNumber || 'N/A'}</p>
-                                                                <p>Status: {room.status || 'Available'}</p>
-                                                                <p>
-                                                                    Price:{' '}
-                                                                    {typeObj?.basePrice
-                                                                        ? `$${typeObj.basePrice}/night`
-                                                                        : 'N/A'}
-                                                                </p>
-                                                                <p>
-                                                                    Capacity:{' '}
-                                                                    {typeObj?.maxOccupancy
-                                                                        ? `${typeObj.maxOccupancy} guests`
-                                                                        : 'N/A'}
-                                                                </p>
-
-                                                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                                                    <div className="flex flex-col gap-1 text-[0.85rem]">
-                                                                        <label className="font-semibold text-ink dark:text-cream">
-                                                                            Check-in Date:
-                                                                        </label>
-                                                                        <input
-                                                                            type="date"
-                                                                            value={bookingDates.checkInDate}
-                                                                            onChange={e =>
-                                                                                setBookingDates(prev => ({
-                                                                                    ...prev,
-                                                                                    checkInDate: e.target.value,
-                                                                                }))
-                                                                            }
-                                                                            min={new Date().toISOString().split('T')[0]}
-                                                                            className="rounded border border-wheat dark:border-[#444] px-2 py-1.5 text-[0.85rem] text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold"
-                                                                        />
-                                                                    </div>
-                                                                    <div className="flex flex-col gap-1 text-[0.85rem]">
-                                                                        <label className="font-semibold text-ink dark:text-cream">
-                                                                            Check-out Date:
-                                                                        </label>
-                                                                        <input
-                                                                            type="date"
-                                                                            value={bookingDates.checkOutDate}
-                                                                            onChange={e =>
-                                                                                setBookingDates(prev => ({
-                                                                                    ...prev,
-                                                                                    checkOutDate: e.target.value,
-                                                                                }))
-                                                                            }
-                                                                            min={
-                                                                                bookingDates.checkInDate ||
-                                                                                new Date().toISOString().split('T')[0]
-                                                                            }
-                                                                            className="rounded border border-wheat dark:border-[#444] px-2 py-1.5 text-[0.85rem] text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-
-                                                                <p className="mt-3 flex items-center gap-2 rounded bg-cream p-2 text-[0.8rem] text-taupe dark:bg-gray-700 dark:text-gray-300">
-                                                                    <span aria-hidden="true">🔒</span> Secure payment by PayHere: Visa, Mastercard, Amex, eZ Cash, mCash &amp; more.
-                                                                </p>
-                                                            </div>
-
-                                                            <div className="flex items-center md:w-40">
-                                                                <button
-                                                                    type="button"
-                                                                    disabled={isProcessing}
-                                                                    onClick={() => initiateBooking(room)}
-                                                                    className="w-full px-4 py-2.5 rounded border-2 border-bronze dark:border-gold bg-bronze dark:bg-gold text-white dark:text-black text-[0.8rem] font-semibold uppercase tracking-[0.14em] hover:bg-transparent hover:text-bronze dark:hover:bg-gold dark:hover:text-black transition disabled:opacity-60 disabled:cursor-not-allowed"
-                                                                >
-                                                                    {isProcessing ? 'Processing...' : 'Book Now'}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            ) : (
-                                                <p className="text-sm text-taupe dark:text-gray-300">
-                                                    No available physical rooms for this category. Please try another
-                                                    hotel or contact support.
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* keyframes */}
                     <style>{`

@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
+const RoomType = require('../models/RoomType');
+const { quote } = require('./pricing');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_NIGHTS = 30;
@@ -104,10 +106,107 @@ const withRoomLock = async (roomId, fn) => {
   }
 };
 
-const priceFor = (room, nights) => {
-  const basePrice = room.type && room.type.basePrice;
-  if (typeof basePrice !== 'number') throw new HttpError(400, 'Room has no price configured');
-  return Math.round(basePrice * nights * 100) / 100;
+/** Server-side price breakdown for `nights` in this room's type. */
+const quoteFor = (room, nights) => {
+  try {
+    return quote(room.type, nights);
+  } catch (err) {
+    throw new HttpError(err.status || 400, err.message);
+  }
+};
+const priceFor = (room, nights) => quoteFor(room, nights).total;
+
+/** Rooms of a type that are bookable for the whole stay (not under maintenance, no overlapping booking). */
+const findFreeRooms = async (roomTypeId, checkInDate, checkOutDate) => {
+  const rooms = await Room.find({ type: roomTypeId, status: { $ne: 'maintenance' } }).select('_id roomNumber').lean();
+  if (rooms.length === 0) return [];
+  const busy = await Booking.find({
+    ...blockingFilter(),
+    room: { $in: rooms.map(r => r._id) },
+    checkInDate: { $lt: checkOutDate },
+    checkOutDate: { $gt: checkInDate },
+  }).distinct('room');
+  const busyIds = new Set(busy.map(String));
+  return rooms
+    .filter(r => !busyIds.has(String(r._id)))
+    .sort((a, b) => String(a.roomNumber).localeCompare(String(b.roomNumber), undefined, { numeric: true }));
+};
+
+/**
+ * Books any free room of a room type. Tries each candidate under its own room lock, so two
+ * guests racing for the same type end up in different rooms, or the loser gets a clean 409.
+ * `create(session, room)` must create and return the booking.
+ */
+const bookAnyRoomOfType = async (roomTypeId, stay, create) => {
+  const candidates = await findFreeRooms(roomTypeId, stay.checkInDate, stay.checkOutDate);
+  for (const candidate of candidates) {
+    try {
+      return await withRoomLock(candidate._id, async (session, room) => {
+        if (room.status === 'maintenance') throw new HttpError(409, 'Room unavailable');
+        const overlap = await findOverlap(room._id, stay.checkInDate, stay.checkOutDate, null, session);
+        if (overlap) throw new HttpError(409, 'Room unavailable');
+        return create(session, room);
+      });
+    } catch (err) {
+      // Someone took this room a moment ago: try the next one
+      if (err instanceof HttpError && err.status === 409) continue;
+      throw err;
+    }
+  }
+  throw new HttpError(409, 'Sorry, this room type is sold out for the selected dates');
+};
+
+/**
+ * Availability and price for every room type (optionally one hotel / one type) for a stay.
+ */
+const availability = async ({ checkInDate, checkOutDate, nights, guests = 1, hotel, roomType }) => {
+  const filter = {};
+  if (hotel) filter.hotel = hotel;
+  if (roomType) filter._id = roomType;
+  const types = await RoomType.find(filter).populate('hotel', 'name address photos rating').lean();
+  if (types.length === 0) return [];
+
+  const rooms = await Room.find({ type: { $in: types.map(t => t._id) }, status: { $ne: 'maintenance' } }).select('_id type').lean();
+  const busy = new Set((await Booking.find({
+    ...blockingFilter(),
+    room: { $in: rooms.map(r => r._id) },
+    checkInDate: { $lt: checkOutDate },
+    checkOutDate: { $gt: checkInDate },
+  }).distinct('room')).map(String));
+
+  const freeByType = {};
+  const totalByType = {};
+  for (const r of rooms) {
+    const key = String(r.type);
+    totalByType[key] = (totalByType[key] || 0) + 1;
+    if (!busy.has(String(r._id))) freeByType[key] = (freeByType[key] || 0) + 1;
+  }
+
+  return types.map(t => {
+    let price = null;
+    try { price = quote(t, nights); } catch { /* type without a price is shown as unavailable */ }
+    const available = price ? (freeByType[String(t._id)] || 0) : 0;
+    return {
+      roomType: t,
+      totalRooms: totalByType[String(t._id)] || 0,
+      available,
+      fitsGuests: guests <= (t.maxOccupancy || 1),
+      quote: price,
+    };
+  });
+};
+
+/**
+ * Applies a cancellation to a booking document (not saved). A paid booking gets a refund
+ * marked as due so it shows up for staff until someone pays it back.
+ */
+const applyCancellation = (booking) => {
+  booking.status = 'cancelled';
+  booking.cancelledAt = new Date();
+  booking.holdExpiresAt = undefined;
+  if (booking.paymentStatus === 'paid' && !(booking.refund && booking.refund.status)) {
+    booking.refund = { status: 'due', amount: booking.totalPrice, requestedAt: new Date() };
+  }
 };
 
 /** Keeps Room.status / currentBooking in line with a booking's lifecycle. */
@@ -134,8 +233,8 @@ const populateBooking = (query) =>
       path: 'room',
       select: 'roomNumber type hotel status',
       populate: [
-        { path: 'type', select: 'name basePrice maxOccupancy photos hotel', populate: { path: 'hotel', select: 'name address' } },
-        { path: 'hotel', select: 'name address' },
+        { path: 'type', select: 'name basePrice maxOccupancy photos hotel bedType size view', populate: { path: 'hotel', select: 'name address' } },
+        { path: 'hotel', select: 'name address contactInfo' },
       ],
     });
 
@@ -148,6 +247,11 @@ module.exports = {
   findOverlap,
   withRoomLock,
   priceFor,
+  quoteFor,
+  findFreeRooms,
+  bookAnyRoomOfType,
+  availability,
+  applyCancellation,
   syncRoomStatus,
   populateBooking,
 };

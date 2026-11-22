@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
-import { payForBooking, outcomeMessage } from '../../utils/payhere';
 import { motion } from 'framer-motion';
-import { toast } from '../../components/ui';
+import { bookUrl } from '../../utils/booking';
 
 const heroImage =
     'https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -51,10 +50,6 @@ type Filters = {
     search: string;
 };
 
-type BookingDates = {
-    checkInDate: string;
-    checkOutDate: string;
-};
 
 const applyFiltersAndSort = (
     hotels: Hotel[],
@@ -107,6 +102,7 @@ const applyFiltersAndSort = (
 };
 
 const Hotels: React.FC = () => {
+    const navigate = useNavigate();
     const [filters, setFilters] = useState<Filters>({
         location: 'Any Location',
         starRating: 'Any Rating',
@@ -125,16 +121,7 @@ const Hotels: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const hotelsPerPage = 6;
 
-    const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
-    const [showModal, setShowModal] = useState(false);
-    const [hotelRooms, setHotelRooms] = useState<Room[]>([]);
-    const [loadingRooms, setLoadingRooms] = useState(false);
 
-    const [bookingDates, setBookingDates] = useState<BookingDates>({
-        checkInDate: '',
-        checkOutDate: '',
-    });
-    const [isProcessing, setIsProcessing] = useState(false);
 
     // Animation Variants
     const fadeInUp = {
@@ -235,6 +222,8 @@ const Hotels: React.FC = () => {
         }
     };
 
+    const openModal = (hotel: Hotel) => navigate(bookUrl({ hotel: hotel._id || hotel.id }));
+
     const goToNextPage = () => {
         if (currentPage < totalPages()) {
             setCurrentPage(prev => prev + 1);
@@ -242,94 +231,8 @@ const Hotels: React.FC = () => {
         }
     };
 
-    const openModal = async (hotel: Hotel) => {
-        setSelectedHotel(hotel);
-        setLoadingRooms(true);
-        setShowModal(true);
-
-        try {
-            const response = await api.get(`/api/rooms?hotel=${hotel._id}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch rooms');
-            }
-            const data = await response.json();
-            if (!data.success) {
-                throw new Error('Failed to get rooms data');
-            }
-            setHotelRooms(data.data);
-        } catch (err) {
-            console.error('Error fetching rooms:', err);
-            setHotelRooms([]);
-        } finally {
-            setLoadingRooms(false);
-        }
-    };
-
-    const closeModal = () => {
-        setShowModal(false);
-        setSelectedHotel(null);
-        setHotelRooms([]);
-    };
-
-    const initiateBooking = async (room: Room) => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            toast.afterRedirect('info', 'Please log in to make a booking');
-            window.location.href = '/login';
-            return;
-        }
-
-        if (!bookingDates.checkInDate || !bookingDates.checkOutDate) {
-            toast.warning('Please select check-in and check-out dates');
-            return;
-        }
 
 
-        setIsProcessing(true);
-
-        const checkIn = new Date(bookingDates.checkInDate);
-        const checkOut = new Date(bookingDates.checkOutDate);
-        const nights = Math.ceil(
-            (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
-        );
-
-        const basePrice =
-            typeof room.type === 'string' ? 0 : room.type?.basePrice || 0;
-        const totalPrice = nights * basePrice;
-
-        const roomId = room._id || room.id;
-
-        const bookingData = {
-            room: roomId,
-            checkInDate: bookingDates.checkInDate,
-            checkOutDate: bookingDates.checkOutDate,
-            totalPrice,
-        };
-
-        try {
-            const response = await api.post('/api/bookings', bookingData);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Booking failed');
-            }
-
-            const bookingResult = await response.json();
-            const bookingId: string = bookingResult.data._id;
-
-            const outcome = await payForBooking(bookingId);
-            toast.afterRedirect(outcome === 'dismissed' ? 'warning' : 'success', outcomeMessage(outcome));
-            window.location.href = '/bookings';
-        } catch (err: unknown) {
-            console.error('Booking/Transaction error:', err);
-            const message =
-                err && typeof err === 'object' && 'message' in err
-                    ? String((err as Error).message)
-                    : 'Processing failed';
-            toast.error(`Error: ${message}`);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
 
     return (
         <div className="min-h-screen bg-ivory text-ink font-body dark:bg-night dark:text-cream transition-colors duration-300">
@@ -708,138 +611,6 @@ const Hotels: React.FC = () => {
                 </div>
             </section>
 
-            {/* MODAL */}
-            {showModal && selectedHotel && (
-                <div
-                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4"
-                    onClick={closeModal}
-                >
-                    <div
-                        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-800"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between border-b border-sand px-6 py-4 dark:border-gray-600">
-                            <h2
-                                className="text-lg md:text-xl dark:text-cream"
-                                style={{ fontFamily: 'Playfair Display, serif' }}
-                            >
-                                {selectedHotel.name} - Room Options
-                            </h2>
-                            <button
-                                type="button"
-                                onClick={closeModal}
-                                className="text-2xl leading-none text-taupe hover:text-bronze dark:text-gray-300 dark:hover:text-gold"
-                            >
-                                ×
-                            </button>
-                        </div>
-                        <div className="px-6 py-5 text-[0.9rem] text-ink dark:text-cream">
-                            {loadingRooms ? (
-                                <div className="py-6 text-center text-taupe dark:text-gray-300">
-                                    Loading room options...
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {hotelRooms.length > 0 ? (
-                                        hotelRooms.map(room => {
-                                            const typeObj =
-                                                typeof room.type === 'string' ? undefined : room.type;
-                                            return (
-                                                <div
-                                                    key={room._id || room.id}
-                                                    className="flex flex-col gap-4 rounded-xl border border-sand bg-ivory p-4 md:flex-row dark:bg-gray-700 dark:border-gray-600"
-                                                >
-                                                    <div className="flex-1 space-y-1">
-                                                        <h4
-                                                            className="text-[1rem] font-semibold dark:text-cream"
-                                                            style={{ fontFamily: 'Playfair Display, serif' }}
-                                                        >
-                                                            {typeObj?.name || 'Room Type'}
-                                                        </h4>
-                                                        <p>Room Number: {room.roomNumber || 'N/A'}</p>
-                                                        <p>Status: {room.status || 'Available'}</p>
-                                                        <p>
-                                                            Price:{' '}
-                                                            {typeObj?.basePrice
-                                                                ? `$${typeObj.basePrice}/night`
-                                                                : 'N/A'}
-                                                        </p>
-                                                        <p>
-                                                            Capacity:{' '}
-                                                            {typeObj?.maxOccupancy
-                                                                ? `${typeObj.maxOccupancy} guests`
-                                                                : 'N/A'}
-                                                        </p>
-
-                                                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                                            <div className="flex flex-col gap-1 text-[0.85rem]">
-                                                                <label className="font-semibold dark:text-cream">
-                                                                    Check-in Date:
-                                                                </label>
-                                                                <input
-                                                                    type="date"
-                                                                    value={bookingDates.checkInDate}
-                                                                    onChange={e =>
-                                                                        setBookingDates(prev => ({
-                                                                            ...prev,
-                                                                            checkInDate: e.target.value,
-                                                                        }))
-                                                                    }
-                                                                    min={new Date().toISOString().split('T')[0]}
-                                                                    className="rounded border border-wheat px-2 py-1.5 text-[0.85rem] text-ink focus:border-bronze focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream focus:dark:border-gold"
-                                                                />
-                                                            </div>
-                                                            <div className="flex flex-col gap-1 text-[0.85rem]">
-                                                                <label className="font-semibold dark:text-cream">
-                                                                    Check-out Date:
-                                                                </label>
-                                                                <input
-                                                                    type="date"
-                                                                    value={bookingDates.checkOutDate}
-                                                                    onChange={e =>
-                                                                        setBookingDates(prev => ({
-                                                                            ...prev,
-                                                                            checkOutDate: e.target.value,
-                                                                        }))
-                                                                    }
-                                                                    min={
-                                                                        bookingDates.checkInDate ||
-                                                                        new Date().toISOString().split('T')[0]
-                                                                    }
-                                                                    className="rounded border border-wheat px-2 py-1.5 text-[0.85rem] text-ink focus:border-bronze focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream focus:dark:border-gold"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <p className="mt-3 flex items-center gap-2 rounded bg-cream p-2 text-[0.8rem] text-taupe dark:bg-gray-700 dark:text-gray-300">
-                                                            <span aria-hidden="true">🔒</span> Secure payment by PayHere: Visa, Mastercard, Amex, eZ Cash, mCash &amp; more.
-                                                        </p>
-                                                    </div>
-
-                                                    <div className="flex items-center md:w-40">
-                                                        <button
-                                                            type="button"
-                                                            disabled={isProcessing}
-                                                            onClick={() => initiateBooking(room)}
-                                                            className="w-full rounded border-2 border-bronze bg-bronze px-4 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-bronze transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
-                                                        >
-                                                            {isProcessing ? 'Processing...' : 'Book Now'}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <p className="py-4 text-sm text-taupe">
-                                            No rooms available for this hotel at the moment.
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* COLLECTIONS */}
             <section className="bg-ivory py-14 dark:bg-gray-900 dark:text-cream">

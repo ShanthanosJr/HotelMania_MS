@@ -1,5 +1,6 @@
 import { SITE } from '../config/site';
 import { toast } from '../components/ui';
+import { formatMoney } from './booking';
 
 export interface ReceiptBooking {
     _id?: string;
@@ -9,6 +10,8 @@ export interface ReceiptBooking {
     paymentStatus?: string;
     totalPrice?: number;
     guests?: number;
+    confirmationCode?: string;
+    pricing?: { subtotal?: number; serviceCharge?: number; serviceChargePercent?: number; tax?: number; taxPercent?: number; currency?: string; nightlyRate?: number };
     user?: { name?: string; email?: string };
     room?: unknown;
 }
@@ -37,8 +40,14 @@ export const printReceipt = (booking: ReceiptBooking, guestName?: string) => {
         booking.checkInDate && booking.checkOutDate
             ? Math.round((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / 86400000)
             : 0;
-    const total = (booking.totalPrice ?? 0).toFixed(2);
-    const ref = (booking._id || '').slice(-8).toUpperCase();
+    const p = booking.pricing;
+    const money = (n?: number) => formatMoney(n, p?.currency);
+    const total = money(booking.totalPrice);
+    const ref = booking.confirmationCode || (booking._id || '').slice(-8).toUpperCase();
+    const breakdown = p && p.subtotal !== undefined ? `
+<tr><td>Room (${esc(nights)} night${nights === 1 ? '' : 's'} × ${esc(money(p.nightlyRate))})</td><td>${esc(money(p.subtotal))}</td></tr>
+${p.serviceCharge ? `<tr><td>Service charge (${esc(p.serviceChargePercent)}%)</td><td>${esc(money(p.serviceCharge))}</td></tr>` : ''}
+${p.tax ? `<tr><td>Taxes (${esc(p.taxPercent)}%)</td><td>${esc(money(p.tax))}</td></tr>` : ''}` : '';
 
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${esc(ref)} - ${esc(SITE.name)}</title>
 <style>
@@ -51,18 +60,19 @@ export const printReceipt = (booking: ReceiptBooking, guestName?: string) => {
   @media print{button{display:none}}
 </style></head><body>
 <div class="head"><div><h1>${esc(SITE.name.toUpperCase())}</h1><div class="muted">${esc(SITE.address)}<br>${esc(SITE.phone)} · ${esc(SITE.email)}</div></div>
-<div class="muted" style="text-align:right">BOOKING RECEIPT<br><strong>#${esc(ref)}</strong><br>${esc(fmtDate(new Date().toISOString()))}</div></div>
+<div class="muted" style="text-align:right">BOOKING RECEIPT<br><strong>${esc(ref)}</strong><br>${esc(fmtDate(new Date().toISOString()))}</div></div>
 <table>
 <tr><td>Guest</td><td>${esc(guestName || booking.user?.name || '-')}</td></tr>
 <tr><td>Hotel</td><td>${esc(hotel?.name || '-')}</td></tr>
-<tr><td>Room</td><td>${esc(room.type?.name || 'Room')}${room.roomNumber ? ' #' + esc(room.roomNumber) : ''}</td></tr>
+<tr><td>Room</td><td>${esc(room.type?.name || 'Room')}${room.roomNumber && booking.status === 'checked_in' ? ' · Room ' + esc(room.roomNumber) : ''}</td></tr>
 <tr><td>Check-in</td><td>${esc(fmtDate(booking.checkInDate))} (from ${esc(SITE.checkInTime)})</td></tr>
 <tr><td>Check-out</td><td>${esc(fmtDate(booking.checkOutDate))} (by ${esc(SITE.checkOutTime)})</td></tr>
 <tr><td>Nights</td><td>${esc(nights)}</td></tr>
 ${booking.guests ? `<tr><td>Guests</td><td>${esc(booking.guests)}</td></tr>` : ''}
 <tr><td>Booking status</td><td>${esc(label(booking.status))}</td></tr>
 <tr><td>Payment</td><td>${esc(label(booking.paymentStatus))}</td></tr>
-<tr class="total"><td>Total</td><td>$${esc(total)}</td></tr>
+${breakdown}
+<tr class="total"><td>Total</td><td>${esc(total)}</td></tr>
 </table>
 <p class="muted">Thank you for choosing ${esc(SITE.name)}.</p>
 <button onclick="window.print()" style="padding:10px 20px;background:#8B6914;color:#fff;border:0;border-radius:4px;cursor:pointer">Print / Save as PDF</button>
