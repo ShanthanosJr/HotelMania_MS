@@ -14,6 +14,8 @@ import Contact from './pages/user/Contact';
 import Login from './pages/user/Login';
 import Register from './pages/user/Register';
 import Profile from './pages/user/Profile';
+import Policies from './pages/user/Policies';
+import NotFound from './pages/user/NotFound';
 
 import Dashboard from './pages/admin/Dashboard';
 import ManageBookings from './pages/admin/ManageBookings';
@@ -41,6 +43,8 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<RequireRole roles={['guest', 'admin', 'receptionist', 'housekeeping']}><Profile /></RequireRole>} />
 
+            <Route path="/policies" element={<Policies />} />
+
             <Route path="/admin" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin']}><Dashboard /></RequireRole>} />
             <Route path="/admin/dashboard" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/dashboard']}><Dashboard /></RequireRole>} />
             <Route path="/admin/bookings" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/bookings']}><ManageBookings /></RequireRole>} />
@@ -49,6 +53,8 @@ function App() {
             <Route path="/admin/transactions" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/transactions']}><ManageTransactions /></RequireRole>} />
             <Route path="/admin/feedbacks" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/feedbacks']}><ManageFeedbacks /></RequireRole>} />
             <Route path="/admin/users" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/users']}><ManageUsers /></RequireRole>} />
+
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
       </BrowserRouter>

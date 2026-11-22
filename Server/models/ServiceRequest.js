@@ -14,6 +14,11 @@ const serviceRequestSchema = new mongoose.Schema({
     },
     required: [true, 'Service type is required'],
   },
+  notes: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Notes cannot exceed 500 characters'],
+  },
   status: {
     type: String,
     enum: {

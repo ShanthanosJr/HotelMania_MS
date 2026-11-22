@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -34,10 +34,10 @@ type RoomTypeTransformed = {
     image: string;
     shortDescription: string;
     description: string;
-    size: number;
+    size?: number;
     maxGuests: number;
-    bedType: string;
-    view: string;
+    bedType?: string;
+    view?: string;
     priceFrom: number;
     tag: string;
     highlights: string[];
@@ -79,8 +79,13 @@ const Rooms: React.FC = () => {
 
     const [roomsData, setRoomsData] = useState<RoomTypeTransformed[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [occupancyFilter, setOccupancyFilter] = useState<'any' | '1' | '2' | '3' | '4'>('any');
-    const [viewFilter, setViewFilter] = useState<'any' | 'city' | 'garden' | 'river'>('any');
+    const [searchParams] = useSearchParams();
+    const guestsParam = searchParams.get('guests');
+    const [occupancyFilter, setOccupancyFilter] = useState<'any' | '1' | '2' | '3' | '4'>(
+        guestsParam && ['1', '2', '3', '4'].includes(guestsParam)
+            ? (guestsParam as '1' | '2' | '3' | '4')
+            : guestsParam && Number(guestsParam) > 4 ? '4' : 'any',
+    );
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -94,8 +99,8 @@ const Rooms: React.FC = () => {
     const [availableRooms, setAvailableRooms] = useState<RoomInstance[]>([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [bookingDates, setBookingDates] = useState<BookingDates>({
-        checkInDate: '',
-        checkOutDate: '',
+        checkInDate: searchParams.get('checkIn') || '',
+        checkOutDate: searchParams.get('checkOut') || '',
     });
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -123,10 +128,10 @@ const Rooms: React.FC = () => {
                                     : heroImage,
                             shortDescription: room.description,
                             description: room.description,
-                            size: room.size || 30,
+                            size: room.size,
                             maxGuests: room.maxOccupancy || room.maxGuests || 2,
-                            bedType: room.bedType || 'Queen Bed',
-                            view: room.view || 'City View',
+                            bedType: room.bedType,
+                            view: room.view,
                             priceFrom: room.basePrice ?? room.pricePerNight ?? 0,
                             tag: room.tag || '',
                             highlights: room.highlights || [],
@@ -172,12 +177,9 @@ const Rooms: React.FC = () => {
                 const guests = parseInt(occupancyFilter, 10);
                 ok = ok && room.maxGuests >= guests;
             }
-            if (viewFilter !== 'any') {
-                ok = ok && room.view.toLowerCase().includes(viewFilter.toLowerCase());
-            }
             return ok;
         });
-    }, [roomsData, occupancyFilter, viewFilter]);
+    }, [roomsData, occupancyFilter]);
 
     // Pagination calculations
     const totalRooms = filteredRooms.length;
@@ -353,7 +355,7 @@ const Rooms: React.FC = () => {
                                 variants={fadeInUp}
                             >
                                 From cozy business rooms to expansive suites, each space blends contemporary
-                                comfort with timeless Grand Vista character.
+                                comfort with timeless HotelMania character.
                             </motion.p>
                             <motion.div
                                 className="flex flex-wrap gap-7"
@@ -437,24 +439,6 @@ const Rooms: React.FC = () => {
                                         <option value="4">4+ Guests</option>
                                     </select>
                                 </div>
-                                <div className="flex flex-col gap-1 min-w-[160px]">
-                                    <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[#6B5B4F] dark:text-gray-300">
-                                        Preferred View
-                                    </label>
-                                    <select
-                                        value={viewFilter}
-                                        onChange={e => {
-                                            setViewFilter(e.target.value as 'any' | 'city' | 'garden' | 'river');
-                                            setCurrentPage(1); // Reset to first page when filter changes
-                                        }}
-                                        className="rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] px-3 py-2.5 text-[0.9rem] text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
-                                    >
-                                        <option value="any">Any</option>
-                                        <option value="city">City</option>
-                                        <option value="garden">Garden</option>
-                                        <option value="river">River</option>
-                                    </select>
-                                </div>
                             </motion.div>
                         </div>
                     </motion.section>
@@ -535,7 +519,7 @@ const Rooms: React.FC = () => {
                                                         {room.name}
                                                     </h3>
                                                     <p className="text-[0.85rem] text-[#6B5B4F] dark:text-gray-300 mb-2">
-                                                        {room.bedType} • up to {room.maxGuests} guests • {room.view}
+                                                        {[room.bedType, `up to ${room.maxGuests} guests`, room.view].filter(Boolean).join(' • ')}
                                                     </p>
                                                     <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300 leading-7">
                                                         {room.shortDescription}
@@ -621,30 +605,36 @@ const Rooms: React.FC = () => {
                                 </p>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                    {activeRoom.size && (
                                     <div>
                                         <h3 className="text-[0.95rem] font-semibold mb-1 text-[#2C2416] dark:text-[#F5F0E6]">Size</h3>
                                         <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
                                             {activeRoom.size} m²
                                         </p>
                                     </div>
+                                    )}
                                     <div>
                                         <h3 className="text-[0.95rem] font-semibold mb-1 text-[#2C2416] dark:text-[#F5F0E6]">Guests</h3>
                                         <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
                                             Up to {activeRoom.maxGuests} guests
                                         </p>
                                     </div>
+                                    {activeRoom.bedType && (
                                     <div>
                                         <h3 className="text-[0.95rem] font-semibold mb-1 text-[#2C2416] dark:text-[#F5F0E6]">Bed</h3>
                                         <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
                                             {activeRoom.bedType}
                                         </p>
                                     </div>
+                                    )}
+                                    {activeRoom.view && (
                                     <div>
                                         <h3 className="text-[0.95rem] font-semibold mb-1 text-[#2C2416] dark:text-[#F5F0E6]">View</h3>
                                         <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
                                             {activeRoom.view}
                                         </p>
                                     </div>
+                                    )}
                                 </div>
 
                                 <div>
@@ -758,7 +748,7 @@ const Rooms: React.FC = () => {
                                                 {room.name}
                                             </h3>
                                             <p className="text-[0.85rem] text-[#6B5B4F] dark:text-gray-300 mb-2">
-                                                {room.bedType} • up to {room.maxGuests} guests • {room.view}
+                                                {[room.bedType, `up to ${room.maxGuests} guests`, room.view].filter(Boolean).join(' • ')}
                                             </p>
                                             <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300 leading-7">
                                                 {room.shortDescription}

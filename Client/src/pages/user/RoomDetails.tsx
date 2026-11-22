@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
 import { payForBooking, outcomeMessage } from '../../utils/payhere';
+import { SITE } from '../../config/site';
 
 type RoomType = {
     _id?: string;
@@ -42,6 +43,7 @@ const fallbackHero =
 
 const RoomDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
+    const [searchParams] = useSearchParams();
 
     const [room, setRoom] = useState<RoomType | null>(null);
     const [loading, setLoading] = useState(true);
@@ -54,8 +56,8 @@ const RoomDetails: React.FC = () => {
     const [availableRooms, setAvailableRooms] = useState<PhysicalRoom[]>([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
     const [bookingDates, setBookingDates] = useState<BookingDates>({
-        checkInDate: '',
-        checkOutDate: '',
+        checkInDate: searchParams.get('checkIn') || '',
+        checkOutDate: searchParams.get('checkOut') || '',
     });
 
 
@@ -111,6 +113,16 @@ const RoomDetails: React.FC = () => {
         setAvailableRooms([]);
 
     };
+
+    // Arriving from the home search bar with ?book=1 opens the booking modal straight away
+    const [autoOpened, setAutoOpened] = useState(false);
+    useEffect(() => {
+        if (room && !autoOpened && searchParams.get('book') === '1') {
+            setAutoOpened(true);
+            openBookingModal();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [room, autoOpened, searchParams]);
 
     const closeModal = () => {
         setShowModal(false);
@@ -347,18 +359,24 @@ const RoomDetails: React.FC = () => {
                                 <span className="text-[#6B5B4F] dark:text-gray-300">Occupancy</span>
                                 <span>Up to {room.maxOccupancy} Guests</span>
                             </li>
-                            <li className="flex justify-between">
-                                <span className="text-[#6B5B4F] dark:text-gray-300">Size</span>
-                                <span>{room.size || 35} m²</span>
-                            </li>
-                            <li className="flex justify-between">
-                                <span className="text-[#6B5B4F] dark:text-gray-300">View</span>
-                                <span>{room.view || 'City View'}</span>
-                            </li>
-                            <li className="flex justify-between">
-                                <span className="text-[#6B5B4F] dark:text-gray-300">Bed</span>
-                                <span>{room.bedType || 'King Size'}</span>
-                            </li>
+                            {room.size ? (
+                                <li className="flex justify-between">
+                                    <span className="text-[#6B5B4F] dark:text-gray-300">Size</span>
+                                    <span>{room.size} m²</span>
+                                </li>
+                            ) : null}
+                            {room.view && (
+                                <li className="flex justify-between">
+                                    <span className="text-[#6B5B4F] dark:text-gray-300">View</span>
+                                    <span>{room.view}</span>
+                                </li>
+                            )}
+                            {room.bedType && (
+                                <li className="flex justify-between">
+                                    <span className="text-[#6B5B4F] dark:text-gray-300">Bed</span>
+                                    <span>{room.bedType}</span>
+                                </li>
+                            )}
                         </ul>
                         <button
                             type="button"
@@ -451,7 +469,7 @@ const RoomDetails: React.FC = () => {
 
                                     <div className="rounded-lg bg-[#F5F0E6] dark:bg-gray-700/50 p-4 border border-[#E8DCC8] dark:border-gray-600">
                                         <p className="text-sm text-[#6B5B4F] dark:text-gray-300">
-                                            <span className="font-bold">Note:</span> Standard check-in time is 2:00 PM and check-out time is 11:00 AM.
+                                            <span className="font-bold">Note:</span> Standard check-in time is {SITE.checkInTime} and check-out time is {SITE.checkOutTime}.
                                         </p>
                                     </div>
 
@@ -487,7 +505,7 @@ const RoomDetails: React.FC = () => {
                                                                 Room {physRoom.roomNumber}
                                                             </h4>
                                                             <p className="text-sm text-[#6B5B4F] dark:text-gray-300 mt-1">
-                                                                {room.view || 'City View'} • {room.bedType || 'King Bed'}
+                                                                {[room.view, room.bedType].filter(Boolean).join(' • ') || room.name}
                                                             </p>
                                                         </div>
                                                         <span className="rounded-full border border-[#8B6914] px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-[#8B6914] group-hover:bg-[#8B6914] group-hover:text-white transition dark:text-[#D4AF37] dark:border-[#D4AF37] dark:group-hover:text-[#2C2416]">

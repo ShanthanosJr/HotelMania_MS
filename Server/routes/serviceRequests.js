@@ -67,6 +67,7 @@ router.get('/:id', protect, async (req, res) => {
 router.post('/', protect, async (req, res) => {
   try {
     const { room, type } = req.body;
+    const notes = typeof req.body.notes === 'string' ? req.body.notes.slice(0, 500) : undefined;
     
     // Validate required fields
     if (!room || !type) {
@@ -96,6 +97,7 @@ router.post('/', protect, async (req, res) => {
     const serviceRequest = await ServiceRequest.create({
       room,
       type,
+      notes,
       status: 'pending'
     });
     

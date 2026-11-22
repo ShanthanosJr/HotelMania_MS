@@ -52,6 +52,9 @@ interface RoomType {
   hotel?: Hotel | string;
   basePrice: number;
   maxOccupancy: number;
+  size?: number;
+  bedType?: string;
+  view?: string;
   description?: string;
   amenities?: string[];
   photos?: string[];
@@ -82,6 +85,9 @@ interface TypeFormState {
   hotel: string;
   basePrice: number;
   maxOccupancy: number;
+  size: string;
+  bedType: string;
+  view: string;
   description: string;
   amenities: string;
   photos: string;
@@ -131,6 +137,9 @@ const ManageRooms: React.FC = () => {
     hotel: '',
     basePrice: 0,
     maxOccupancy: 1,
+    size: '',
+    bedType: '',
+    view: '',
     description: '',
     amenities: '',
     photos: '',
@@ -276,6 +285,9 @@ const ManageRooms: React.FC = () => {
           hotel: (typeof type.hotel === 'string' ? type.hotel : type.hotel?._id) || '',
           basePrice: type.basePrice || 0,
           maxOccupancy: type.maxOccupancy || 1,
+          size: type.size ? String(type.size) : '',
+          bedType: type.bedType || '',
+          view: type.view || '',
           description: type.description || '',
           amenities: (type.amenities || []).join(', '),
           photos: (type.photos || []).join(', '),
@@ -295,6 +307,9 @@ const ManageRooms: React.FC = () => {
         hotel: '',
         basePrice: 0,
         maxOccupancy: 1,
+        size: '',
+        bedType: '',
+        view: '',
         description: '',
         amenities: '',
         photos: '',
@@ -394,6 +409,9 @@ const ManageRooms: React.FC = () => {
       formData.append('hotel', typeForm.hotel);
       formData.append('basePrice', String(typeForm.basePrice));
       formData.append('maxOccupancy', String(typeForm.maxOccupancy));
+      if (typeForm.size) formData.append('size', typeForm.size);
+      formData.append('bedType', typeForm.bedType);
+      formData.append('view', typeForm.view);
       formData.append('description', typeForm.description);
       formData.append('amenities', typeForm.amenities);
 
@@ -1185,6 +1203,39 @@ const ManageRooms: React.FC = () => {
                                   </button>
                                   <span className="text-sm text-gray-500 font-medium">Guests</span>
                                 </div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                              <div>
+                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Size (m²) <span className="normal-case font-normal">optional</span></label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3]"
+                                  value={typeForm.size}
+                                  onChange={e => setTypeForm(prev => ({ ...prev, size: e.target.value }))}
+                                  placeholder="e.g. 35"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Bed <span className="normal-case font-normal">optional</span></label>
+                                <input
+                                  type="text"
+                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3]"
+                                  value={typeForm.bedType}
+                                  onChange={e => setTypeForm(prev => ({ ...prev, bedType: e.target.value }))}
+                                  placeholder="e.g. King Bed"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">View <span className="normal-case font-normal">optional</span></label>
+                                <input
+                                  type="text"
+                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3]"
+                                  value={typeForm.view}
+                                  onChange={e => setTypeForm(prev => ({ ...prev, view: e.target.value }))}
+                                  placeholder="e.g. Ocean View"
+                                />
                               </div>
                             </div>
                           </div>

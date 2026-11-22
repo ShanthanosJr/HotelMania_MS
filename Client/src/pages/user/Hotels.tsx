@@ -538,7 +538,7 @@ const Hotels: React.FC = () => {
             </section>
 
             {/* RESULTS */}
-            <section className="hotels-results bg-[#F5F0E6] py-12 dark:bg-gray-800 dark:text-[#F5F0E6]">
+            <section id="hotel-results" className="hotels-results scroll-mt-20 bg-[#F5F0E6] py-12 dark:bg-gray-800 dark:text-[#F5F0E6]">
                 <div className="mx-auto max-w-[1400px] px-6">
                     <div className="mb-6">
                         <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#8B6914] dark:text-[#D4AF37]">
@@ -625,12 +625,6 @@ const Hotels: React.FC = () => {
                                                     {hotel.tag}
                                                 </span>
                                             )}
-                                            <button
-                                                type="button"
-                                                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-xs text-white hover:bg-[#8B6914]"
-                                            >
-                                                ♡
-                                            </button>
                                         </div>
 
                                         <div className="flex flex-1 flex-col px-5 pb-4 pt-4">
@@ -880,10 +874,11 @@ const Hotels: React.FC = () => {
                                     honeymoons and special celebrations.
                                 </p>
                                 <button
+                                    onClick={() => document.getElementById('hotel-results')?.scrollIntoView({ behavior: 'smooth' })}
                                     type="button"
                                     className="text-[0.85rem] font-semibold text-[#8B6914] hover:underline dark:text-[#D4AF37] dark:hover:text-[#D4AF37]"
                                 >
-                                    Explore Romantic Hotels →
+                                    Browse Hotels →
                                 </button>
                             </div>
                         </div>
@@ -902,10 +897,11 @@ const Hotels: React.FC = () => {
                                     for memorable family holidays.
                                 </p>
                                 <button
+                                    onClick={() => document.getElementById('hotel-results')?.scrollIntoView({ behavior: 'smooth' })}
                                     type="button"
                                     className="text-[0.85rem] font-semibold text-[#8B6914] hover:underline dark:text-[#D4AF37] dark:hover:text-[#D4AF37]"
                                 >
-                                    Explore Family Hotels →
+                                    Browse Hotels →
                                 </button>
                             </div>
                         </div>
@@ -924,10 +920,11 @@ const Hotels: React.FC = () => {
                                     connectivity for professionals on the move.
                                 </p>
                                 <button
+                                    onClick={() => document.getElementById('hotel-results')?.scrollIntoView({ behavior: 'smooth' })}
                                     type="button"
                                     className="text-[0.85rem] font-semibold text-[#8B6914] hover:underline dark:text-[#D4AF37] dark:hover:text-[#D4AF37]"
                                 >
-                                    Explore Business Hotels →
+                                    Browse Hotels →
                                 </button>
                             </div>
                         </div>
@@ -1013,19 +1010,15 @@ const Hotels: React.FC = () => {
                                 Need Help Choosing?
                             </h3>
                             <p className="mb-3 text-[0.9rem] text-[#6B5B4F]">
-                                Shortlist a few favorites and compare them side by side once backend features
-                                are connected.
+                                Tell us what kind of stay you're planning and our team will recommend the right
+                                hotel and room for you.
                             </p>
-                            <ul className="mb-4 list-disc pl-5 text-[0.9rem] text-[#6B5B4F]">
-                                <li>Save hotels to a personal wishlist</li>
-                                <li>Compare prices, locations, and ratings</li>
-                                <li>Access your preferences across devices</li>
-                            </ul>
                             <button
+                                onClick={() => { window.location.href = '/contact'; }}
                                 type="button"
                                 className="w-full rounded border-2 border-[#8B6914] bg-[#8B6914] px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-[#8B6914] transition"
                             >
-                                Start Exploring Hotels
+                                Ask Our Team
                             </button>
                         </div>
                     </div>

@@ -25,6 +25,19 @@ const roomTypeSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Description is required'],
   },
+  // Optional details shown to guests only when set
+  size: {
+    type: Number, // square metres
+    min: 0,
+  },
+  bedType: {
+    type: String,
+    trim: true,
+  },
+  view: {
+    type: String,
+    trim: true,
+  },
   photos: [{
     type: String, // URL to image
     trim: true,

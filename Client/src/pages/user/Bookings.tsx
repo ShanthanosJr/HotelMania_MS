@@ -3,6 +3,7 @@ import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
 import { payForBooking, outcomeMessage } from '../../utils/payhere';
+import { printReceipt } from '../../utils/receipt';
 // NEW IMPORTS
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -75,7 +76,31 @@ const Bookings: React.FC = () => {
     // NEW STATE FOR TABS & FILTERS
     const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
     const [showRequestModal, setShowRequestModal] = useState(false);
-    const [, setSelectedBookingId] = useState<string | null>(null);
+    const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+    const [requestForm, setRequestForm] = useState<{ type: 'cleaning' | 'food' | 'repair'; notes: string }>({ type: 'cleaning', notes: '' });
+    const [requestStatus, setRequestStatus] = useState<{ sending: boolean; error: string; done: boolean }>({ sending: false, error: '', done: false });
+
+    const submitServiceRequest = async () => {
+        const booking = bookings.find(b => b._id === selectedBookingId);
+        const roomId = booking && typeof booking.room === 'object' ? booking.room?._id : (booking?.room as unknown as string | undefined);
+        if (!roomId) return;
+        setRequestStatus({ sending: true, error: '', done: false });
+        try {
+            const res = await api.post('/api/service-requests', { room: roomId, type: requestForm.type, notes: requestForm.notes.trim() });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Could not send your request');
+            setRequestStatus({ sending: false, error: '', done: true });
+            setRequestForm({ type: 'cleaning', notes: '' });
+            fetchServiceRequests();
+        } catch (err: unknown) {
+            setRequestStatus({ sending: false, error: err instanceof Error ? err.message : 'Could not send your request', done: false });
+        }
+    };
+
+    const closeRequestModal = () => {
+        setShowRequestModal(false);
+        setRequestStatus({ sending: false, error: '', done: false });
+    };
 
     const [serviceRequestsStatus, setServiceRequestsStatus] =
         useState<StatusState>({
@@ -263,7 +288,7 @@ const Bookings: React.FC = () => {
                         variants={fadeInUp}
                     >
                         View upcoming reservations, revisit past stays, and keep every detail
-                        of your Grand Vista experiences in one elegant place.
+                        of your HotelMania experiences in one elegant place.
                     </motion.p>
                 </motion.div>
             </section>
@@ -383,10 +408,15 @@ const Bookings: React.FC = () => {
 
                                                 <div className="flex flex-wrap gap-4 mt-6">
                                                     {/* Action Buttons */}
-                                                    <button className="flex items-center gap-2 px-4 py-2 border border-[#E6E2D3] rounded text-xs font-bold uppercase text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition-colors dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]">
-                                                        <BsFileText /> Invoice
+                                                    <button
+                                                        onClick={() => printReceipt(booking as Parameters<typeof printReceipt>[0])}
+                                                        className="flex items-center gap-2 px-4 py-2 border border-[#E6E2D3] rounded text-xs font-bold uppercase text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition-colors dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]"
+                                                    >
+                                                        <BsFileText /> Receipt
                                                     </button>
-                                                    {activeTab === 'upcoming' && (
+                                                    {activeTab === 'upcoming' &&
+                                                        (booking.status === 'confirmed' || booking.status === 'checked_in') &&
+                                                        new Date(booking.checkInDate || '').getTime() <= Date.now() && (
                                                         <button
                                                             onClick={() => { setSelectedBookingId(booking._id || null); setShowRequestModal(true); }}
                                                             className="flex items-center gap-2 px-4 py-2 border border-[#E6E2D3] rounded text-xs font-bold uppercase text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition-colors dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]"
@@ -452,23 +482,43 @@ const Bookings: React.FC = () => {
                         >
                             <div className="bg-[#2C2416] p-4 flex justify-between items-center text-white dark:bg-gray-900 dark:text-[#F5F0E6]">
                                 <h3 className="font-serif text-xl dark:text-[#F5F0E6]">New Service Request</h3>
-                                <button onClick={() => setShowRequestModal(false)} className="dark:text-[#F5F0E6]"><BsXCircle size={20} /></button>
+                                <button onClick={closeRequestModal} aria-label="Close" className="dark:text-[#F5F0E6]"><BsXCircle size={20} /></button>
                             </div>
                             <div className="p-6 space-y-4 dark:bg-gray-800">
                                 <div>
                                     <label className="block text-xs font-bold uppercase text-[#8B6914] mb-2 dark:text-[#D4AF37]">Service Type</label>
-                                    <select className="w-full p-3 border border-[#E6E2D3] rounded bg-[#FDF8F3] outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6]">
-                                        <option>Room Cleaning</option>
-                                        <option>In-Room Dining</option>
-                                        <option>Maintenance Issue</option>
+                                    <select
+                                        value={requestForm.type}
+                                        onChange={e => setRequestForm(prev => ({ ...prev, type: e.target.value as 'cleaning' | 'food' | 'repair' }))}
+                                        className="w-full p-3 border border-[#E6E2D3] rounded bg-[#FDF8F3] outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6]"
+                                    >
+                                        <option value="cleaning">Room Cleaning</option>
+                                        <option value="food">In-Room Dining</option>
+                                        <option value="repair">Maintenance Issue</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold uppercase text-[#8B6914] mb-2 dark:text-[#D4AF37]">Notes</label>
-                                    <textarea className="w-full p-3 border border-[#E6E2D3] rounded bg-[#FDF8F3] outline-none h-24 dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6]" placeholder="Describe your request..."></textarea>
+                                    <textarea
+                                        value={requestForm.notes}
+                                        maxLength={500}
+                                        onChange={e => setRequestForm(prev => ({ ...prev, notes: e.target.value }))}
+                                        className="w-full p-3 border border-[#E6E2D3] rounded bg-[#FDF8F3] outline-none h-24 dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6]"
+                                        placeholder="Describe your request..."
+                                    />
                                 </div>
-                                <button className="w-full py-3 bg-[#8B6914] text-white font-bold uppercase tracking-widest rounded hover:bg-[#5C4033] transition-colors dark:bg-[#D4AF37] dark:text-[#2C2416] dark:hover:bg-[#b8952d]">
-                                    Submit Request
+                                {requestStatus.error && (
+                                    <p role="alert" className="text-sm text-red-700 dark:text-red-400">{requestStatus.error}</p>
+                                )}
+                                {requestStatus.done && (
+                                    <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">Request sent. Our team will be with you shortly.</p>
+                                )}
+                                <button
+                                    onClick={submitServiceRequest}
+                                    disabled={requestStatus.sending}
+                                    className="w-full py-3 bg-[#8B6914] text-white font-bold uppercase tracking-widest rounded hover:bg-[#5C4033] transition-colors disabled:opacity-50 dark:bg-[#D4AF37] dark:text-[#2C2416] dark:hover:bg-[#b8952d]"
+                                >
+                                    {requestStatus.sending ? 'Sending…' : 'Submit Request'}
                                 </button>
                             </div>
                         </motion.div>

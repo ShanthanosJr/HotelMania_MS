@@ -4,7 +4,7 @@ import Footer from '../../components/Footer';
 // NEW: Import animation library
 import { motion, useInView, useSpring } from 'framer-motion';
 // NEW: Import icons for the new features
-import { BsPlayCircle, BsAward, BsPeople, BsBuilding, BsQuote } from 'react-icons/bs';
+import { BsAward, BsPeople, BsBuilding, BsQuote } from 'react-icons/bs';
 
 const galleryImages: string[] = [
     'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=80',
@@ -139,10 +139,6 @@ const About: React.FC = () => {
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.6, delay: 0.7 }}
                     >
-                        <button className="group flex items-center gap-4 hover:scale-105 transition-transform duration-300 dark:hover:text-[#D4AF37]">
-                            <BsPlayCircle className="text-5xl text-white group-hover:text-[#8B6914] transition-colors bg-black/20 rounded-full backdrop-blur-md dark:group-hover:text-[#D4AF37]" />
-                            <span className="text-sm tracking-widest uppercase border-b border-transparent group-hover:border-white transition-all dark:border-gray-600">Watch Our Story</span>
-                        </button>
                     </motion.div>
                 </motion.div>
             </motion.section>

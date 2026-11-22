@@ -70,6 +70,7 @@ interface ServiceRequest {
   type: 'cleaning' | 'maintenance' | 'room_service' | string;
   status: 'pending' | 'in_progress' | 'completed' | string;
   requestedAt: string;
+  notes?: string;
 }
 
 interface ReviewFormState {
@@ -1351,6 +1352,10 @@ const ManageFeedback: React.FC = () => {
                           </span>
                         </p>
 
+                        {request.notes && (
+                          <p className="text-sm italic text-gray-600">&ldquo;{request.notes}&rdquo;</p>
+                        )}
+
                         <p className="text-xs text-gray-400">
                           {new Date(request.requestedAt).toLocaleString()}
                         </p>
@@ -1509,6 +1514,11 @@ const ManageFeedback: React.FC = () => {
                               </td>
                               <td className="p-4">
                                 {request.type.replace('_', ' ')}
+                                {request.notes && (
+                                  <span className="block text-xs italic text-gray-500" title={request.notes}>
+                                    {request.notes.length > 60 ? request.notes.slice(0, 60) + '…' : request.notes}
+                                  </span>
+                                )}
                               </td>
                               <td className="p-4">
                                 <span

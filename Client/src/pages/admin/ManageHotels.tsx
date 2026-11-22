@@ -682,7 +682,7 @@ const ManageHotels: React.FC = () => {
                                                             name="name"
                                                             value={formData.name}
                                                             onChange={handleInputChange}
-                                                            placeholder="e.g. Grand Vista Hotel"
+                                                            placeholder="e.g. Grand Plaza Hotel"
                                                             className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] placeholder-gray-400 transition-all font-medium"
                                                             required
                                                         />

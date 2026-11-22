@@ -16,6 +16,36 @@ const populateReview = (query) =>
       populate: [{ path: 'type', select: 'name' }, { path: 'hotel', select: 'name address' }],
     });
 
+// Public, anonymised reviews for the website (no auth). Must be declared before '/:id'.
+router.get('/public', async (req, res) => {
+  const reviews = await Review.find({ rating: { $gte: 4 } })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .populate('user', 'name')
+    .populate({
+      path: 'room',
+      select: 'type hotel',
+      populate: [{ path: 'type', select: 'name' }, { path: 'hotel', select: 'name' }],
+    });
+
+  // Only feature substantive reviews from guests who still have an account
+  const featured = reviews.filter(r => r.user && String(r.comment || '').trim().length >= 20);
+  const data = featured.map(r => {
+    const parts = String((r.user && r.user.name) || 'Guest').trim().split(/\s+/);
+    return {
+      id: r._id,
+      rating: r.rating,
+      comment: r.comment,
+      // First name + last initial only
+      name: parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0],
+      roomType: r.room && r.room.type ? r.room.type.name : undefined,
+      hotel: r.room && r.room.hotel ? r.room.hotel.name : undefined,
+      date: r.createdAt,
+    };
+  });
+  res.status(200).json({ success: true, data });
+});
+
 // Get all reviews
 router.get('/', protect, async (req, res) => {
   try {
