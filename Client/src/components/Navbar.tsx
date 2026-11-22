@@ -95,7 +95,7 @@ const Navbar: React.FC = () => {
 
     return (
         <header
-            className={`fixed top-0 left-0 right-0 z-50 transition-all ${isScrolled ? 'bg-[#FDF8F3] shadow-md py-3' : 'bg-transparent py-5'
+            className={`fixed top-0 left-0 right-0 z-50 transition-all ${isScrolled ? 'bg-ivory shadow-md py-3' : 'bg-transparent py-5'
                 }`}
         >
             <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6">
@@ -104,17 +104,17 @@ const Navbar: React.FC = () => {
                     className="flex items-center gap-3 cursor-pointer group"
                     onClick={() => navigate('/')}
                 >
-                    {/*<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#8B6914]">
+                    {/*<div className="flex h-11 w-11 items-center justify-center rounded-full bg-bronze">
                         <svg
                             viewBox="0 0 24 24"
-                            className="h-6 w-6 text-[#FDF8F3]"
+                            className="h-6 w-6 text-ivory"
                             fill="currentColor"
                         >
                             <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z" />
                         </svg>
                     </div>*/}
                     <span
-                        className={`text-xl font-semibold tracking-[0.08em] ${isScrolled ? 'text-[#5C4033]' : 'text-white'
+                        className={`text-xl font-semibold tracking-[0.08em] ${isScrolled ? 'text-cocoa' : 'text-white'
                             }`}
                         style={{ fontFamily: 'Playfair Display, serif' }}
                     >
@@ -129,7 +129,7 @@ const Navbar: React.FC = () => {
                             key={link.path}
                             type="button"
                             onClick={() => handleNavClick(link.path)}
-                            className={`relative pb-1 group cursor-pointer transition-all hover:text-[#8B6914] ${isScrolled ? 'text-[#2C2416]' : 'text-white'
+                            className={`relative pb-1 group cursor-pointer transition-all hover:text-bronze ${isScrolled ? 'text-ink' : 'text-white'
                                 } ${isActive(link.path) ? 'font-semibold' : 'font-medium'}`}
                         >
                             <span>{link.label}</span>
@@ -146,7 +146,7 @@ const Navbar: React.FC = () => {
                     {/* Dark mode toggle button */}
                     <button
                         onClick={toggleTheme}
-                        className="p-2 rounded-full border border-[#D4C4A8] text-[#8B6914] transition-all cursor-pointer hover:bg-[#F5F0E6] hover:scale-110 active:scale-95 dark:border-gray-600 dark:text-yellow-400 dark:hover:bg-gray-800"
+                        className="p-2 rounded-full border border-wheat text-bronze transition-all cursor-pointer hover:bg-cream hover:scale-110 active:scale-95 dark:border-gray-600 dark:text-yellow-400 dark:hover:bg-gray-800"
                         aria-label="Toggle Dark Mode"
                     >
                         {theme === 'light' ? <BsMoonStars size={18} /> : <BsSun size={18} />}
@@ -156,14 +156,14 @@ const Navbar: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => navigate('/profile')}
-                                className="rounded-full border border-[#D4C4A8] bg-[#F5F0E6] px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[#5C4033] cursor-pointer transition-all hover:bg-white hover:border-[#8B6914] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                                className="rounded-full border border-wheat bg-cream px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-cocoa cursor-pointer transition-all hover:bg-white hover:border-bronze hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
                             >
                                 {profileLabel}
                             </button>
                             <button
                                 type="button"
                                 onClick={handleLogout}
-                                className="rounded border-2 border-[#8B6914] bg-[#8B6914] px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white cursor-pointer transition-all hover:bg-transparent hover:text-[#8B6914] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                                className="rounded border-2 border-bronze bg-bronze px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white cursor-pointer transition-all hover:bg-transparent hover:text-bronze hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
                             >
                                 Logout
                             </button>
@@ -172,7 +172,7 @@ const Navbar: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => navigate('/login')}
-                            className="rounded border-2 border-[#8B6914] bg-[#8B6914] px-5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white cursor-pointer transition-all hover:bg-transparent hover:text-[#8B6914] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                            className="rounded border-2 border-bronze bg-bronze px-5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white cursor-pointer transition-all hover:bg-transparent hover:text-bronze hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
                         >
                             Sign In
                         </button>
@@ -186,15 +186,15 @@ const Navbar: React.FC = () => {
                     className="flex flex-col gap-1.5 p-2 md:hidden cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors"
                 >
                     <span
-                        className={`h-[2px] w-6 rounded-full transition-all ${isScrolled ? 'bg-[#5C4033]' : 'bg-white'
+                        className={`h-[2px] w-6 rounded-full transition-all ${isScrolled ? 'bg-cocoa' : 'bg-white'
                             } ${menuOpen ? 'translate-y-[5px] rotate-45' : ''}`}
                     />
                     <span
-                        className={`h-[2px] w-6 rounded-full transition-all ${isScrolled ? 'bg-[#5C4033]' : 'bg-white'
+                        className={`h-[2px] w-6 rounded-full transition-all ${isScrolled ? 'bg-cocoa' : 'bg-white'
                             } ${menuOpen ? 'opacity-0' : ''}`}
                     />
                     <span
-                        className={`h-[2px] w-6 rounded-full transition-all ${isScrolled ? 'bg-[#5C4033]' : 'bg-white'
+                        className={`h-[2px] w-6 rounded-full transition-all ${isScrolled ? 'bg-cocoa' : 'bg-white'
                             } ${menuOpen ? '-translate-y-[5px] -rotate-45' : ''}`}
                     />
                 </button>
@@ -202,14 +202,14 @@ const Navbar: React.FC = () => {
 
             {/* Mobile menu */}
             {menuOpen && (
-                <div className="mt-2 border-t border-[#E8DCC8] bg-[#FDF8F3]/95 shadow-md md:hidden">
-                    <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-6 py-4 text-[0.8rem] uppercase tracking-[0.16em] text-[#2C2416]">
+                <div className="mt-2 border-t border-sand bg-ivory/95 shadow-md md:hidden">
+                    <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-6 py-4 text-[0.8rem] uppercase tracking-[0.16em] text-ink">
                         {navLinks.map(link => (
                             <button
                                 key={link.path}
                                 type="button"
                                 onClick={() => handleNavClick(link.path)}
-                                className={`py-1 text-left cursor-pointer transition-all hover:pl-2 ${isActive(link.path) ? 'font-semibold text-[#8B6914]' : 'font-medium hover:text-[#8B6914]'
+                                className={`py-1 text-left cursor-pointer transition-all hover:pl-2 ${isActive(link.path) ? 'font-semibold text-bronze' : 'font-medium hover:text-bronze'
                                     }`}
                             >
                                 {link.label}
@@ -222,14 +222,14 @@ const Navbar: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={() => navigate('/profile')}
-                                        className="rounded-full border border-[#D4C4A8] bg-[#F5F0E6] px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[#5C4033] cursor-pointer active:scale-95 transition-transform"
+                                        className="rounded-full border border-wheat bg-cream px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-cocoa cursor-pointer active:scale-95 transition-transform"
                                     >
                                         {profileLabel}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={handleLogout}
-                                        className="rounded border-2 border-[#8B6914] bg-[#8B6914] px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white cursor-pointer active:scale-95 transition-transform"
+                                        className="rounded border-2 border-bronze bg-bronze px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white cursor-pointer active:scale-95 transition-transform"
                                     >
                                         Logout
                                     </button>
@@ -238,7 +238,7 @@ const Navbar: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => navigate('/login')}
-                                    className="rounded border-2 border-[#8B6914] bg-[#8B6914] px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white cursor-pointer active:scale-95 transition-transform"
+                                    className="rounded border-2 border-bronze bg-bronze px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white cursor-pointer active:scale-95 transition-transform"
                                 >
                                     Sign In
                                 </button>

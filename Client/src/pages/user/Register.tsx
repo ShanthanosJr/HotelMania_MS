@@ -199,10 +199,10 @@ const Register: React.FC = () => {
     };
 
     return (
-        <div className="h-screen overflow-hidden bg-[#FDF8F3] text-[#2C2416] font-[Lato,sans-serif] dark:bg-[#121212] dark:text-[#FDF8F3] transition-colors duration-300">
+        <div className="h-screen overflow-hidden bg-ivory text-ink font-body dark:bg-night dark:text-ivory transition-colors duration-300">
             <div className="grid h-full md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
                 {/* LEFT: VIDEO / VALUE PROP */}
-                <div className="relative hidden md:block overflow-hidden bg-[#2C2416]">
+                <div className="relative hidden md:block overflow-hidden bg-ink">
                     <video
                         className="h-full w-full object-cover opacity-70"
                         autoPlay
@@ -213,20 +213,20 @@ const Register: React.FC = () => {
                         <source src={registerVideo} type="video/mp4" />
                     </video>
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/75" />
-                    <div className="absolute inset-0 flex flex-col justify-between p-8 text-[#F5F0E6] dark:text-[#FDF8F3]">
+                    <div className="absolute inset-0 flex flex-col justify-between p-8 text-cream dark:text-ivory">
                         <div>
-                            <p className="text-[0.8rem] uppercase tracking-[0.2em] text-[#E8DCC8] mb-2 dark:text-[#D4AF37]">
+                            <p className="text-[0.8rem] uppercase tracking-[0.2em] text-sand mb-2 dark:text-gold">
                                 Create your Hotelmania account
                             </p>
                             <h1
-                                className="text-3xl leading-tight mb-3 dark:text-[#FDF8F3]"
+                                className="text-3xl leading-tight mb-3 dark:text-ivory"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 A single profile for
                                 <br />
                                 every HotelMania stay
                             </h1>
-                            <p className="max-w-md text-[0.95rem] text-[#F5F0E6] dark:text-gray-300">
+                            <p className="max-w-md text-[0.95rem] text-cream dark:text-gray-300">
                                 Save your preferences, manage bookings, and enjoy a seamless
                                 experience every time you stay with us.
                             </p>
@@ -234,28 +234,28 @@ const Register: React.FC = () => {
 
                         <div className="space-y-3 text-[0.85rem]">
                             <div className="rounded-xl bg-black/35 px-4 py-3 dark:bg-gray-800/35">
-                                <p className="font-semibold dark:text-[#FDF8F3]">
+                                <p className="font-semibold dark:text-ivory">
                                     Your stays, all in one timeline
                                 </p>
-                                <p className="text-[#E8DCC8] dark:text-[#D4AF37]">
+                                <p className="text-sand dark:text-gold">
                                     Access your past and upcoming bookings in a single elegant
                                     view.
                                 </p>
                             </div>
                             <div className="rounded-xl bg-black/35 px-4 py-3 dark:bg-gray-800/35">
-                                <p className="font-semibold dark:text-[#FDF8F3]">
+                                <p className="font-semibold dark:text-ivory">
                                     Tailored recommendations for you
                                 </p>
-                                <p className="text-[#E8DCC8] dark:text-[#D4AF37]">
+                                <p className="text-sand dark:text-gold">
                                     Receive curated suggestions based on your travel style and
                                     preferences.
                                 </p>
                             </div>
                             <div className="rounded-xl bg-black/35 px-4 py-3 dark:bg-gray-800/35">
-                                <p className="font-semibold dark:text-[#FDF8F3]">
+                                <p className="font-semibold dark:text-ivory">
                                     Faster check-ins, every time
                                 </p>
-                                <p className="text-[#E8DCC8] dark:text-[#D4AF37]">
+                                <p className="text-sand dark:text-gold">
                                     Save guest details once for smoother arrivals at every
                                     stay.
                                 </p>
@@ -265,19 +265,19 @@ const Register: React.FC = () => {
                 </div>
 
                 {/* RIGHT: FORM */}
-                <div className="flex items-center justify-center px-6 dark:bg-[#121212]">
+                <div className="flex items-center justify-center px-6 dark:bg-night">
                     <div className="w-full max-w-md rounded-2xl bg-white p-7 shadow-[0_8px_30px_rgba(92,64,51,0.16)] dark:bg-gray-800 dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
                         <div className="mb-2 text-center md:text-left">
-                            <p className="text-[0.8rem] uppercase tracking-[0.2em] text-[#8B6914] mb-2 dark:text-[#D4AF37]">
+                            <p className="text-[0.8rem] uppercase tracking-[0.2em] text-bronze mb-2 dark:text-gold">
                                 Create account
                             </p>
                             <h2
-                                className="text-2xl mb-1 dark:text-[#FDF8F3]"
+                                className="text-2xl mb-1 dark:text-ivory"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 Join Hotelmania
                             </h2>
-                            <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                            <p className="text-[0.9rem] text-taupe dark:text-gray-300">
                                 Share a few details to set up your profile. You can update
                                 everything later in your profile settings.
                             </p>
@@ -292,7 +292,7 @@ const Register: React.FC = () => {
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             {/* Profile Photo Upload */}
                             <div className="flex flex-col items-center justify-center mb-4">
-                                <div className="relative h-24 w-24 rounded-full border-2 border-[#D4C4A8] bg-[#FDF8F3] overflow-hidden flex items-center justify-center">
+                                <div className="relative h-24 w-24 rounded-full border-2 border-wheat bg-ivory overflow-hidden flex items-center justify-center">
                                     {formData.profilePhoto ? (
                                         <img
                                             src={formData.profilePhoto}
@@ -300,7 +300,7 @@ const Register: React.FC = () => {
                                             className="h-full w-full object-cover"
                                         />
                                     ) : (
-                                        <span className="text-4xl text-[#D4C4A8]">📷</span>
+                                        <span className="text-4xl text-wheat">📷</span>
                                     )}
                                     <input
                                         type="file"
@@ -309,13 +309,13 @@ const Register: React.FC = () => {
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                     />
                                 </div>
-                                <p className="text-[0.75rem] text-[#8B6914] mt-2 font-semibold uppercase tracking-wider">
+                                <p className="text-[0.75rem] text-bronze mt-2 font-semibold uppercase tracking-wider">
                                     Upload Photo
                                 </p>
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="mb-1 block text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
                                     Full name
                                 </label>
                                 <input
@@ -323,7 +323,7 @@ const Register: React.FC = () => {
                                     name="name"
                                     value={formData.name}
                                     onChange={handleChange}
-                                    className="w-full rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-1.5 text-[0.9rem] text-[#2C2416] placeholder:text-[#B8A58B] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#FDF8F3] dark:placeholder:text-gray-400 dark:focus:border-[#D4AF37] dark:focus:bg-gray-600"
+                                    className="w-full rounded border border-wheat bg-ivory px-3 py-1.5 text-[0.9rem] text-ink placeholder:text-[#B8A58B] focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-ivory dark:placeholder:text-gray-400 dark:focus:border-gold dark:focus:bg-gray-600"
                                     placeholder="Your full name"
                                 />
                                 {errors.name && (
@@ -334,7 +334,7 @@ const Register: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="mb-1 block text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
                                     Email
                                 </label>
                                 <input
@@ -342,7 +342,7 @@ const Register: React.FC = () => {
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="w-full rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-1.5 text-[0.9rem] text-[#2C2416] placeholder:text-[#B8A58B] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#FDF8F3] dark:placeholder:text-gray-400 dark:focus:border-[#D4AF37] dark:focus:bg-gray-600"
+                                    className="w-full rounded border border-wheat bg-ivory px-3 py-1.5 text-[0.9rem] text-ink placeholder:text-[#B8A58B] focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-ivory dark:placeholder:text-gray-400 dark:focus:border-gold dark:focus:bg-gray-600"
                                     placeholder="you@example.com"
                                 />
                                 {errors.email && (
@@ -353,7 +353,7 @@ const Register: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="mb-1 block text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
                                     Password
                                 </label>
                                 <div className="relative">
@@ -362,13 +362,13 @@ const Register: React.FC = () => {
                                         name="password"
                                         value={formData.password}
                                         onChange={handleChange}
-                                        className="w-full rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-1.5 pr-10 text-[0.9rem] text-[#2C2416] placeholder:text-[#B8A58B] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#FDF8F3] dark:placeholder:text-gray-400 dark:focus:border-[#D4AF37] dark:focus:bg-gray-600"
+                                        className="w-full rounded border border-wheat bg-ivory px-3 py-1.5 pr-10 text-[0.9rem] text-ink placeholder:text-[#B8A58B] focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-ivory dark:placeholder:text-gray-400 dark:focus:border-gold dark:focus:bg-gray-600"
                                         placeholder="Create a password"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(p => !p)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[0.8rem] text-[#8B6914] dark:text-[#D4AF37]"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[0.8rem] text-bronze dark:text-gold"
                                     >
                                         {showPassword ? 'Hide' : 'Show'}
                                     </button>
@@ -381,7 +381,7 @@ const Register: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="mb-1 block text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
                                     Phone (optional)
                                 </label>
                                 <input
@@ -389,7 +389,7 @@ const Register: React.FC = () => {
                                     name="phone"
                                     value={formData.phone}
                                     onChange={handleChange}
-                                    className="w-full rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-1.5 text-[0.9rem] text-[#2C2416] placeholder:text-[#B8A58B] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#FDF8F3] dark:placeholder:text-gray-400 dark:focus:border-[#D4AF37] dark:focus:bg-gray-600"
+                                    className="w-full rounded border border-wheat bg-ivory px-3 py-1.5 text-[0.9rem] text-ink placeholder:text-[#B8A58B] focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-ivory dark:placeholder:text-gray-400 dark:focus:border-gold dark:focus:bg-gray-600"
                                     placeholder="+94 ..."
                                 />
                                 {errors.phone && (
@@ -399,13 +399,13 @@ const Register: React.FC = () => {
                                 )}
                             </div>
 
-                            <div className="flex items-start gap-2 text-[0.85rem] text-[#6B5B4F] dark:text-gray-300">
+                            <div className="flex items-start gap-2 text-[0.85rem] text-taupe dark:text-gray-300">
                                 <input
                                     type="checkbox"
                                     name="acceptTerms"
                                     checked={formData.acceptTerms}
                                     onChange={handleChange}
-                                    className="mt-0.5 h-4 w-4 rounded border-[#D4C4A8] text-[#8B6914] focus:ring-[#8B6914] dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-[#D4AF37]"
+                                    className="mt-0.5 h-4 w-4 rounded border-wheat text-bronze focus:ring-bronze dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-gold"
                                 />
                                 <p>
                                     I agree to the Hotelmania terms and privacy policy. I
@@ -422,18 +422,18 @@ const Register: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="mt-2 w-full rounded border-2 border-[#8B6914] bg-[#8B6914] px-4 py-2.5 text-[0.85rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-[#8B6914] transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-[#D4AF37] dark:bg-[#D4AF37] dark:hover:bg-transparent dark:hover:text-[#D4AF37]"
+                                className="mt-2 w-full rounded border-2 border-bronze bg-bronze px-4 py-2.5 text-[0.85rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-bronze transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-gold dark:bg-gold dark:hover:bg-transparent dark:hover:text-gold"
                             >
                                 {loading ? 'Creating account…' : 'Create account'}
                             </button>
                         </form>
 
-                        <div className="mt-3 border-t border-[#E8DCC8] pt-2 text-center text-[0.85rem] text-[#6B5B4F] dark:border-gray-600 dark:text-gray-300">
+                        <div className="mt-3 border-t border-sand pt-2 text-center text-[0.85rem] text-taupe dark:border-gray-600 dark:text-gray-300">
                             <p>
                                 Already have an account?{' '}
                                 <Link
                                     to="/login"
-                                    className="font-semibold text-[#8B6914] hover:underline dark:text-[#D4AF37] dark:hover:text-[#D4AF37]"
+                                    className="font-semibold text-bronze hover:underline dark:text-gold dark:hover:text-gold"
                                 >
                                     Sign in
                                 </Link>

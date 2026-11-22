@@ -1,4 +1,5 @@
 import { SITE } from '../config/site';
+import { toast } from '../components/ui';
 
 export interface ReceiptBooking {
     _id?: string;
@@ -69,7 +70,7 @@ ${booking.guests ? `<tr><td>Guests</td><td>${esc(booking.guests)}</td></tr>` : '
 
     const win = window.open('', '_blank', 'width=720,height=860');
     if (!win) {
-        alert('Please allow pop-ups to view your receipt.');
+        toast.warning('Please allow pop-ups to view your receipt.');
         return;
     }
     win.document.open();

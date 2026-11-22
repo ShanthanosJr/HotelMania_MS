@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../../utils/api';
+import { toError } from '../../utils/errors';
 import AdminLayout from '../../components/AdminLayout';
 import {
   BsArrowLeft,
@@ -32,6 +33,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import { toast, confirmDialog } from '../../components/ui';
 
 const isAuthenticated = () => {
   const token = localStorage.getItem('token');
@@ -151,7 +153,8 @@ const ManageFeedback: React.FC = () => {
       }
       const data = await res.json();
       if (data.success) setReviews(data.data);
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Failed to fetch reviews: ${err.message}`);
       }
@@ -175,7 +178,8 @@ const ManageFeedback: React.FC = () => {
       }
       const data = await res.json();
       if (data.success) setServiceRequests(data.data);
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Failed to fetch service requests: ${err.message}`);
       }
@@ -261,7 +265,7 @@ const ManageFeedback: React.FC = () => {
     setEditingServiceId(null);
   };
 
-  const handleReviewSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
+  const handleReviewSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     try {
       let res;
@@ -274,7 +278,7 @@ const ManageFeedback: React.FC = () => {
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setError('Authentication failed. Please log in as an admin user.');
-          alert('Authentication failed. Please log in as an admin user.');
+          toast.error('Authentication failed. Please log in as an admin user.');
           return;
         }
         const errData = await res.json();
@@ -287,26 +291,25 @@ const ManageFeedback: React.FC = () => {
           setReviews(prev =>
             prev.map(r => (r._id === editingReviewId ? result.data : r)),
           );
-          alert('Review updated successfully!');
+          toast.success('Review updated successfully!');
         } else {
           setReviews(prev => [...prev, result.data]);
-          alert('Review created successfully!');
+          toast.success('Review created successfully!');
         }
         resetReviewForm();
         setShowReviewModal(false);
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Operation failed: ${err.message}`);
-        alert(
-          `Operation failed: ${err.message || 'Please check console for details.'}`,
-        );
+        toast.error(`Operation failed: ${err.message || 'Please check console for details.'}`);
       }
       console.error(err);
     }
   };
 
-  const handleServiceSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
+  const handleServiceSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     try {
       let res;
@@ -322,7 +325,7 @@ const ManageFeedback: React.FC = () => {
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setError('Authentication failed. Please log in as an admin user.');
-          alert('Authentication failed. Please log in as an admin user.');
+          toast.error('Authentication failed. Please log in as an admin user.');
           return;
         }
         const errData = await res.json();
@@ -335,20 +338,19 @@ const ManageFeedback: React.FC = () => {
           setServiceRequests(prev =>
             prev.map(r => (r._id === editingServiceId ? result.data : r)),
           );
-          alert('Service request updated successfully!');
+          toast.success('Service request updated successfully!');
         } else {
           setServiceRequests(prev => [...prev, result.data]);
-          alert('Service request created successfully!');
+          toast.success('Service request created successfully!');
         }
         resetServiceForm();
         setShowServiceModal(false);
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Operation failed: ${err.message}`);
-        alert(
-          `Operation failed: ${err.message || 'Please check console for details.'}`,
-        );
+        toast.error(`Operation failed: ${err.message || 'Please check console for details.'}`);
       }
       console.error(err);
     }
@@ -382,13 +384,13 @@ const ManageFeedback: React.FC = () => {
   };
 
   const handleReviewDelete = async (id: string) => {
-    if (!window.confirm('Delete this review?')) return;
+    if (!(await confirmDialog({ title: 'Delete this review?', message: 'This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' }))) return;
     try {
       const res = await api.delete(`/api/reviews/${id}`);
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setError('Authentication failed. Please log in as an admin user.');
-          alert('Authentication failed. Please log in as an admin user.');
+          toast.error('Authentication failed. Please log in as an admin user.');
           return;
         }
         const errData = await res.json();
@@ -397,27 +399,26 @@ const ManageFeedback: React.FC = () => {
       const result = await res.json();
       if (result.success) {
         setReviews(prev => prev.filter(r => r._id !== id));
-        alert('Review deleted successfully!');
+        toast.success('Review deleted successfully!');
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Failed to delete review: ${err.message}`);
-        alert(
-          `Failed to delete review: ${err.message || 'Please check console for details.'}`,
-        );
+        toast.error(`Failed to delete review: ${err.message || 'Please check console for details.'}`);
       }
       console.error(err);
     }
   };
 
   const handleServiceDelete = async (id: string) => {
-    if (!window.confirm('Delete this service request?')) return;
+    if (!(await confirmDialog({ title: 'Delete this service request?', message: 'This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' }))) return;
     try {
       const res = await api.delete(`/api/service-requests/${id}`);
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setError('Authentication failed. Please log in as an admin user.');
-          alert('Authentication failed. Please log in as an admin user.');
+          toast.error('Authentication failed. Please log in as an admin user.');
           return;
         }
         const errData = await res.json();
@@ -426,14 +427,13 @@ const ManageFeedback: React.FC = () => {
       const result = await res.json();
       if (result.success) {
         setServiceRequests(prev => prev.filter(r => r._id !== id));
-        alert('Service request deleted successfully!');
+        toast.success('Service request deleted successfully!');
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Failed to delete service request: ${err.message}`);
-        alert(
-          `Failed to delete service request: ${err.message || 'Please check console for details.'}`,
-        );
+        toast.error(`Failed to delete service request: ${err.message || 'Please check console for details.'}`);
       }
       console.error(err);
     }
@@ -448,7 +448,7 @@ const ManageFeedback: React.FC = () => {
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setError('Authentication failed. Please log in as an admin user.');
-          alert('Authentication failed. Please log in as an admin user.');
+          toast.error('Authentication failed. Please log in as an admin user.');
           return;
         }
         const errData = await res.json();
@@ -465,14 +465,13 @@ const ManageFeedback: React.FC = () => {
         } else if (newStatus === 'completed') {
           message = 'Service request marked as completed!';
         }
-        alert(message);
+        toast.error(message);
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Failed to update service request: ${err.message}`);
-        alert(
-          `Failed to update service request: ${err.message || 'Please check console for details.'}`,
-        );
+        toast.error(`Failed to update service request: ${err.message || 'Please check console for details.'}`);
       }
       console.error(err);
     } finally {
@@ -629,7 +628,7 @@ const ManageFeedback: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9F7F2] flex items-center justify-center text-[#5D4037] font-serif text-xl">
+      <div className="min-h-screen bg-linen flex items-center justify-center text-umber font-serif text-xl">
         Loading feedback dashboards...
       </div>
     );
@@ -638,31 +637,31 @@ const ManageFeedback: React.FC = () => {
   return (
     <AdminLayout>
       {/* HERO HEADER WITH TABS */}
-      <div className="relative bg-gradient-to-r from-[#4E342E] to-[#8D6E63] text-[#F9F7F2] px-8 py-10 shadow-lg mb-8 overflow-hidden">
+      <div className="relative bg-gradient-to-r from-[#4E342E] to-clay text-linen px-8 py-10 shadow-lg mb-8 overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10 max-w-7xl mx-auto flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-inner">
-                <BsChatSquareQuote className="text-3xl text-[#E6E2D3]" />
+                <BsChatSquareQuote className="text-3xl text-stone" />
               </div>
               <h1 className="text-4xl font-serif font-bold tracking-tight">
                 Guest Feedback & Service
               </h1>
             </div>
-            <p className="text-[#E6E2D3] text-lg font-light max-w-xl">
+            <p className="text-stone text-lg font-light max-w-xl">
               Monitor guest sentiment and coordinate service requests from a single control center.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 items-stretch md:items-end">
-            <div className="flex bg-[#F9F7F2]/10 p-1 rounded-full border border-white/30">
+            <div className="flex bg-linen/10 p-1 rounded-full border border-white/30">
               <button
                 type="button"
                 onClick={() => setActiveTab('reviews')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-[0.16em] transition-all ${activeTab === 'reviews'
-                  ? 'bg-white text-[#5D4037] shadow-md'
-                  : 'text-[#E6E2D3] hover:bg-white/10'
+                  ? 'bg-white text-umber shadow-md'
+                  : 'text-stone hover:bg-white/10'
                   }`}
               >
                 <BsChatSquareQuote /> Reviews
@@ -671,8 +670,8 @@ const ManageFeedback: React.FC = () => {
                 type="button"
                 onClick={() => setActiveTab('service')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-[0.16em] transition-all ${activeTab === 'service'
-                  ? 'bg-white text-[#5D4037] shadow-md'
-                  : 'text-[#E6E2D3] hover:bg-white/10'
+                  ? 'bg-white text-umber shadow-md'
+                  : 'text-stone hover:bg-white/10'
                   }`}
               >
                 <BsTools /> Service Requests
@@ -698,7 +697,7 @@ const ManageFeedback: React.FC = () => {
                     setShowServiceModal(true);
                   }
                 }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#E6E2D3] text-[#5D4037] hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 text-sm font-bold shadow-lg transform hover:-translate-y-1"
+                className="flex items-center gap-2 px-5 py-2.5 bg-stone text-umber hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 text-sm font-bold shadow-lg transform hover:-translate-y-1"
               >
                 <BsPlusCircle /> Add{' '}
                 {activeTab === 'reviews' ? 'Review' : 'Service'}
@@ -723,14 +722,14 @@ const ManageFeedback: React.FC = () => {
         )}
 
         {/* SHARED TOOLBAR (search + view + reset) */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex bg-[#F9F7F2] p-1 rounded-xl">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex bg-linen p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'grid'
-                ? 'bg-[#5D4037] text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-[#5D4037]'
+                ? 'bg-umber text-white shadow-md'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-umber'
                 }`}
             >
               <BsGrid /> Grid
@@ -739,8 +738,8 @@ const ManageFeedback: React.FC = () => {
               type="button"
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'table'
-                ? 'bg-[#5D4037] text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-[#5D4037]'
+                ? 'bg-umber text-white shadow-md'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-umber'
                 }`}
             >
               <BsList /> Table
@@ -749,7 +748,7 @@ const ManageFeedback: React.FC = () => {
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
             <div className="relative group w-full md:w-72">
-              <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#8D6E63] transition-colors" />
+              <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-clay transition-colors" />
               <input
                 type="text"
                 placeholder={
@@ -757,7 +756,7 @@ const ManageFeedback: React.FC = () => {
                     ? 'Search by guest or room...'
                     : 'Search by room or hotel...'
                 }
-                className="pl-10 pr-4 py-2.5 w-full bg-[#F9F7F2] border border-[#E6E2D3] rounded-xl focus:ring-2 focus:ring-[#8D6E63] focus:outline-none transition-all"
+                className="pl-10 pr-4 py-2.5 w-full bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none transition-all"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -765,7 +764,7 @@ const ManageFeedback: React.FC = () => {
             <button
               type="button"
               onClick={resetFilters}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#5D4037] border border-[#E6E2D3] rounded-full hover:bg-[#F9F7F2]"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-umber border border-stone rounded-full hover:bg-linen"
             >
               <BsFilter /> Reset Filters
             </button>
@@ -776,9 +775,9 @@ const ManageFeedback: React.FC = () => {
         {activeTab === 'reviews' ? (
           <>
             {/* FILTER STRIP FOR REVIEWS */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-8 flex flex-wrap gap-4 items-center">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-wrap gap-4 items-center">
               <select
-                className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+                className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
                 value={ratingFilter}
                 onChange={e =>
                   setRatingFilter(e.target.value as typeof ratingFilter)
@@ -795,17 +794,17 @@ const ManageFeedback: React.FC = () => {
 
             {/* CHARTS FOR REVIEWS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] mb-4 flex items-center gap-2">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+                <h3 className="text-lg font-serif font-bold text-umber mb-4 flex items-center gap-2">
                   <BsStarFill className="text-yellow-500" /> Rating Overview
                 </h3>
                 <p className="text-sm text-gray-600 mb-2">
                   Total reviews:{' '}
-                  <span className="font-semibold text-[#5D4037]">
+                  <span className="font-semibold text-umber">
                     {reviewMetrics.total}
                   </span>
                   , average rating{' '}
-                  <span className="font-semibold text-[#5D4037]">
+                  <span className="font-semibold text-umber">
                     {reviewMetrics.avgRating}/5
                   </span>
                 </p>
@@ -839,8 +838,8 @@ const ManageFeedback: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3] lg:col-span-2">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] mb-4">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone lg:col-span-2">
+                <h3 className="text-lg font-serif font-bold text-umber mb-4">
                   Rating Distribution
                 </h3>
                 <div className="h-64">
@@ -884,7 +883,7 @@ const ManageFeedback: React.FC = () => {
 
             {/* GRID / TABLE FOR REVIEWS */}
             {filteredReviews.length === 0 ? (
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-[#E6E2D3] text-center text-sm text-gray-500">
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone text-center text-sm text-gray-500">
                 No reviews found.
               </div>
             ) : viewMode === 'grid' ? (
@@ -903,14 +902,14 @@ const ManageFeedback: React.FC = () => {
                     return (
                       <div
                         key={review._id}
-                        className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] p-5 flex flex-col gap-3"
+                        className="bg-white rounded-2xl shadow-sm border border-stone p-5 flex flex-col gap-3"
                       >
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wider">
                               {roomObj?.hotel?.name || 'Hotel'}
                             </p>
-                            <h4 className="text-lg font-serif font-bold text-[#5D4037]">
+                            <h4 className="text-lg font-serif font-bold text-umber">
                               Room {roomObj?.roomNumber || 'N/A'}
                             </h4>
                           </div>
@@ -943,7 +942,7 @@ const ManageFeedback: React.FC = () => {
                           {new Date(review.createdAt).toLocaleDateString()}
                         </p>
 
-                        <div className="flex justify-end gap-2 pt-2 border-t border-dashed border-[#E6E2D3] mt-2">
+                        <div className="flex justify-end gap-2 pt-2 border-t border-dashed border-stone mt-2">
                           <button
                             type="button"
                             onClick={() => handleReviewEdit(review)}
@@ -965,8 +964,8 @@ const ManageFeedback: React.FC = () => {
                 </div>
 
                 {/* PAGINATION REVIEWS */}
-                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E6E2D3] shadow-sm">
-                  <p className="text-sm text-[#5D4037]">
+                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-stone shadow-sm">
+                  <p className="text-sm text-umber">
                     Showing{' '}
                     <span className="font-semibold">
                       {filteredReviews.length === 0
@@ -993,7 +992,7 @@ const ManageFeedback: React.FC = () => {
                         setReviewPage(p => Math.max(p - 1, 1))
                       }
                       disabled={reviewPage === 1}
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Prev
                     </button>
@@ -1005,8 +1004,8 @@ const ManageFeedback: React.FC = () => {
                             type="button"
                             onClick={() => setReviewPage(page)}
                             className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${reviewPage === page
-                              ? 'bg-[#5D4037] text-white shadow-md'
-                              : 'bg-white border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2]'
+                              ? 'bg-umber text-white shadow-md'
+                              : 'bg-white border border-stone text-umber hover:bg-linen'
                               }`}
                           >
                             {page}
@@ -1023,7 +1022,7 @@ const ManageFeedback: React.FC = () => {
                         reviewPage === reviewTotalPages ||
                         reviewTotalPages === 0
                       }
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
                     </button>
@@ -1032,32 +1031,32 @@ const ManageFeedback: React.FC = () => {
               </>
             ) : (
               <>
-                <div className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-sm">
-                      <thead className="bg-[#F9F7F2] text-[#5D4037] font-serif">
+                      <thead className="bg-linen text-umber font-serif">
                         <tr>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             User
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Room
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Rating
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Comment
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Date
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3] text-center">
+                          <th className="p-4 font-bold border-b border-stone text-center">
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#E6E2D3]">
+                      <tbody className="divide-y divide-stone">
                         {paginatedReviews.map(review => {
                           const userObj =
                             typeof review.user === 'string'
@@ -1075,7 +1074,7 @@ const ManageFeedback: React.FC = () => {
                           return (
                             <tr
                               key={review._id}
-                              className="hover:bg-[#FDFBF7] transition-colors"
+                              className="hover:bg-pearl transition-colors"
                             >
                               <td className="p-4">
                                 {userObj?.name || 'N/A'}
@@ -1124,8 +1123,8 @@ const ManageFeedback: React.FC = () => {
                 </div>
 
                 {/* PAGINATION REVIEWS (TABLE) */}
-                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E6E2D3] shadow-sm">
-                  <p className="text-sm text-[#5D4037]">
+                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-stone shadow-sm">
+                  <p className="text-sm text-umber">
                     Showing{' '}
                     <span className="font-semibold">
                       {filteredReviews.length === 0
@@ -1152,7 +1151,7 @@ const ManageFeedback: React.FC = () => {
                         setReviewPage(p => Math.max(p - 1, 1))
                       }
                       disabled={reviewPage === 1}
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Prev
                     </button>
@@ -1164,8 +1163,8 @@ const ManageFeedback: React.FC = () => {
                             type="button"
                             onClick={() => setReviewPage(page)}
                             className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${reviewPage === page
-                              ? 'bg-[#5D4037] text-white shadow-md'
-                              : 'bg-white border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2]'
+                              ? 'bg-umber text-white shadow-md'
+                              : 'bg-white border border-stone text-umber hover:bg-linen'
                               }`}
                           >
                             {page}
@@ -1182,7 +1181,7 @@ const ManageFeedback: React.FC = () => {
                         reviewPage === reviewTotalPages ||
                         reviewTotalPages === 0
                       }
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
                     </button>
@@ -1194,9 +1193,9 @@ const ManageFeedback: React.FC = () => {
         ) : (
           <>
             {/* FILTER STRIP FOR SERVICE REQUESTS */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-8 flex flex-wrap gap-4 items-center">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-wrap gap-4 items-center">
               <select
-                className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+                className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
                 value={serviceStatusFilter}
                 onChange={e =>
                   setServiceStatusFilter(
@@ -1211,7 +1210,7 @@ const ManageFeedback: React.FC = () => {
               </select>
 
               <select
-                className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+                className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
                 value={serviceTypeFilter}
                 onChange={e =>
                   setServiceTypeFilter(
@@ -1228,8 +1227,8 @@ const ManageFeedback: React.FC = () => {
 
             {/* CHARTS FOR SERVICE REQUESTS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] mb-4">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+                <h3 className="text-lg font-serif font-bold text-umber mb-4">
                   Requests by Status
                 </h3>
                 <div className="h-64">
@@ -1262,8 +1261,8 @@ const ManageFeedback: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3] lg:col-span-2">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] mb-4">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone lg:col-span-2">
+                <h3 className="text-lg font-serif font-bold text-umber mb-4">
                   Requests by Type
                 </h3>
                 <div className="h-64">
@@ -1307,7 +1306,7 @@ const ManageFeedback: React.FC = () => {
 
             {/* GRID / TABLE FOR SERVICE REQUESTS */}
             {filteredServiceRequests.length === 0 ? (
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-[#E6E2D3] text-center text-sm text-gray-500">
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone text-center text-sm text-gray-500">
                 No service requests found.
               </div>
             ) : viewMode === 'grid' ? (
@@ -1322,14 +1321,14 @@ const ManageFeedback: React.FC = () => {
                     return (
                       <div
                         key={request._id}
-                        className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] p-5 flex flex-col gap-3"
+                        className="bg-white rounded-2xl shadow-sm border border-stone p-5 flex flex-col gap-3"
                       >
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wider">
                               {roomObj?.hotel?.name || 'Hotel'}
                             </p>
-                            <h4 className="text-lg font-serif font-bold text-[#5D4037]">
+                            <h4 className="text-lg font-serif font-bold text-umber">
                               Room {roomObj?.roomNumber || 'N/A'}
                             </h4>
                           </div>
@@ -1347,7 +1346,7 @@ const ManageFeedback: React.FC = () => {
 
                         <p className="text-sm text-gray-600">
                           Type:{' '}
-                          <span className="font-semibold text-[#5D4037]">
+                          <span className="font-semibold text-umber">
                             {request.type.replace('_', ' ')}
                           </span>
                         </p>
@@ -1360,7 +1359,7 @@ const ManageFeedback: React.FC = () => {
                           {new Date(request.requestedAt).toLocaleString()}
                         </p>
 
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-dashed border-[#E6E2D3] mt-2">
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-dashed border-stone mt-2">
                           {request.status === 'pending' && (
                             <button
                               type="button"
@@ -1407,8 +1406,8 @@ const ManageFeedback: React.FC = () => {
                 </div>
 
                 {/* PAGINATION SERVICE (GRID) */}
-                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E6E2D3] shadow-sm">
-                  <p className="text-sm text-[#5D4037]">
+                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-stone shadow-sm">
+                  <p className="text-sm text-umber">
                     Showing{' '}
                     <span className="font-semibold">
                       {filteredServiceRequests.length === 0
@@ -1435,7 +1434,7 @@ const ManageFeedback: React.FC = () => {
                         setServicePage(p => Math.max(p - 1, 1))
                       }
                       disabled={servicePage === 1}
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Prev
                     </button>
@@ -1447,8 +1446,8 @@ const ManageFeedback: React.FC = () => {
                             type="button"
                             onClick={() => setServicePage(page)}
                             className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${servicePage === page
-                              ? 'bg-[#5D4037] text-white shadow-md'
-                              : 'bg-white border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2]'
+                              ? 'bg-umber text-white shadow-md'
+                              : 'bg-white border border-stone text-umber hover:bg-linen'
                               }`}
                           >
                             {page}
@@ -1465,7 +1464,7 @@ const ManageFeedback: React.FC = () => {
                         servicePage === serviceTotalPages ||
                         serviceTotalPages === 0
                       }
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
                     </button>
@@ -1474,29 +1473,29 @@ const ManageFeedback: React.FC = () => {
               </>
             ) : (
               <>
-                <div className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-sm">
-                      <thead className="bg-[#F9F7F2] text-[#5D4037] font-serif">
+                      <thead className="bg-linen text-umber font-serif">
                         <tr>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Room
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Type
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Status
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                          <th className="p-4 font-bold border-b border-stone">
                             Requested At
                           </th>
-                          <th className="p-4 font-bold border-b border-[#E6E2D3] text-center">
+                          <th className="p-4 font-bold border-b border-stone text-center">
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#E6E2D3]">
+                      <tbody className="divide-y divide-stone">
                         {paginatedServiceRequests.map(request => {
                           const roomObj =
                             typeof request.room === 'string'
@@ -1506,7 +1505,7 @@ const ManageFeedback: React.FC = () => {
                           return (
                             <tr
                               key={request._id}
-                              className="hover:bg-[#FDFBF7] transition-colors"
+                              className="hover:bg-pearl transition-colors"
                             >
                               <td className="p-4">
                                 {roomObj?.roomNumber || 'N/A'} -{' '}
@@ -1600,8 +1599,8 @@ const ManageFeedback: React.FC = () => {
                 </div>
 
                 {/* PAGINATION SERVICE (TABLE) */}
-                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E6E2D3] shadow-sm">
-                  <p className="text-sm text-[#5D4037]">
+                <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-stone shadow-sm">
+                  <p className="text-sm text-umber">
                     Showing{' '}
                     <span className="font-semibold">
                       {filteredServiceRequests.length === 0
@@ -1628,7 +1627,7 @@ const ManageFeedback: React.FC = () => {
                         setServicePage(p => Math.max(p - 1, 1))
                       }
                       disabled={servicePage === 1}
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Prev
                     </button>
@@ -1642,8 +1641,8 @@ const ManageFeedback: React.FC = () => {
                           type="button"
                           onClick={() => setServicePage(page)}
                           className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${servicePage === page
-                            ? 'bg-[#5D4037] text-white shadow-md'
-                            : 'bg-white border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2]'
+                            ? 'bg-umber text-white shadow-md'
+                            : 'bg-white border border-stone text-umber hover:bg-linen'
                             }`}
                         >
                           {page}
@@ -1659,7 +1658,7 @@ const ManageFeedback: React.FC = () => {
                         servicePage === serviceTotalPages ||
                         serviceTotalPages === 0
                       }
-                      className="px-3 py-2 rounded-lg border border-[#E6E2D3] text-sm text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
                     </button>
@@ -1673,9 +1672,9 @@ const ManageFeedback: React.FC = () => {
 
       {/* REVIEW MODAL */}
       {showReviewModal && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[#2C2416]/70 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-[#E6E2D3] dark:border-gray-700 flex flex-col max-h-[90vh]">
-            <div className="bg-gradient-to-r from-[#5D4037] to-[#8D6E63] p-6 text-white flex justify-between items-center shrink-0">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-charcoal w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-stone dark:border-gray-700 flex flex-col max-h-[90vh]">
+            <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                   <BsChatSquareQuote size={24} />
@@ -1700,23 +1699,23 @@ const ManageFeedback: React.FC = () => {
 
             <form
               onSubmit={handleReviewSubmit}
-              className="flex-1 overflow-y-auto p-8 bg-white dark:bg-[#1E1E1E] space-y-8"
+              className="flex-1 overflow-y-auto p-8 bg-white dark:bg-charcoal space-y-8"
             >
               {/* Guest & Room */}
               <div className="space-y-4">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                  <BsCheckCircle className="text-[#8D6E63]" /> Guest & Stay
+                <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                  <BsCheckCircle className="text-clay" /> Guest & Stay
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">
                       Guest
                     </label>
                     <select
                       name="user"
                       value={reviewForm.user}
                       onChange={handleReviewChange}
-                      className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none"
+                      className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none"
                       required
                     >
                       <option value="">Select guest...</option>
@@ -1728,14 +1727,14 @@ const ManageFeedback: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">
                       Room
                     </label>
                     <select
                       name="room"
                       value={reviewForm.room}
                       onChange={handleReviewChange}
-                      className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none"
+                      className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none"
                       required
                     >
                       <option value="">Select room...</option>
@@ -1751,11 +1750,11 @@ const ManageFeedback: React.FC = () => {
 
               {/* Rating & Comment */}
               <div className="space-y-4">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                  <BsStarFill className="text-[#8D6E63]" /> Feedback
+                <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                  <BsStarFill className="text-clay" /> Feedback
                 </h3>
                 <div>
-                  <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-3">
                     Rating
                   </label>
                   <div className="flex gap-2">
@@ -1773,7 +1772,7 @@ const ManageFeedback: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">
                     Comment
                   </label>
                   <textarea
@@ -1782,7 +1781,7 @@ const ManageFeedback: React.FC = () => {
                     value={reviewForm.comment}
                     onChange={handleReviewChange}
                     placeholder="Write guest feedback here..."
-                    className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium resize-none"
+                    className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium resize-none"
                     required
                   />
                 </div>
@@ -1790,18 +1789,18 @@ const ManageFeedback: React.FC = () => {
 
             </form>
 
-            <div className="p-6 bg-gray-50 dark:bg-[#121212] border-t border-[#E6E2D3] dark:border-gray-800 flex justify-end gap-3 shrink-0">
+            <div className="p-6 bg-gray-50 dark:bg-night border-t border-stone dark:border-gray-800 flex justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="px-6 py-2.5 rounded-xl text-[#5D4037] font-bold hover:bg-[#E6E2D3] transition-colors"
+                className="px-6 py-2.5 rounded-xl text-umber font-bold hover:bg-stone transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={(e) => handleReviewSubmit(e as any)}
+                onClick={(e) => handleReviewSubmit(e)}
                 type="button"
-                className="px-8 py-2.5 bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-white font-bold rounded-xl shadow-lg shadow-[#5D4037]/20 hover:shadow-xl hover:shadow-[#5D4037]/30 transform hover:-translate-y-0.5 transition-all"
+                className="px-8 py-2.5 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-xl shadow-lg shadow-umber/20 hover:shadow-xl hover:shadow-umber/30 transform hover:-translate-y-0.5 transition-all"
               >
                 {editingReviewId ? 'Update Review' : 'Save Review'}
               </button>
@@ -1812,9 +1811,9 @@ const ManageFeedback: React.FC = () => {
 
       {/* SERVICE REQUEST MODAL */}
       {showServiceModal && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[#2C2416]/70 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-[#E6E2D3] dark:border-gray-700 flex flex-col max-h-[90vh]">
-            <div className="bg-gradient-to-r from-[#5D4037] to-[#8D6E63] p-6 text-white flex justify-between items-center shrink-0">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-charcoal w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-stone dark:border-gray-700 flex flex-col max-h-[90vh]">
+            <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                   <BsTools size={24} />
@@ -1839,22 +1838,22 @@ const ManageFeedback: React.FC = () => {
 
             <form
               onSubmit={handleServiceSubmit}
-              className="flex-1 overflow-y-auto p-8 bg-white dark:bg-[#1E1E1E] space-y-8"
+              className="flex-1 overflow-y-auto p-8 bg-white dark:bg-charcoal space-y-8"
             >
               {/* Location */}
               <div className="space-y-4">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                  <BsCheckCircle className="text-[#8D6E63]" /> Location
+                <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                  <BsCheckCircle className="text-clay" /> Location
                 </h3>
                 <div>
-                  <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">
                     Target Room
                   </label>
                   <select
                     name="room"
                     value={serviceForm.room}
                     onChange={handleServiceChange}
-                    className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none"
+                    className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none"
                     required
                   >
                     <option value="">Select room...</option>
@@ -1869,13 +1868,13 @@ const ManageFeedback: React.FC = () => {
 
               {/* Request Details */}
               <div className="space-y-4">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                  <BsTools className="text-[#8D6E63]" /> Request Details
+                <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                  <BsTools className="text-clay" /> Request Details
                 </h3>
 
                 {/* Type Selection */}
                 <div>
-                  <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-3">
                     Service Type
                   </label>
                   <div className="grid grid-cols-3 gap-3">
@@ -1889,8 +1888,8 @@ const ManageFeedback: React.FC = () => {
                         type="button"
                         onClick={() => setServiceForm(prev => ({ ...prev, type: type.id }))}
                         className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${serviceForm.type === type.id
-                          ? 'bg-[#5D4037] text-white border-[#5D4037] shadow-lg scale-105'
-                          : 'bg-[#F9F7F2] text-[#6B5B4F] border-[#E6E2D3] hover:bg-white hover:border-[#8D6E63]'
+                          ? 'bg-umber text-white border-umber shadow-lg scale-105'
+                          : 'bg-linen text-taupe border-stone hover:bg-white hover:border-clay'
                           }`}
                       >
                         <type.icon size={24} />
@@ -1902,10 +1901,10 @@ const ManageFeedback: React.FC = () => {
 
                 {/* Status Selection */}
                 <div>
-                  <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-3">
                     Current Status
                   </label>
-                  <div className="flex p-1 bg-[#F9F7F2] rounded-xl border border-[#E6E2D3]">
+                  <div className="flex p-1 bg-linen rounded-xl border border-stone">
                     {[
                       { id: 'pending', label: 'Pending', icon: BsClock, color: 'text-amber-600' },
                       { id: 'in_progress', label: 'In Progress', icon: BsTools, color: 'text-blue-600' },
@@ -1916,7 +1915,7 @@ const ManageFeedback: React.FC = () => {
                         type="button"
                         onClick={() => setServiceForm(prev => ({ ...prev, status: status.id }))}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${serviceForm.status === status.id
-                          ? 'bg-white shadow-md text-[#5D4037]'
+                          ? 'bg-white shadow-md text-umber'
                           : 'text-gray-400 hover:text-gray-600'
                           }`}
                       >
@@ -1930,18 +1929,18 @@ const ManageFeedback: React.FC = () => {
 
             </form>
 
-            <div className="p-6 bg-gray-50 dark:bg-[#121212] border-t border-[#E6E2D3] dark:border-gray-800 flex justify-end gap-3 shrink-0">
+            <div className="p-6 bg-gray-50 dark:bg-night border-t border-stone dark:border-gray-800 flex justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowServiceModal(false)}
-                className="px-6 py-2.5 rounded-xl text-[#5D4037] font-bold hover:bg-[#E6E2D3] transition-colors"
+                className="px-6 py-2.5 rounded-xl text-umber font-bold hover:bg-stone transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={(e) => handleServiceSubmit(e as any)}
+                onClick={(e) => handleServiceSubmit(e)}
                 type="button"
-                className="px-8 py-2.5 bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-white font-bold rounded-xl shadow-lg shadow-[#5D4037]/20 hover:shadow-xl hover:shadow-[#5D4037]/30 transform hover:-translate-y-0.5 transition-all"
+                className="px-8 py-2.5 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-xl shadow-lg shadow-umber/20 hover:shadow-xl hover:shadow-umber/30 transform hover:-translate-y-0.5 transition-all"
               >
                 {editingServiceId ? 'Update Request' : 'Create Request'}
               </button>

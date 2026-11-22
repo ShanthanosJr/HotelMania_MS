@@ -3,12 +3,42 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HotelMania | Hotel Management Service</title>
+  <title>HotelMania | Boutique Hotels in Sri Lanka</title>
+  <meta name="description"
+    content="Book your stay at HotelMania — boutique Sri Lankan hotels with ocean-view rooms, warm hospitality and the best rates when you book direct." />
+  <meta name="theme-color" content="#FDF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Open Graph / social sharing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="HotelMania" />
+  <meta property="og:title" content="HotelMania | Boutique Hotels in Sri Lanka" />
+  <meta property="og:description"
+    content="Ocean-view rooms, warm Sri Lankan hospitality and the best rates when you book direct." />
+  <meta property="og:image"
+    content="https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg?auto=compress&cs=tinysrgb&w=1200" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Brand fonts: Playfair Display (display) + Lato (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400..800;1,400..800&display=swap" />
+
+  <!-- Apply the saved / system colour scheme before first paint (no flash) -->
+  <script>
+    try {
+      var t = localStorage.getItem('theme');
+      if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) { /* storage unavailable */ }
+  </script>
 </head>
 
-<body class="bg-light text-dark">
+<body class="bg-ivory text-ink dark:bg-night dark:text-cream">
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

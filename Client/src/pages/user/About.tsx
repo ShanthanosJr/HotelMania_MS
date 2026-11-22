@@ -37,7 +37,7 @@ const teamMembers = [
 ];
 
 // --- NEW SUB-COMPONENT: Animated Counter ---
-const Counter = ({ value, label, icon: Icon }: { value: number, label: string, icon: any }) => {
+const Counter = ({ value, label, icon: Icon }: { value: number, label: string, icon: React.ElementType }) => {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, margin: "-100px" });
     const springValue = useSpring(0, { duration: 3000 }); // Animation lasts 3 seconds
@@ -52,10 +52,10 @@ const Counter = ({ value, label, icon: Icon }: { value: number, label: string, i
     }, [springValue]);
 
     return (
-        <div ref={ref} className="flex flex-col items-center p-6 bg-white/50 backdrop-blur-sm rounded-lg border border-[#8B6914]/20 shadow-lg hover:transform hover:-translate-y-2 transition-all duration-300 dark:bg-gray-800/50 dark:border-gray-600/20">
-            <Icon className="text-4xl text-[#8B6914] mb-4 dark:text-[#D4AF37]" />
-            <span className="text-4xl font-serif font-bold text-[#2C2416] dark:text-[#FDF8F3]">{displayValue}+</span>
-            <span className="text-sm uppercase tracking-widest text-[#8B6914] mt-2 dark:text-[#D4AF37]">{label}</span>
+        <div ref={ref} className="flex flex-col items-center p-6 bg-white/50 backdrop-blur-sm rounded-lg border border-bronze/20 shadow-lg hover:transform hover:-translate-y-2 transition-all duration-300 dark:bg-gray-800/50 dark:border-gray-600/20">
+            <Icon className="text-4xl text-bronze mb-4 dark:text-gold" />
+            <span className="text-4xl font-serif font-bold text-ink dark:text-ivory">{displayValue}+</span>
+            <span className="text-sm uppercase tracking-widest text-bronze mt-2 dark:text-gold">{label}</span>
         </div>
     );
 };
@@ -86,7 +86,7 @@ const About: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDF8F3] text-[#2C2416] font-[Lato,sans-serif] dark:bg-[#121212] dark:text-[#FDF8F3] transition-colors duration-300">
+        <div className="min-h-screen bg-ivory text-ink font-body dark:bg-night dark:text-ivory transition-colors duration-300">
             <Navbar />
             {/* HERO */}
             <motion.section
@@ -107,7 +107,7 @@ const About: React.FC = () => {
                     transition={{ duration: 0.8, delay: 0.2 }}
                 >
                     <motion.p
-                        className="text-subtitle !text-[#E8DCC8] mt-10 dark:text-[#D4AF37]"
+                        className="text-subtitle !text-sand mt-10 dark:text-gold"
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.6, delay: 0.4 }}
@@ -115,7 +115,7 @@ const About: React.FC = () => {
                         About Hotelmania
                     </motion.p>
                     <motion.h1
-                        className="text-display text-3xl md:text-4xl lg:text-5xl mb-4 max-w-xl dark:text-[#FDF8F3]"
+                        className="text-display text-3xl md:text-4xl lg:text-5xl mb-4 max-w-xl dark:text-ivory"
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.6, delay: 0.5 }}
@@ -123,7 +123,7 @@ const About: React.FC = () => {
                         Where Every Stay Feels Curated
                     </motion.h1>
                     <motion.p
-                        className="max-w-xl text-sm md:text-[0.98rem] leading-7 text-[#F5F0E6] dark:text-gray-300"
+                        className="max-w-xl text-sm md:text-[0.98rem] leading-7 text-cream dark:text-gray-300"
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.6, delay: 0.6 }}
@@ -145,7 +145,7 @@ const About: React.FC = () => {
 
             {/* --- UPGRADED STATS SECTION --- */}
             <motion.section
-                className="bg-[#2C2416] py-20 relative overflow-hidden dark:bg-gray-900"
+                className="bg-ink py-20 relative overflow-hidden dark:bg-gray-900"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
@@ -172,7 +172,7 @@ const About: React.FC = () => {
 
             {/* ABOUT PLATFORM */}
             <motion.section
-                className="py-16 bg-[#FDF8F3] dark:bg-[#121212]"
+                className="py-16 bg-ivory dark:bg-night"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
@@ -186,13 +186,13 @@ const About: React.FC = () => {
                         variants={fadeInUp}
                     >
                         <motion.p
-                            className="text-subtitle dark:text-[#D4AF37]"
+                            className="text-subtitle dark:text-gold"
                             variants={fadeInUp}
                         >
                             About Our Website
                         </motion.p>
                         <motion.h2
-                            className="text-section-title dark:text-[#FDF8F3]"
+                            className="text-section-title dark:text-ivory"
                             variants={fadeInUp}
                         >
                             What Is Hotelmania?
@@ -218,29 +218,29 @@ const About: React.FC = () => {
                             variants={stagger}
                         >
                             <motion.div
-                                className="rounded-xl bg-white shadow-md px-4 py-4 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                                className="rounded-xl bg-white shadow-md px-4 py-4 dark:bg-gray-800 dark:text-ivory"
                                 variants={fadeInUp}
                             >
-                                <h3 className="text-display text-sm mb-1 dark:text-[#FDF8F3]">For Guests</h3>
-                                <p className="text-xs text-[#6B5B4F] leading-6">
+                                <h3 className="text-display text-sm mb-1 dark:text-ivory">For Guests</h3>
+                                <p className="text-xs text-taupe leading-6">
                                     Explore rooms, track bookings, and manage stays with a calm, guided flow.
                                 </p>
                             </motion.div>
                             <motion.div
-                                className="rounded-xl bg-white shadow-md px-4 py-4 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                                className="rounded-xl bg-white shadow-md px-4 py-4 dark:bg-gray-800 dark:text-ivory"
                                 variants={fadeInUp}
                             >
-                                <h3 className="text-display text-sm mb-1 dark:text-[#FDF8F3]">For Staff</h3>
-                                <p className="text-xs text-[#6B5B4F] leading-6">
+                                <h3 className="text-display text-sm mb-1 dark:text-ivory">For Staff</h3>
+                                <p className="text-xs text-taupe leading-6">
                                     Handle reservations, rooms, and users with structured admin tools.
                                 </p>
                             </motion.div>
                             <motion.div
-                                className="rounded-xl bg-white shadow-md px-4 py-4 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                                className="rounded-xl bg-white shadow-md px-4 py-4 dark:bg-gray-800 dark:text-ivory"
                                 variants={fadeInUp}
                             >
-                                <h3 className="text-display text-sm mb-1 dark:text-[#FDF8F3]">For Management</h3>
-                                <p className="text-xs text-[#6B5B4F] leading-6">
+                                <h3 className="text-display text-sm mb-1 dark:text-ivory">For Management</h3>
+                                <p className="text-xs text-taupe leading-6">
                                     Get an overview of occupancy, guests, and core operations at a glance.
                                 </p>
                             </motion.div>
@@ -252,30 +252,30 @@ const About: React.FC = () => {
                         variants={stagger}
                     >
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-5 py-5 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-5 py-5 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Designed Around the Journey
                             </h3>
-                            <ul className="space-y-2 text-sm text-[#6B5B4F] dark:text-gray-300">
+                            <ul className="space-y-2 text-sm text-taupe dark:text-gray-300">
                                 <li>Homepage inspiration to introduce the property.</li>
                                 <li>Dedicated rooms, bookings, and profile flows.</li>
                                 <li>Admin pages for deeper operational control.</li>
                             </ul>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-[#F5F0E6] px-5 py-5 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-cream px-5 py-5 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Consistency in Every Detail
                             </h3>
-                            <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                 From typography to color, each screen follows the same visual language so
                                 guests always know where they are and what comes next.
                             </p>
@@ -286,7 +286,7 @@ const About: React.FC = () => {
 
             {/* EXPERIENCES SECTION */}
             <motion.section
-                className="py-16 bg-[#F5F0E6] dark:bg-[#1E1E1E]"
+                className="py-16 bg-cream dark:bg-charcoal"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
@@ -324,39 +324,39 @@ const About: React.FC = () => {
                         variants={stagger}
                     >
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
-                            <h3 className="text-display text-sm mb-1 dark:text-[#FDF8F3]">Luxury Spa</h3>
-                            <p className="text-xs text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <h3 className="text-display text-sm mb-1 dark:text-ivory">Luxury Spa</h3>
+                            <p className="text-xs text-taupe leading-6 dark:text-gray-300">
                                 Indulge in holistic treatments and massages in our serene wellness center.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
-                            <h3 className="text-display text-sm mb-1 dark:text-[#FDF8F3]">Fine Dining</h3>
-                            <p className="text-xs text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <h3 className="text-display text-sm mb-1 dark:text-ivory">Fine Dining</h3>
+                            <p className="text-xs text-taupe leading-6 dark:text-gray-300">
                                 Experience gourmet cuisine cooked by world‑renowned chefs in an elegant
                                 setting.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
-                            <h3 className="text-display text-sm mb-1 dark:text-[#FDF8F3]">Infinity Pool</h3>
-                            <p className="text-xs text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <h3 className="text-display text-sm mb-1 dark:text-ivory">Infinity Pool</h3>
+                            <p className="text-xs text-taupe leading-6 dark:text-gray-300">
                                 Relax by our skyline infinity pool with breathtaking views of the city.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-5 py-4 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
-                            <h3 className="text-display text-sm mb-1 dark:text-[#FDF8F3]">Private Theater</h3>
-                            <p className="text-xs text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <h3 className="text-display text-sm mb-1 dark:text-ivory">Private Theater</h3>
+                            <p className="text-xs text-taupe leading-6 dark:text-gray-300">
                                 Enjoy exclusive screenings in our comfortable, state‑of‑the‑art private
                                 theater.
                             </p>
@@ -367,7 +367,7 @@ const About: React.FC = () => {
 
             {/* SERVICES / PLATFORM MODULES */}
             <motion.section
-                className="py-16 bg-[#FDF8F3] dark:bg-[#121212]"
+                className="py-16 bg-ivory dark:bg-night"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
@@ -407,85 +407,85 @@ const About: React.FC = () => {
                         variants={stagger}
                     >
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-6 py-6 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-6 py-6 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Room Discovery
                             </h3>
-                            <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                 Curated room carousels, galleries, and highlights help guests quickly find
                                 the stay that matches their style.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-6 py-6 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-6 py-6 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Booking Management
                             </h3>
-                            <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                 A refined booking experience with summary cards, timelines, and admin tools
                                 for viewing, updating, and reviewing stays.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-6 py-6 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-6 py-6 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Profiles &amp; Preferences
                             </h3>
-                            <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                 Guests can see their details and link every booking to a profile designed
                                 around clarity and trust.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-6 py-6 md:col-span-3 lg:col-span-1 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-6 py-6 md:col-span-3 lg:col-span-1 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Operations Backbone
                             </h3>
-                            <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                 Admin pages for rooms, users, and bookings bring structure behind the
                                 scenes, while guests see only the polished front.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-6 py-6 md:col-span-3 lg:col-span-1 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-6 py-6 md:col-span-3 lg:col-span-1 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Customizable Branding
                             </h3>
-                            <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                 Tailor the platform to match your hotel's personality with customizable
                                 branding options.
                             </p>
                         </motion.div>
                         <motion.div
-                            className="rounded-xl bg-white shadow-md px-6 py-6 md:col-span-3 lg:col-span-1 dark:bg-gray-800 dark:text-[#FDF8F3]"
+                            className="rounded-xl bg-white shadow-md px-6 py-6 md:col-span-3 lg:col-span-1 dark:bg-gray-800 dark:text-ivory"
                             variants={fadeInUp}
                         >
                             <h3
-                                className="text-display text-lg mb-2 dark:text-[#FDF8F3]"
+                                className="text-display text-lg mb-2 dark:text-ivory"
                             >
                                 Easy Check‑In/Check‑Out
                             </h3>
-                            <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                            <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                 Streamline the guest experience with easy check-in and check-out processes.
                                 processes.
                             </p>
@@ -497,8 +497,8 @@ const About: React.FC = () => {
             {/* --- UPGRADED TEAM SECTION --- */}
             <section className="py-24 max-w-7xl mx-auto px-6">
                 <div className="text-center mb-16">
-                    <span className="text-[#8B6914] tracking-[0.2em] text-sm font-bold uppercase dark:text-[#D4AF37]">The Artisans</span>
-                    <h2 className="font-serif text-4xl text-[#2C2416] mt-3 dark:text-[#FDF8F3]">Meet the Team</h2>
+                    <span className="text-bronze tracking-[0.2em] text-sm font-bold uppercase dark:text-gold">The Artisans</span>
+                    <h2 className="font-serif text-4xl text-ink mt-3 dark:text-ivory">Meet the Team</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -522,8 +522,8 @@ const About: React.FC = () => {
 
                             {/* Text slides up on hover */}
                             <div className="absolute bottom-0 left-0 p-8 w-full transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                                <h3 className="text-white font-serif text-2xl mb-1 dark:text-[#FDF8F3]">{member.name}</h3>
-                                <p className="text-[#D4C4A8] uppercase tracking-widest text-xs font-semibold dark:text-[#D4AF37]">{member.role}</p>
+                                <h3 className="text-white font-serif text-2xl mb-1 dark:text-ivory">{member.name}</h3>
+                                <p className="text-wheat uppercase tracking-widest text-xs font-semibold dark:text-gold">{member.role}</p>
                             </div>
                         </motion.div>
                     ))}
@@ -532,7 +532,7 @@ const About: React.FC = () => {
 
             {/* STORY / TIMELINE */}
             <motion.section
-                className="py-16 bg-[#F5F0E6] dark:bg-[#1E1E1E]"
+                className="py-16 bg-cream dark:bg-charcoal"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
@@ -547,13 +547,13 @@ const About: React.FC = () => {
                         variants={fadeInUp}
                     >
                         <motion.p
-                            className="text-subtitle dark:text-[#D4AF37]"
+                            className="text-subtitle dark:text-gold"
                             variants={fadeInUp}
                         >
                             How It All Comes Together
                         </motion.p>
                         <motion.h2
-                            className="text-section-title dark:text-[#FDF8F3]"
+                            className="text-section-title dark:text-ivory"
                             variants={fadeInUp}
                         >
                             From Idea to Guest Journey
@@ -563,7 +563,7 @@ const About: React.FC = () => {
                         className="relative max-w-3xl mx-auto"
                         variants={stagger}
                     >
-                        <div className="absolute left-5 top-0 bottom-0 w-[2px] bg-[#D4C4A8]" />
+                        <div className="absolute left-5 top-0 bottom-0 w-[2px] bg-wheat" />
                         <motion.div
                             className="space-y-8"
                             variants={stagger}
@@ -572,9 +572,9 @@ const About: React.FC = () => {
                                 className="relative pl-10"
                                 variants={fadeInUp}
                             >
-                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-[#8B6914]" />
-                                <h3 className="text-sm font-semibold mb-1 dark:text-[#FDF8F3]">Inspiration</h3>
-                                <p className="text-sm text-[#6B5B4F] leading-6">
+                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-bronze" />
+                                <h3 className="text-sm font-semibold mb-1 dark:text-ivory">Inspiration</h3>
+                                <p className="text-sm text-taupe leading-6">
                                     Start with a classic luxury hotel feel, then design a digital experience
                                     that matches the real‑world atmosphere.
                                 </p>
@@ -583,9 +583,9 @@ const About: React.FC = () => {
                                 className="relative pl-10"
                                 variants={fadeInUp}
                             >
-                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-[#8B6914] dark:bg-[#D4AF37]" />
-                                <h3 className="text-sm font-semibold mb-1 dark:text-[#FDF8F3]">Structure</h3>
-                                <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-bronze dark:bg-gold" />
+                                <h3 className="text-sm font-semibold mb-1 dark:text-ivory">Structure</h3>
+                                <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                     Map out pages for home, rooms, bookings, profiles, and admin, keeping a
                                     single visual language across them all.
                                 </p>
@@ -594,9 +594,9 @@ const About: React.FC = () => {
                                 className="relative pl-10"
                                 variants={fadeInUp}
                             >
-                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-[#8B6914] dark:bg-[#D4AF37]" />
-                                <h3 className="text-sm font-semibold mb-1 dark:text-[#FDF8F3]">Polish</h3>
-                                <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-bronze dark:bg-gold" />
+                                <h3 className="text-sm font-semibold mb-1 dark:text-ivory">Polish</h3>
+                                <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                     Add carousels, zooming hero images, timelines, and gallery interactions
                                     so the website feels alive yet calm.
                                 </p>
@@ -605,9 +605,9 @@ const About: React.FC = () => {
                                 className="relative pl-10"
                                 variants={fadeInUp}
                             >
-                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-[#8B6914] dark:bg-[#D4AF37]" />
-                                <h3 className="text-sm font-semibold mb-1 dark:text-[#FDF8F3]">Live Platform</h3>
-                                <p className="text-sm text-[#6B5B4F] leading-6 dark:text-gray-300">
+                                <div className="absolute left-1.5 top-1 h-4 w-4 rounded-full bg-bronze dark:bg-gold" />
+                                <h3 className="text-sm font-semibold mb-1 dark:text-ivory">Live Platform</h3>
+                                <p className="text-sm text-taupe leading-6 dark:text-gray-300">
                                     Launch the website and start inviting guests to book their stays. The
                                     website is now live and guests can start booking their stays, enjoying a
                                     world of timeless luxury and unforgettable moments.
@@ -633,20 +633,20 @@ const About: React.FC = () => {
                     variants={fadeInUp}
                 >
                     <motion.h2
-                        className="text-section-title text-white mb-3 dark:text-[#FDF8F3]"
+                        className="text-section-title text-white mb-3 dark:text-ivory"
                         variants={fadeInUp}
                     >
                         Experience Hotelmania in Action
                     </motion.h2>
                     <motion.p
-                        className="max-w-xl mx-auto text-sm md:text-[0.98rem] leading-7 text-[#F5F0E6] mb-6 dark:text-gray-300"
+                        className="max-w-xl mx-auto text-sm md:text-[0.98rem] leading-7 text-cream mb-6 dark:text-gray-300"
                         variants={fadeInUp}
                     >
                         Scroll through curated images that echo the mood of Hotelmania: warm lobbies,
                         tranquil rooms, and quietly luxurious details.
                     </motion.p>
                     <motion.p
-                        className="text-xs md:text-sm text-[#E8DCC8] dark:text-[#D4AF37]"
+                        className="text-xs md:text-sm text-sand dark:text-gold"
                         variants={fadeInUp}
                     >
                         Whether for a weekend getaway or a long vacation, we are ready to welcome you
@@ -657,7 +657,7 @@ const About: React.FC = () => {
 
             {/* --- NEW TESTIMONIALS SECTION --- */}
             <motion.section
-                className="py-24 bg-[#E8DCC8]/30 dark:bg-gray-900/30"
+                className="py-24 bg-sand/30 dark:bg-gray-900/30"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
@@ -670,10 +670,10 @@ const About: React.FC = () => {
                     <motion.div
                         variants={fadeInUp}
                     >
-                        <BsQuote className="text-6xl text-[#8B6914]/30 mx-auto mb-8 dark:text-[#D4AF37]/30" />
+                        <BsQuote className="text-6xl text-bronze/30 mx-auto mb-8 dark:text-gold/30" />
                     </motion.div>
                     <motion.h2
-                        className="font-serif text-3xl md:text-4xl text-[#2C2416] mb-12 dark:text-[#FDF8F3]"
+                        className="font-serif text-3xl md:text-4xl text-ink mb-12 dark:text-ivory"
                         variants={fadeInUp}
                     >
                         "What our guests say"
@@ -693,10 +693,10 @@ const About: React.FC = () => {
                                 key={i}
                                 variants={fadeInUp}
                                 whileHover={{ y: -10 }}  // Lifts card up on hover
-                                className="bg-white p-8 rounded-xl shadow-sm border border-[#FDF8F3] dark:bg-gray-800 dark:border-gray-700"
+                                className="bg-white p-8 rounded-xl shadow-sm border border-ivory dark:bg-gray-800 dark:border-gray-700"
                             >
-                                <p className="text-[#6B5B4F] italic mb-6 dark:text-gray-300">"{t.text}"</p>
-                                <div className="font-bold text-[#8B6914] text-sm uppercase tracking-widest dark:text-[#D4AF37]">{t.author}</div>
+                                <p className="text-taupe italic mb-6 dark:text-gray-300">"{t.text}"</p>
+                                <div className="font-bold text-bronze text-sm uppercase tracking-widest dark:text-gold">{t.author}</div>
                             </motion.div>
                         ))}
                     </motion.div>
@@ -705,7 +705,7 @@ const About: React.FC = () => {
 
             {/* GALLERY */}
             <motion.section
-                className="py-20 bg-[#FDF8F3] dark:bg-[#121212]"
+                className="py-20 bg-ivory dark:bg-night"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.7 }}
@@ -723,7 +723,7 @@ const About: React.FC = () => {
                         transition={{ duration: 0.6, delay: 0.3 }}
                     >
                         <motion.p
-                            className="text-subtitle dark:text-[#D4AF37]"
+                            className="text-subtitle dark:text-gold"
                             initial={{ y: 15, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.5, delay: 0.4 }}
@@ -731,7 +731,7 @@ const About: React.FC = () => {
                             Gallery
                         </motion.p>
                         <motion.h2
-                            className="text-section-title dark:text-[#FDF8F3]"
+                            className="text-section-title dark:text-ivory"
                             initial={{ y: 15, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.5, delay: 0.5 }}
@@ -789,7 +789,7 @@ const About: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={handleLoadMore}
-                                className="px-6 py-3 border-2 border-[#8B6914] text-[#8B6914] text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-[#8B6914] hover:text-white transition dark:border-[#D4AF37] dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]"
+                                className="px-6 py-3 border-2 border-bronze text-bronze text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-bronze hover:text-white transition dark:border-gold dark:text-gold dark:hover:bg-gold"
                             >
                                 Load More Photos
                             </button>
@@ -797,7 +797,7 @@ const About: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setVisibleCount(4)}
-                                className="px-6 py-3 border-2 border-[#8B6914] text-[#8B6914] text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-[#8B6914] hover:text-white transition dark:border-[#D4AF37] dark:text-[#D4AF37] dark:hover:bg-[#D4AF37]"
+                                className="px-6 py-3 border-2 border-bronze text-bronze text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-bronze hover:text-white transition dark:border-gold dark:text-gold dark:hover:bg-gold"
                             >
                                 See Less
                             </button>

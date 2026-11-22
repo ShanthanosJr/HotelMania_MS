@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../utils/api';
+import { toError } from '../../utils/errors';
 import AdminLayout from '../../components/AdminLayout';
 import {
     BsBuilding, BsStarFill, BsGeoAlt, BsTelephone,
@@ -12,6 +13,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
+import { toast, confirmDialog } from '../../components/ui';
 
 // --- Types & Interfaces ---
 interface Hotel {
@@ -92,7 +94,8 @@ const ManageHotels: React.FC = () => {
             const hotelsList = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
 
             setHotels(hotelsList);
-        } catch (err: any) {
+        } catch (caught: unknown) {
+      const err = toError(caught);
             console.error("Fetch Error:", err);
             setError('Failed to load hotels. Please try again.');
         } finally {
@@ -247,22 +250,24 @@ const ManageHotels: React.FC = () => {
 
             setShowModal(false);
             fetchHotels();
-        } catch (err: any) {
-            alert(err.message || 'Operation failed');
+        } catch (caught: unknown) {
+      const err = toError(caught);
+            toast.error(err.message || 'Operation failed');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this hotel?')) {
+        if (await confirmDialog({ title: 'Delete this hotel?', message: 'Its details and photos will be removed. This cannot be undone.', confirmLabel: 'Delete hotel', tone: 'danger' })) {
             try {
                 const res = await api.delete(`/api/hotels/${id}`);
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || 'Failed to delete');
                 fetchHotels();
-            } catch (err: any) {
-                alert(err.message || 'Failed to delete');
+            } catch (caught: unknown) {
+      const err = toError(caught);
+                toast.error(err.message || 'Failed to delete');
             }
         }
     };
@@ -281,18 +286,18 @@ const ManageHotels: React.FC = () => {
     return (
         <AdminLayout>
             {/* --- HERO HEADER --- */}
-            <div className="relative bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-[#F9F7F2] px-8 py-10 shadow-lg mb-8 overflow-hidden">
+            <div className="relative bg-gradient-to-r from-umber to-clay text-linen px-8 py-10 shadow-lg mb-8 overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-10 -mb-10 pointer-events-none"></div>
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-inner">
-                                <BsBuilding className="text-3xl text-[#E6E2D3]" />
+                                <BsBuilding className="text-3xl text-stone" />
                             </div>
                             <h1 className="text-4xl font-serif font-bold tracking-tight">Hotel Management</h1>
                         </div>
-                        <p className="text-[#E6E2D3] text-lg font-light max-w-xl">
+                        <p className="text-stone text-lg font-light max-w-xl">
                             Configure hotel details, locations, and amenities.
                         </p>
                     </div>
@@ -301,7 +306,7 @@ const ManageHotels: React.FC = () => {
                         <button onClick={() => window.history.back()} className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 rounded-full transition-all duration-300 font-semibold cursor-pointer">
                             <BsArrowLeft /> Back
                         </button>
-                        <button onClick={() => openModal()} className="flex items-center gap-2 px-6 py-3 bg-[#E6E2D3] text-[#5D4037] hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1 cursor-pointer">
+                        <button onClick={() => openModal()} className="flex items-center gap-2 px-6 py-3 bg-stone text-umber hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1 cursor-pointer">
                             <BsPlusCircle /> Add Hotel
                         </button>
                     </div>
@@ -328,26 +333,26 @@ const ManageHotels: React.FC = () => {
                     {[
                         { label: 'Total Hotels', value: metrics.total, icon: BsBuilding, color: 'text-blue-600', bg: 'bg-blue-50' },
                         { label: 'Avg. Rating', value: `${metrics.avgRating}/5`, icon: BsStarFill, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-                        { label: 'Total Revenue', value: `$${Math.floor(Math.random() * 10000).toLocaleString()}`, icon: BsCurrencyDollar, color: 'text-[#8D6E63]', bg: 'bg-[#FDFBF7]' },
+                        { label: 'Total Revenue', value: `$${Math.floor(Math.random() * 10000).toLocaleString()}`, icon: BsCurrencyDollar, color: 'text-clay', bg: 'bg-pearl' },
                         { label: 'Top Rated', value: hotels.length > 0 ? Math.max(...hotels.map(h => h.rating)).toFixed(1) : '0', icon: BsTrophy, color: 'text-green-600', bg: 'bg-green-50' },
                     ].map((stat, idx) => (
-                        <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-[#E6E2D3] flex items-center gap-4">
+                        <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-stone flex items-center gap-4">
                             <div className={`p-4 rounded-full ${stat.bg} ${stat.color} bg-opacity-50`}>
                                 <stat.icon size={24} />
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">{stat.label}</p>
-                                <h3 className="text-2xl font-serif font-bold text-[#5D4037]">{stat.value}</h3>
+                                <h3 className="text-2xl font-serif font-bold text-umber">{stat.value}</h3>
                             </div>
                         </div>
                     ))}
                 </div>
 
                 {/* --- TOOLBAR --- */}
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-8 flex flex-col lg:flex-row justify-between items-center gap-4">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-col lg:flex-row justify-between items-center gap-4">
 
                     {/* View Switcher */}
-                    <div className="flex bg-[#F9F7F2] p-1 rounded-xl">
+                    <div className="flex bg-linen p-1 rounded-xl">
                         {[
                             { id: 'overview', label: 'Overview', icon: BsThreeDotsVertical },
                             { id: 'grid', label: 'Grid', icon: BsGrid },
@@ -355,10 +360,10 @@ const ManageHotels: React.FC = () => {
                         ].map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setViewMode(tab.id as any)}
+                                onClick={() => setViewMode(tab.id as typeof viewMode)}
                                 className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 cursor-pointer ${viewMode === tab.id
-                                    ? 'bg-[#5D4037] text-white shadow-md'
-                                    : 'text-gray-500 hover:text-[#5D4037] hover:bg-gray-100'
+                                    ? 'bg-umber text-white shadow-md'
+                                    : 'text-gray-500 hover:text-umber hover:bg-gray-100'
                                     }`}
                             >
                                 <tab.icon /> {tab.label}
@@ -367,11 +372,11 @@ const ManageHotels: React.FC = () => {
                     </div>
 
                     <div className="relative group w-full lg:w-96">
-                        <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#8D6E63] transition-colors" />
+                        <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-clay transition-colors" />
                         <input
                             type="text"
                             placeholder="Search by name or address..."
-                            className="pl-10 pr-4 py-2.5 w-full bg-[#F9F7F2] border border-[#E6E2D3] rounded-xl focus:ring-2 focus:ring-[#8D6E63] focus:outline-none transition-all"
+                            className="pl-10 pr-4 py-2.5 w-full bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none transition-all"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -380,7 +385,7 @@ const ManageHotels: React.FC = () => {
 
                 {/* --- MAIN CONTENT AREA --- */}
                 {loading ? (
-                    <div className="flex justify-center py-20 text-[#8D6E63]">
+                    <div className="flex justify-center py-20 text-clay">
                         <span className="animate-pulse font-serif text-xl">Loading hotels...</span>
                     </div>
                 ) : (
@@ -388,9 +393,9 @@ const ManageHotels: React.FC = () => {
                         {/* VIEW: OVERVIEW */}
                         {viewMode === 'overview' && (
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-                                    <h3 className="text-xl font-serif font-bold text-[#5D4037] mb-6 flex items-center gap-2">
-                                        <BsWallet2 className="text-[#8D6E63]" /> Revenue Trends
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
+                                        <BsWallet2 className="text-clay" /> Revenue Trends
                                     </h3>
                                     <div className="h-[350px]">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -411,9 +416,9 @@ const ManageHotels: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-                                    <h3 className="text-xl font-serif font-bold text-[#5D4037] mb-6 flex items-center gap-2">
-                                        <BsCalendarCheck className="text-[#8D6E63]" /> Rating Distribution
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
+                                        <BsCalendarCheck className="text-clay" /> Rating Distribution
                                     </h3>
                                     <div className="h-[350px] flex items-center justify-center">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -430,9 +435,9 @@ const ManageHotels: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-                                    <h3 className="text-xl font-serif font-bold text-[#5D4037] mb-6 flex items-center gap-2">
-                                        <BsBarChart className="text-[#8D6E63]" /> Rating Bar Chart
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
+                                        <BsBarChart className="text-clay" /> Rating Bar Chart
                                     </h3>
                                     <div className="h-[350px] flex items-center justify-center">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -453,7 +458,7 @@ const ManageHotels: React.FC = () => {
                         {viewMode === 'grid' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
                                 {currentHotels.map((hotel) => (
-                                    <div key={hotel._id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-[#E6E2D3] overflow-hidden flex flex-col h-full">
+                                    <div key={hotel._id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-stone overflow-hidden flex flex-col h-full">
                                         <div className="relative h-48 bg-gray-200 overflow-hidden">
                                             {hotel.photos && hotel.photos.length > 0 ? (
                                                 <img src={hotel.photos[0]} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -468,7 +473,7 @@ const ManageHotels: React.FC = () => {
                                         </div>
 
                                         <div className="p-6 flex-1 flex flex-col">
-                                            <h4 className="text-xl font-bold text-[#5D4037] mb-2 font-serif">{hotel.name}</h4>
+                                            <h4 className="text-xl font-bold text-umber mb-2 font-serif">{hotel.name}</h4>
 
                                             <div className="flex items-start gap-2 text-sm text-gray-500 mb-4">
                                                 <BsGeoAlt className="mt-1 shrink-0" />
@@ -481,7 +486,7 @@ const ManageHotels: React.FC = () => {
 
                                             <div className="flex flex-wrap gap-2 mb-6">
                                                 {hotel.amenities.slice(0, 3).map((amenity, i) => (
-                                                    <span key={i} className="px-2 py-1 bg-[#F9F7F2] border border-[#E6E2D3] rounded-md text-xs text-[#5D4037]">
+                                                    <span key={i} className="px-2 py-1 bg-linen border border-stone rounded-md text-xs text-umber">
                                                         {amenity}
                                                     </span>
                                                 ))}
@@ -490,7 +495,7 @@ const ManageHotels: React.FC = () => {
                                                 )}
                                             </div>
 
-                                            <div className="flex justify-between items-center pt-4 border-t border-dashed border-[#E6E2D3]">
+                                            <div className="flex justify-between items-center pt-4 border-t border-dashed border-stone">
                                                 <div className="flex gap-2">
                                                     <button onClick={() => openModal(hotel)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Edit">
                                                         <BsPencil />
@@ -508,23 +513,23 @@ const ManageHotels: React.FC = () => {
 
                         {/* VIEW: TABLE */}
                         {viewMode === 'table' && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] overflow-hidden animate-fade-in">
+                            <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden animate-fade-in">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
-                                        <thead className="bg-[#F9F7F2] text-[#5D4037] font-serif">
+                                        <thead className="bg-linen text-umber font-serif">
                                             <tr>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Hotel Name</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Location</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Rating</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Contact</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3] text-center">Actions</th>
+                                                <th className="p-5 font-bold border-b border-stone">Hotel Name</th>
+                                                <th className="p-5 font-bold border-b border-stone">Location</th>
+                                                <th className="p-5 font-bold border-b border-stone">Rating</th>
+                                                <th className="p-5 font-bold border-b border-stone">Contact</th>
+                                                <th className="p-5 font-bold border-b border-stone text-center">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-[#E6E2D3]">
+                                        <tbody className="divide-y divide-stone">
                                             {currentHotels.map((hotel) => (
-                                                <tr key={hotel._id} className="hover:bg-[#FDFBF7] transition-colors">
+                                                <tr key={hotel._id} className="hover:bg-pearl transition-colors">
                                                     <td className="p-5">
-                                                        <div className="font-bold text-[#5D4037]">{hotel.name}</div>
+                                                        <div className="font-bold text-umber">{hotel.name}</div>
                                                     </td>
                                                     <td className="p-5 text-sm text-gray-600 max-w-xs truncate">
                                                         {hotel.address}
@@ -558,15 +563,15 @@ const ManageHotels: React.FC = () => {
 
                         {/* PAGINATION */}
                         {filteredHotels.length > 0 && (
-                            <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-white border border-[#E6E2D3] rounded-2xl shadow-sm mt-8">
-                                <div className="text-sm text-[#5D4037] mb-4 md:mb-0">
+                            <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-white border border-stone rounded-2xl shadow-sm mt-8">
+                                <div className="text-sm text-umber mb-4 md:mb-0">
                                     Showing <span className="font-bold">{indexOfFirstItem + 1}</span> to <span className="font-bold">{Math.min(indexOfLastItem, filteredHotels.length)}</span> of <span className="font-bold">{filteredHotels.length}</span> entries
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                                         disabled={currentPage === 1}
-                                        className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 transition-colors"
+                                        className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 transition-colors"
                                     >
                                         <BsChevronLeft />
                                     </button>
@@ -575,7 +580,7 @@ const ManageHotels: React.FC = () => {
                                             <button
                                                 key={num}
                                                 onClick={() => setCurrentPage(num)}
-                                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === num ? 'bg-[#5D4037] text-white shadow-md' : 'bg-white border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2]'
+                                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === num ? 'bg-umber text-white shadow-md' : 'bg-white border border-stone text-umber hover:bg-linen'
                                                     }`}
                                             >
                                                 {num}
@@ -585,7 +590,7 @@ const ManageHotels: React.FC = () => {
                                     <button
                                         onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
                                         disabled={currentPage === totalPages}
-                                        className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 transition-colors"
+                                        className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 transition-colors"
                                     >
                                         <BsChevronRight />
                                     </button>
@@ -598,10 +603,10 @@ const ManageHotels: React.FC = () => {
 
             {/* --- MODAL FORM --- */}
             {showModal && (
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[#2C2416]/70 backdrop-blur-md">
-                    <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up border border-[#E6E2D3] dark:border-gray-700 flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md">
+                    <div className="bg-white dark:bg-charcoal w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up border border-stone dark:border-gray-700 flex flex-col max-h-[90vh]">
                         {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-[#5D4037] to-[#8D6E63] p-6 text-white flex justify-between items-center shrink-0">
+                        <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                                     <BsBuilding size={24} />
@@ -621,7 +626,7 @@ const ManageHotels: React.FC = () => {
 
                         <div className="flex flex-1 overflow-hidden">
                             {/* Sidebar Tabs */}
-                            <div className="w-64 bg-[#F9F7F2] dark:bg-[#121212] border-r border-[#E6E2D3] dark:border-gray-800 p-6 space-y-2 shrink-0 hidden md:block">
+                            <div className="w-64 bg-linen dark:bg-night border-r border-stone dark:border-gray-800 p-6 space-y-2 shrink-0 hidden md:block">
                                 {[
                                     { id: 'general', label: 'General Info', icon: BsInfoCircle },
                                     { id: 'details', label: 'Amenities & Rating', icon: BsStarFill },
@@ -630,20 +635,20 @@ const ManageHotels: React.FC = () => {
                                 ].map((tab) => (
                                     <button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id as any)}
+                                        onClick={() => setActiveTab(tab.id as typeof activeTab)}
                                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer ${activeTab === tab.id
-                                            ? 'bg-[#5D4037] text-white shadow-lg shadow-[#5D4037]/20 translate-x-1'
-                                            : 'text-[#6B5B4F] dark:text-gray-400 hover:bg-white dark:hover:bg-[#1E1E1E] hover:text-[#5D4037] dark:hover:text-[#FDF8F3]'
+                                            ? 'bg-umber text-white shadow-lg shadow-umber/20 translate-x-1'
+                                            : 'text-taupe dark:text-gray-400 hover:bg-white dark:hover:bg-charcoal hover:text-umber dark:hover:text-ivory'
                                             }`}
                                     >
-                                        <tab.icon className={activeTab === tab.id ? 'text-[#D4AF37]' : ''} />
+                                        <tab.icon className={activeTab === tab.id ? 'text-gold' : ''} />
                                         {tab.label}
                                     </button>
                                 ))}
                             </div>
 
                             {/* Main Form Area */}
-                            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#1E1E1E]">
+                            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-charcoal">
                                 <div className="flex-1 overflow-y-auto p-8">
                                     {/* Mobile Tabs (Visible only on small screens) */}
                                     <div className="md:hidden flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none">
@@ -656,10 +661,10 @@ const ManageHotels: React.FC = () => {
                                             <button
                                                 key={tab.id}
                                                 type="button"
-                                                onClick={() => setActiveTab(tab.id as any)}
+                                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
                                                 className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${activeTab === tab.id
-                                                    ? 'bg-[#5D4037] text-white'
-                                                    : 'bg-[#F9F7F2] text-[#6B5B4F]'
+                                                    ? 'bg-umber text-white'
+                                                    : 'bg-linen text-taupe'
                                                     }`}
                                             >
                                                 {tab.label}
@@ -671,24 +676,24 @@ const ManageHotels: React.FC = () => {
                                     {activeTab === 'general' && (
                                         <div className="space-y-6 animate-fade-in">
                                             <div className="space-y-4">
-                                                <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                                                <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                                                     Basic Information
                                                 </h3>
                                                 <div className="grid gap-6">
                                                     <div>
-                                                        <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Hotel Name</label>
+                                                        <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Hotel Name</label>
                                                         <input
                                                             type="text"
                                                             name="name"
                                                             value={formData.name}
                                                             onChange={handleInputChange}
                                                             placeholder="e.g. Grand Plaza Hotel"
-                                                            className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] placeholder-gray-400 transition-all font-medium"
+                                                            className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory placeholder-gray-400 transition-all font-medium"
                                                             required
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Address</label>
+                                                        <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Address</label>
                                                         <div className="relative">
                                                             <BsGeoAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                                             <input
@@ -697,20 +702,20 @@ const ManageHotels: React.FC = () => {
                                                                 value={formData.address}
                                                                 onChange={handleInputChange}
                                                                 placeholder="Full property address"
-                                                                className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] transition-all font-medium"
+                                                                className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory transition-all font-medium"
                                                                 required
                                                             />
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Description</label>
+                                                        <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Description</label>
                                                         <textarea
                                                             name="description"
                                                             value={formData.description}
                                                             onChange={handleInputChange}
                                                             rows={5}
                                                             placeholder="Describe the property..."
-                                                            className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] transition-all resize-none font-medium"
+                                                            className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory transition-all resize-none font-medium"
                                                             required
                                                         />
                                                     </div>
@@ -722,12 +727,12 @@ const ManageHotels: React.FC = () => {
                                     {/* TAB CONTENT: DETAILS */}
                                     {activeTab === 'details' && (
                                         <div className="space-y-6 animate-fade-in">
-                                            <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                                                 Property Details
                                             </h3>
                                             <div className="grid gap-6">
                                                 <div>
-                                                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Star Rating (0-5)</label>
+                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Star Rating (0-5)</label>
                                                     <div className="flex items-center gap-4">
                                                         <input
                                                             type="number"
@@ -737,7 +742,7 @@ const ManageHotels: React.FC = () => {
                                                             step="0.1"
                                                             value={formData.rating}
                                                             onChange={handleInputChange}
-                                                            className="w-32 px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-bold text-lg text-center"
+                                                            className="w-32 px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-bold text-lg text-center"
                                                             required
                                                         />
                                                         <div className="flex text-yellow-400 text-xl gap-1">
@@ -748,7 +753,7 @@ const ManageHotels: React.FC = () => {
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Amenities</label>
+                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Amenities</label>
                                                     <div className="relative">
                                                         <BsWifi className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                                         <input
@@ -757,10 +762,10 @@ const ManageHotels: React.FC = () => {
                                                             placeholder="Swimming Pool, Spa, Gym, Free Wifi..."
                                                             value={formData.amenities}
                                                             onChange={handleInputChange}
-                                                            className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium"
+                                                            className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
                                                         />
                                                     </div>
-                                                    <p className="text-xs text-[#8D6E63] mt-2 flex items-center gap-1">
+                                                    <p className="text-xs text-clay mt-2 flex items-center gap-1">
                                                         <BsInfoCircle /> Separate amenities with commas
                                                     </p>
                                                 </div>
@@ -771,12 +776,12 @@ const ManageHotels: React.FC = () => {
                                     {/* TAB CONTENT: CONTACT */}
                                     {activeTab === 'contact' && (
                                         <div className="space-y-6 animate-fade-in">
-                                            <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                                                 Contact Information
                                             </h3>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div>
-                                                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Phone Number</label>
+                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Phone Number</label>
                                                     <div className="relative">
                                                         <BsPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                                         <input
@@ -784,28 +789,28 @@ const ManageHotels: React.FC = () => {
                                                             name="phone"
                                                             value={formData.phone}
                                                             onChange={handleInputChange}
-                                                            className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium"
+                                                            className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
                                                         />
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
                                                     <input
                                                         type="email"
                                                         name="email"
                                                         value={formData.email}
                                                         onChange={handleInputChange}
-                                                        className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium"
+                                                        className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
                                                     />
                                                 </div>
                                                 <div className="col-span-2">
-                                                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Website</label>
+                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Website</label>
                                                     <input
                                                         type="url"
                                                         name="website"
                                                         value={formData.website}
                                                         onChange={handleInputChange}
-                                                        className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium"
+                                                        className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
                                                     />
                                                 </div>
                                             </div>
@@ -815,11 +820,11 @@ const ManageHotels: React.FC = () => {
                                     {/* TAB CONTENT: MEDIA */}
                                     {activeTab === 'media' && (
                                         <div className="space-y-6 animate-fade-in">
-                                            <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                                                 Gallery & Photos
                                             </h3>
 
-                                            <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-[#E6E2D3] dark:border-gray-700 bg-[#F9F7F2] dark:bg-[#121212] flex flex-col items-center justify-center relative group hover:border-[#8D6E63] transition-colors cursor-pointer">
+                                            <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-stone dark:border-gray-700 bg-linen dark:bg-night flex flex-col items-center justify-center relative group hover:border-clay transition-colors cursor-pointer">
                                                 <input
                                                     type="file"
                                                     multiple
@@ -827,19 +832,19 @@ const ManageHotels: React.FC = () => {
                                                     onChange={handleFileChange}
                                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                                 />
-                                                <div className="p-4 rounded-full bg-white dark:bg-[#2C2416] shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                                                    <BsCloudUpload className="text-3xl text-[#8D6E63]" />
+                                                <div className="p-4 rounded-full bg-white dark:bg-ink shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                                                    <BsCloudUpload className="text-3xl text-clay" />
                                                 </div>
-                                                <h4 className="text-lg font-bold text-[#5D4037] dark:text-[#FDF8F3]">Click to upload photos</h4>
-                                                <p className="text-sm text-[#6B5B4F] dark:text-gray-400 mt-2">SVG, PNG, JPG or GIF (max. 5MB)</p>
+                                                <h4 className="text-lg font-bold text-umber dark:text-ivory">Click to upload photos</h4>
+                                                <p className="text-sm text-taupe dark:text-gray-400 mt-2">SVG, PNG, JPG or GIF (max. 5MB)</p>
                                             </div>
 
                                             {formData.files.length > 0 && (
                                                 <div className="space-y-2">
-                                                    <p className="text-sm font-bold text-[#5D4037]">{formData.files.length} files selected</p>
+                                                    <p className="text-sm font-bold text-umber">{formData.files.length} files selected</p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {formData.files.map((file, i) => (
-                                                            <div key={i} className="px-3 py-1 bg-[#E6E2D3] rounded-md text-xs text-[#5D4037]">
+                                                            <div key={i} className="px-3 py-1 bg-stone rounded-md text-xs text-umber">
                                                                 {file.name}
                                                             </div>
                                                         ))}
@@ -851,18 +856,18 @@ const ManageHotels: React.FC = () => {
                                 </div>
 
                                 {/* Modal Footer */}
-                                <div className="p-6 bg-gray-50 dark:bg-[#121212] border-t border-[#E6E2D3] dark:border-gray-800 flex justify-end gap-3 shrink-0">
+                                <div className="p-6 bg-gray-50 dark:bg-night border-t border-stone dark:border-gray-800 flex justify-end gap-3 shrink-0">
                                     <button
                                         type="button"
                                         onClick={() => setShowModal(false)}
-                                        className="px-6 py-2.5 rounded-xl text-[#5D4037] font-bold hover:bg-[#E6E2D3] transition-colors cursor-pointer"
+                                        className="px-6 py-2.5 rounded-xl text-umber font-bold hover:bg-stone transition-colors cursor-pointer"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="px-8 py-2.5 bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-white font-bold rounded-xl shadow-lg shadow-[#5D4037]/20 hover:shadow-xl hover:shadow-[#5D4037]/30 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                        className="px-8 py-2.5 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-xl shadow-lg shadow-umber/20 hover:shadow-xl hover:shadow-umber/30 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                     >
                                         {loading ? 'Processing...' : (editingId ? 'Save Changes' : 'Create Hotel')}
                                     </button>

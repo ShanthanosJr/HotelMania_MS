@@ -9,6 +9,7 @@ yarn-error.log*
 /build/
 /Client/dist/
 /Server/dist/
+/docs
 
 # Environment variables
 .env
@@ -54,3 +55,7 @@ temp/
 # Client and Server node_modules
 Client/node_modules/
 Server/node_modules/
+
+# uploads directory
+Server/uploads/
+.claude

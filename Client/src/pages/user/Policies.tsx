@@ -8,10 +8,10 @@ import { SITE } from '../../config/site';
 // review the wording before launch.
 const Section: React.FC<{ id: string; title: string; children: React.ReactNode }> = ({ id, title, children }) => (
     <section id={id} className="scroll-mt-28 rounded-2xl bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(92,64,51,0.08)] dark:bg-gray-800">
-        <h2 className="mb-4 text-2xl text-[#2C2416] dark:text-[#F5F0E6]" style={{ fontFamily: 'Playfair Display, serif' }}>
+        <h2 className="mb-4 text-2xl text-ink dark:text-cream" style={{ fontFamily: 'Playfair Display, serif' }}>
             {title}
         </h2>
-        <div className="space-y-3 text-[0.95rem] leading-7 text-[#6B5B4F] dark:text-gray-300">{children}</div>
+        <div className="space-y-3 text-[0.95rem] leading-7 text-taupe dark:text-gray-300">{children}</div>
     </section>
 );
 
@@ -29,10 +29,10 @@ const Policies: React.FC = () => {
     }, [hash]);
 
     return (
-        <div className="min-h-screen bg-[#FDF8F3] text-[#2C2416] font-[Lato,sans-serif] dark:bg-[#121212] dark:text-[#F5F0E6]">
+        <div className="min-h-screen bg-ivory text-ink font-body dark:bg-night dark:text-cream">
             <Navbar />
-            <header className="bg-[#2C2416] px-6 pb-14 pt-32 text-center text-white">
-                <p className="text-xs uppercase tracking-[0.25em] text-[#D4AF37]">Good to know</p>
+            <header className="bg-ink px-6 pb-14 pt-32 text-center text-white">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold">Good to know</p>
                 <h1 className="mt-3 text-4xl md:text-5xl" style={{ fontFamily: 'Playfair Display, serif' }}>
                     Booking &amp; Privacy Policies
                 </h1>
@@ -45,7 +45,7 @@ const Policies: React.FC = () => {
                         <li>
                             When you book online, the room is held for <strong>{SITE.bookingHoldMinutes} minutes</strong> while you
                             complete payment. Unpaid bookings are released after that time. You can pay later from{' '}
-                            <Link to="/bookings" className="text-[#8B6914] underline dark:text-[#D4AF37]">My Bookings</Link> while the room is still available.
+                            <Link to="/bookings" className="text-bronze underline dark:text-gold">My Bookings</Link> while the room is still available.
                         </li>
                         <li>Your booking is confirmed once payment is received. Prices are per room, per night, and the total is shown before you pay.</li>
                         <li>The number of guests may not exceed the room&apos;s stated maximum occupancy.</li>
@@ -77,7 +77,7 @@ const Policies: React.FC = () => {
                     <p>
                         This information is used to provide and support your bookings. It is visible only to you and to our
                         authorised staff, and we do not sell it. To update or delete your data, contact us at{' '}
-                        <a href={`mailto:${SITE.email}`} className="text-[#8B6914] underline dark:text-[#D4AF37]">{SITE.email}</a>.
+                        <a href={`mailto:${SITE.email}`} className="text-bronze underline dark:text-gold">{SITE.email}</a>.
                     </p>
                 </Section>
             </main>

@@ -65,19 +65,19 @@ HotelMania is a full-stack hotel management application that allows users to bro
    ```
 
 4. Set up environment variables in the Server directory:
-   Create a `.env` file with the following variables:
+   ```bash
+   cp Server/.env.example Server/.env
    ```
-   PORT=your_port_number
-   MONGODB_URI=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret
-   ```
+   Fill in `MONGO_URI` and `JWT_SECRET` (32+ random characters, e.g. `openssl rand -hex 32`).
+   The API listens on port **5050** by default. If you change `PORT`, also set
+   `VITE_API_PROXY=http://localhost:<port>` in `Client/.env.local` so the dev proxy follows it.
 
 ## Usage
 
 ### Running the Server:
 ```bash
 cd Server
-npm start
+npm run dev
 ```
 
 ### Running the Client:
@@ -85,6 +85,24 @@ npm start
 cd Client
 npm run dev
 ```
+
+## Quality checks
+
+```bash
+cd Server && npm test        # API tests (in-memory MongoDB, never touches your real database)
+cd Client && npm run lint    # ESLint, zero warnings allowed
+cd Client && npm run build   # Type-check and production build
+```
+
+## UI kit
+
+Shared components live in `Client/src/components/ui` (Button, Input/Select/Textarea, Modal,
+Badge, Card, Skeleton, EmptyState, Spinner). Use `toast.success(...)` / `toast.error(...)` for
+feedback and `await confirmDialog({...})` instead of `alert` / `window.confirm`.
+Brand colours are Tailwind tokens defined in `Client/src/index.css` (`bg-ivory`, `text-bronze`,
+`border-stone`, `dark:bg-night`, ...). Use them instead of raw hex values.
+
+See `docs/MASTER_PLAN.md` for the roadmap.
 
 ## Project Structure
 

@@ -5,6 +5,7 @@ import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
 import { payForBooking, outcomeMessage } from '../../utils/payhere';
 import { SITE } from '../../config/site';
+import { toast } from '../../components/ui';
 
 type RoomType = {
     _id?: string;
@@ -103,7 +104,7 @@ const RoomDetails: React.FC = () => {
         // Check if logged in first
         const token = localStorage.getItem('token');
         if (!token) {
-            alert('Please log in to book');
+            toast.afterRedirect('info', 'Please log in to book');
             window.location.href = '/login';
             return;
         }
@@ -157,7 +158,7 @@ const RoomDetails: React.FC = () => {
             }
         } catch (err) {
             console.error(err);
-            alert('Failed to check availability');
+            toast.error('Failed to check availability');
         } finally {
             setLoadingRooms(false);
         }
@@ -203,11 +204,11 @@ const RoomDetails: React.FC = () => {
             const bookingId: string = result.data._id;
 
             const outcome = await payForBooking(bookingId);
-            alert(outcomeMessage(outcome));
+            toast.afterRedirect(outcome === 'dismissed' ? 'warning' : 'success', outcomeMessage(outcome));
             window.location.href = '/bookings';
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error';
-            alert(message);
+            toast.error(message);
         } finally {
             setIsProcessing(false);
         }
@@ -215,16 +216,16 @@ const RoomDetails: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#FDF8F3] dark:bg-[#121212] text-[#2C2416] dark:text-[#F5F0E6] font-[Lato,sans-serif] transition-colors duration-300">
+            <div className="min-h-screen bg-ivory dark:bg-night text-ink dark:text-cream font-body transition-colors duration-300">
                 <Navbar />
-                <div className="py-32 text-center text-sm text-[#6B5B4F] dark:text-gray-300">Loading...</div>
+                <div className="py-32 text-center text-sm text-taupe dark:text-gray-300">Loading...</div>
                 <Footer />
             </div>
         );
     }
     if (error) {
         return (
-            <div className="min-h-screen bg-[#FDF8F3] dark:bg-[#121212] text-[#2C2416] dark:text-[#F5F0E6] font-[Lato,sans-serif] transition-colors duration-300">
+            <div className="min-h-screen bg-ivory dark:bg-night text-ink dark:text-cream font-body transition-colors duration-300">
                 <Navbar />
                 <div className="py-32 text-center text-sm text-red-700 dark:text-red-400">{error}</div>
                 <Footer />
@@ -233,7 +234,7 @@ const RoomDetails: React.FC = () => {
     }
     if (!room) {
         return (
-            <div className="min-h-screen bg-[#FDF8F3] dark:bg-[#121212] text-[#2C2416] dark:text-[#F5F0E6] font-[Lato,sans-serif] transition-colors duration-300">
+            <div className="min-h-screen bg-ivory dark:bg-night text-ink dark:text-cream font-body transition-colors duration-300">
                 <Navbar />
                 <div className="py-32 text-center text-sm text-red-700 dark:text-red-400">Room not found</div>
                 <Footer />
@@ -245,11 +246,11 @@ const RoomDetails: React.FC = () => {
         room.photos && room.photos.length > 0 ? room.photos[0] : fallbackHero;
 
     return (
-        <div className="min-h-screen bg-[#FDF8F3] dark:bg-[#121212] text-[#2C2416] dark:text-[#F5F0E6] font-[Lato,sans-serif] transition-colors duration-300">
+        <div className="min-h-screen bg-ivory dark:bg-night text-ink dark:text-cream font-body transition-colors duration-300">
             <Navbar />
 
             {/* HERO */}
-            <header className="relative flex h-[480px] items-end overflow-hidden bg-[#2C2416]">
+            <header className="relative flex h-[480px] items-end overflow-hidden bg-ink">
                 <div
                     className="absolute inset-0 bg-cover bg-center scale-110 animate-[roomsHeroZoom_18s_ease-in-out_infinite_alternate]"
                     style={{ backgroundImage: `url(${heroImg})` }}
@@ -257,7 +258,7 @@ const RoomDetails: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-[rgba(44,36,22,0.9)] via-[rgba(44,36,22,0.6)] to-transparent" />
                 <div className="relative z-10 mx-auto flex w-full max-w-[1400px] items-end px-6 pb-10">
                     <div>
-                        <span className="mb-2 inline-block text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-[#E8DCC8]">
+                        <span className="mb-2 inline-block text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-sand">
                             Welcome to Luxury
                         </span>
                         <h1
@@ -282,7 +283,7 @@ const RoomDetails: React.FC = () => {
                         >
                             Overview
                         </h2>
-                        <p className="text-[0.95rem] leading-7 text-[#6B5B4F] dark:text-gray-300">
+                        <p className="text-[0.95rem] leading-7 text-taupe dark:text-gray-300">
                             {room.description}
                         </p>
                     </section>
@@ -300,9 +301,9 @@ const RoomDetails: React.FC = () => {
                                 room.amenities.map((amenity, index) => (
                                     <div
                                         key={`${amenity}-${index}`}
-                                        className="flex items-start gap-2 rounded-lg bg-[#F5F0E6] dark:bg-gray-700 px-3 py-2 text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]"
+                                        className="flex items-start gap-2 rounded-lg bg-cream dark:bg-gray-700 px-3 py-2 text-[0.9rem] text-ink dark:text-cream"
                                     >
-                                        <span className="mt-0.5 text-[#8B6914]">✓</span>
+                                        <span className="mt-0.5 text-bronze">✓</span>
                                         <span>{amenity}</span>
                                     </div>
                                 ))}
@@ -322,7 +323,7 @@ const RoomDetails: React.FC = () => {
                                 room.photos.slice(0, 4).map((photo, idx) => (
                                     <div
                                         key={`${photo}-${idx}`}
-                                        className="overflow-hidden rounded-xl bg-[#F5F0E6] dark:bg-gray-700"
+                                        className="overflow-hidden rounded-xl bg-cream dark:bg-gray-700"
                                     >
                                         <img
                                             src={photo}
@@ -336,7 +337,7 @@ const RoomDetails: React.FC = () => {
 
                     <Link
                         to="/rooms"
-                        className="mt-5 inline-flex items-center justify-center rounded border border-[#D4C4A8] bg-[#F5F0E6] dark:bg-gray-700 px-5 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition"
+                        className="mt-5 inline-flex items-center justify-center rounded border border-wheat bg-cream dark:bg-gray-700 px-5 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-bronze hover:bg-bronze hover:text-white transition"
                     >
                         ← Back to Rooms
                     </Link>
@@ -347,33 +348,33 @@ const RoomDetails: React.FC = () => {
                     <div className="rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-[0_8px_30px_rgba(92,64,51,0.15)]">
                         <div className="mb-4 flex items-end gap-1">
                             <span
-                                className="text-2xl text-[#8B6914]"
+                                className="text-2xl text-bronze"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 ${room.basePrice}
                             </span>
-                            <span className="text-[0.85rem] text-[#6B5B4F] dark:text-gray-300">/ Night</span>
+                            <span className="text-[0.85rem] text-taupe dark:text-gray-300">/ Night</span>
                         </div>
-                        <ul className="mb-4 space-y-2 text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
+                        <ul className="mb-4 space-y-2 text-[0.9rem] text-ink dark:text-cream">
                             <li className="flex justify-between">
-                                <span className="text-[#6B5B4F] dark:text-gray-300">Occupancy</span>
+                                <span className="text-taupe dark:text-gray-300">Occupancy</span>
                                 <span>Up to {room.maxOccupancy} Guests</span>
                             </li>
                             {room.size ? (
                                 <li className="flex justify-between">
-                                    <span className="text-[#6B5B4F] dark:text-gray-300">Size</span>
+                                    <span className="text-taupe dark:text-gray-300">Size</span>
                                     <span>{room.size} m²</span>
                                 </li>
                             ) : null}
                             {room.view && (
                                 <li className="flex justify-between">
-                                    <span className="text-[#6B5B4F] dark:text-gray-300">View</span>
+                                    <span className="text-taupe dark:text-gray-300">View</span>
                                     <span>{room.view}</span>
                                 </li>
                             )}
                             {room.bedType && (
                                 <li className="flex justify-between">
-                                    <span className="text-[#6B5B4F] dark:text-gray-300">Bed</span>
+                                    <span className="text-taupe dark:text-gray-300">Bed</span>
                                     <span>{room.bedType}</span>
                                 </li>
                             )}
@@ -381,7 +382,7 @@ const RoomDetails: React.FC = () => {
                         <button
                             type="button"
                             onClick={openBookingModal}
-                            className="w-full rounded border-2 border-[#8B6914] bg-[#8B6914] px-4 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-[#8B6914] transition"
+                            className="w-full rounded border-2 border-bronze bg-bronze px-4 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-bronze transition"
                         >
                             Book Now
                         </button>
@@ -400,10 +401,10 @@ const RoomDetails: React.FC = () => {
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between border-b border-[#E8DCC8] dark:border-gray-700 px-8 py-5">
+                        <div className="flex items-center justify-between border-b border-sand dark:border-gray-700 px-8 py-5">
                             <div>
                                 <h2
-                                    className="text-xl md:text-2xl dark:text-[#F5F0E6]"
+                                    className="text-xl md:text-2xl dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     {bookingStep === 1
@@ -412,14 +413,14 @@ const RoomDetails: React.FC = () => {
                                             ? 'Select Room'
                                             : 'Payment Details'}
                                 </h2>
-                                <p className="text-xs text-[#6B5B4F] uppercase tracking-wider dark:text-gray-400 mt-1">
+                                <p className="text-xs text-taupe uppercase tracking-wider dark:text-gray-400 mt-1">
                                     Step {bookingStep} of 3
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 onClick={closeModal}
-                                className="text-3xl leading-none text-[#6B5B4F] dark:text-gray-400 hover:text-[#8B6914] transition"
+                                className="text-3xl leading-none text-taupe dark:text-gray-400 hover:text-bronze transition"
                             >
                                 ×
                             </button>
@@ -432,7 +433,7 @@ const RoomDetails: React.FC = () => {
                                 <div className="space-y-6">
                                     <div className="grid gap-6 sm:grid-cols-2">
                                         <div className="space-y-2">
-                                            <label className="text-sm font-bold uppercase tracking-wider text-[#6B5B4F] dark:text-gray-300">
+                                            <label className="text-sm font-bold uppercase tracking-wider text-taupe dark:text-gray-300">
                                                 Check-in Date
                                             </label>
                                             <input
@@ -445,11 +446,11 @@ const RoomDetails: React.FC = () => {
                                                         checkInDate: e.target.value,
                                                     }))
                                                 }
-                                                className="w-full rounded-lg border border-[#D4C4A8] bg-[#FDF8F3] dark:bg-gray-700 px-4 py-3 text-[#2C2416] dark:text-[#F5F0E6] focus:border-[#8B6914] focus:outline-none dark:border-gray-600 dark:focus:border-[#D4AF37]"
+                                                className="w-full rounded-lg border border-wheat bg-ivory dark:bg-gray-700 px-4 py-3 text-ink dark:text-cream focus:border-bronze focus:outline-none dark:border-gray-600 dark:focus:border-gold"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-bold uppercase tracking-wider text-[#6B5B4F] dark:text-gray-300">
+                                            <label className="text-sm font-bold uppercase tracking-wider text-taupe dark:text-gray-300">
                                                 Check-out Date
                                             </label>
                                             <input
@@ -462,13 +463,13 @@ const RoomDetails: React.FC = () => {
                                                         checkOutDate: e.target.value,
                                                     }))
                                                 }
-                                                className="w-full rounded-lg border border-[#D4C4A8] bg-[#FDF8F3] dark:bg-gray-700 px-4 py-3 text-[#2C2416] dark:text-[#F5F0E6] focus:border-[#8B6914] focus:outline-none dark:border-gray-600 dark:focus:border-[#D4AF37]"
+                                                className="w-full rounded-lg border border-wheat bg-ivory dark:bg-gray-700 px-4 py-3 text-ink dark:text-cream focus:border-bronze focus:outline-none dark:border-gray-600 dark:focus:border-gold"
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="rounded-lg bg-[#F5F0E6] dark:bg-gray-700/50 p-4 border border-[#E8DCC8] dark:border-gray-600">
-                                        <p className="text-sm text-[#6B5B4F] dark:text-gray-300">
+                                    <div className="rounded-lg bg-cream dark:bg-gray-700/50 p-4 border border-sand dark:border-gray-600">
+                                        <p className="text-sm text-taupe dark:text-gray-300">
                                             <span className="font-bold">Note:</span> Standard check-in time is {SITE.checkInTime} and check-out time is {SITE.checkOutTime}.
                                         </p>
                                     </div>
@@ -477,7 +478,7 @@ const RoomDetails: React.FC = () => {
                                         <button
                                             onClick={handleCheckAvailability}
                                             disabled={loadingRooms || !bookingDates.checkInDate || !bookingDates.checkOutDate}
-                                            className="rounded-full bg-[#8B6914] px-8 py-3 text-sm font-bold uppercase tracking-wider text-white hover:bg-[#705510] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="rounded-full bg-bronze px-8 py-3 text-sm font-bold uppercase tracking-wider text-white hover:bg-bronze-deep transition disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {loadingRooms ? 'Checking...' : 'Check Availability'}
                                         </button>
@@ -494,21 +495,21 @@ const RoomDetails: React.FC = () => {
                                                 <div
                                                     key={physRoom._id || physRoom.id}
                                                     onClick={() => handleSelectRoom(physRoom)}
-                                                    className="group cursor-pointer rounded-xl border border-[#E8DCC8] bg-[#FDF8F3] dark:bg-gray-700 p-5 transition hover:border-[#8B6914] hover:shadow-md dark:border-gray-600 dark:hover:border-[#D4AF37]"
+                                                    className="group cursor-pointer rounded-xl border border-sand bg-ivory dark:bg-gray-700 p-5 transition hover:border-bronze hover:shadow-md dark:border-gray-600 dark:hover:border-gold"
                                                 >
                                                     <div className="flex items-center justify-between">
                                                         <div>
                                                             <h4
-                                                                className="text-lg font-medium dark:text-[#F5F0E6]"
+                                                                className="text-lg font-medium dark:text-cream"
                                                                 style={{ fontFamily: 'Playfair Display, serif' }}
                                                             >
                                                                 Room {physRoom.roomNumber}
                                                             </h4>
-                                                            <p className="text-sm text-[#6B5B4F] dark:text-gray-300 mt-1">
+                                                            <p className="text-sm text-taupe dark:text-gray-300 mt-1">
                                                                 {[room.view, room.bedType].filter(Boolean).join(' • ') || room.name}
                                                             </p>
                                                         </div>
-                                                        <span className="rounded-full border border-[#8B6914] px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-[#8B6914] group-hover:bg-[#8B6914] group-hover:text-white transition dark:text-[#D4AF37] dark:border-[#D4AF37] dark:group-hover:text-[#2C2416]">
+                                                        <span className="rounded-full border border-bronze px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-bronze group-hover:bg-bronze group-hover:text-white transition dark:text-gold dark:border-gold dark:group-hover:text-ink">
                                                             Select
                                                         </span>
                                                     </div>
@@ -517,10 +518,10 @@ const RoomDetails: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="text-center py-10">
-                                            <p className="text-[#6B5B4F] dark:text-gray-300 mb-4">No rooms available for the selected dates.</p>
+                                            <p className="text-taupe dark:text-gray-300 mb-4">No rooms available for the selected dates.</p>
                                             <button
                                                 onClick={() => setBookingStep(1)}
-                                                className="text-[#8B6914] font-bold text-sm uppercase hover:underline dark:text-[#D4AF37]"
+                                                className="text-bronze font-bold text-sm uppercase hover:underline dark:text-gold"
                                             >
                                                 Change Dates
                                             </button>
@@ -529,7 +530,7 @@ const RoomDetails: React.FC = () => {
                                     {availableRooms.length > 0 && (
                                         <button
                                             onClick={() => setBookingStep(1)}
-                                            className="text-xs font-bold text-[#6B5B4F] uppercase hover:text-[#2C2416] dark:text-gray-400 dark:hover:text-gray-200"
+                                            className="text-xs font-bold text-taupe uppercase hover:text-ink dark:text-gray-400 dark:hover:text-gray-200"
                                         >
                                             ← Back to Dates
                                         </button>
@@ -540,32 +541,32 @@ const RoomDetails: React.FC = () => {
                             {/* STEP 3: PAYMENT */}
                             {bookingStep === 3 && (
                                 <div className="space-y-6 animate-fadeIn">
-                                    <div className="rounded-xl bg-[#F9F7F2] dark:bg-gray-700/50 p-4 border border-[#E8DCC8] dark:border-gray-600">
-                                        <h4 className="font-bold text-[#2C2416] dark:text-[#F5F0E6] mb-2">Booking Summary</h4>
-                                        <div className="flex justify-between text-sm text-[#6B5B4F] dark:text-gray-300 mb-1">
+                                    <div className="rounded-xl bg-linen dark:bg-gray-700/50 p-4 border border-sand dark:border-gray-600">
+                                        <h4 className="font-bold text-ink dark:text-cream mb-2">Booking Summary</h4>
+                                        <div className="flex justify-between text-sm text-taupe dark:text-gray-300 mb-1">
                                             <span>Dates</span>
-                                            <span className="font-medium text-[#2C2416] dark:text-[#F5F0E6]">
+                                            <span className="font-medium text-ink dark:text-cream">
                                                 {bookingDates.checkInDate} — {bookingDates.checkOutDate}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-sm text-[#6B5B4F] dark:text-gray-300 mb-1">
+                                        <div className="flex justify-between text-sm text-taupe dark:text-gray-300 mb-1">
                                             <span>Room</span>
-                                            <span className="font-medium text-[#2C2416] dark:text-[#F5F0E6]">
+                                            <span className="font-medium text-ink dark:text-cream">
                                                 {room.name} (#{selectedPhysicalRoom?.roomNumber})
                                             </span>
                                         </div>
                                         <div className="mt-3 text-right">
-                                            <span className="text-xs uppercase tracking-wider text-[#6B5B4F] dark:text-gray-400">Total Price</span>
-                                            <p className="text-xl font-bold text-[#8B6914] dark:text-[#D4AF37]" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                            <span className="text-xs uppercase tracking-wider text-taupe dark:text-gray-400">Total Price</span>
+                                            <p className="text-xl font-bold text-bronze dark:text-gold" style={{ fontFamily: 'Playfair Display, serif' }}>
                                                 ${calculateTotal()}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-start gap-3 rounded-xl border border-[#E8DCC8] bg-white p-4 text-sm text-[#6B5B4F] dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                    <div className="flex items-start gap-3 rounded-xl border border-sand bg-white p-4 text-sm text-taupe dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
                                         <span aria-hidden="true" className="text-lg">🔒</span>
                                         <p>
-                                            You&apos;ll complete payment securely with <strong className="text-[#2C2416] dark:text-[#F5F0E6]">PayHere</strong> (Visa, Mastercard, Amex, eZ Cash, mCash, bank apps).
+                                            You&apos;ll complete payment securely with <strong className="text-ink dark:text-cream">PayHere</strong> (Visa, Mastercard, Amex, eZ Cash, mCash, bank apps).
                                             Card details are entered on PayHere&apos;s page and never touch our servers.
                                         </p>
                                     </div>
@@ -573,14 +574,14 @@ const RoomDetails: React.FC = () => {
                                     <div className="flex gap-3 pt-4">
                                         <button
                                             onClick={() => setBookingStep(2)}
-                                            className="px-6 py-3 rounded-full border border-[#8B6914] text-[#8B6914] text-sm font-bold uppercase hover:bg-[#8B6914] hover:text-white transition dark:border-[#D4AF37] dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]"
+                                            className="px-6 py-3 rounded-full border border-bronze text-bronze text-sm font-bold uppercase hover:bg-bronze hover:text-white transition dark:border-gold dark:text-gold dark:hover:bg-gold dark:hover:text-ink"
                                         >
                                             Back
                                         </button>
                                         <button
                                             onClick={initiateBooking}
                                             disabled={isProcessing}
-                                            className="flex-1 rounded-full bg-[#8B6914] text-white text-sm font-bold uppercase hover:bg-[#705510] transition disabled:opacity-50"
+                                            className="flex-1 rounded-full bg-bronze text-white text-sm font-bold uppercase hover:bg-bronze-deep transition disabled:opacity-50"
                                         >
                                             {isProcessing ? 'Opening PayHere…' : `Pay $${calculateTotal()} with PayHere`}
                                         </button>
