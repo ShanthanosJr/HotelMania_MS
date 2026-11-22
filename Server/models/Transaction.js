@@ -14,8 +14,8 @@ const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
     enum: {
-      values: ['credit_card', 'cash', 'debit_card', 'bank_transfer'],
-      message: 'Transaction type must be credit_card, cash, debit_card, or bank_transfer'
+      values: ['credit_card', 'cash', 'debit_card', 'bank_transfer', 'payhere'],
+      message: 'Transaction type must be credit_card, cash, debit_card, bank_transfer, or payhere'
     },
     required: [true, 'Transaction type is required'],
   },
@@ -34,6 +34,7 @@ const transactionSchema = new mongoose.Schema({
     last4: String,
     cardHolder: String,
     expiryDate: String,
+    method: String, // e.g. VISA, MASTER, AMEX (from PayHere)
   },
   status: {
     type: String,

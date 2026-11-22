@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
-import { toPaymentDetails } from '../../utils/payment';
+import { payForBooking, outcomeMessage } from '../../utils/payhere';
 
 const heroImage =
     'https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -19,6 +19,8 @@ type RoomTypeFromApi = {
     bedType?: string;
     view?: string;
     pricePerNight?: number;
+    basePrice?: number;
+    maxOccupancy?: number;
     tag?: string;
     highlights?: string[];
     amenities?: string[];
@@ -63,12 +65,6 @@ type BookingDates = {
     checkOutDate: string;
 };
 
-type CardDetails = {
-    cardNumber: string;
-    expiryDate: string;
-    cvv: string;
-};
-
 const Rooms: React.FC = () => {
     // Animation Variants
     const fadeInUp = {
@@ -101,14 +97,6 @@ const Rooms: React.FC = () => {
         checkInDate: '',
         checkOutDate: '',
     });
-    const [paymentMethod, setPaymentMethod] = useState<
-        'credit_card' | 'debit_card' | 'bank_transfer' | 'cash'
-    >('credit_card');
-    const [cardDetails, setCardDetails] = useState<CardDetails>({
-        cardNumber: '',
-        expiryDate: '',
-        cvv: '',
-    });
     const [isProcessing, setIsProcessing] = useState(false);
 
     // fetch room types
@@ -136,10 +124,10 @@ const Rooms: React.FC = () => {
                             shortDescription: room.description,
                             description: room.description,
                             size: room.size || 30,
-                            maxGuests: room.maxGuests || 2,
+                            maxGuests: room.maxOccupancy || room.maxGuests || 2,
                             bedType: room.bedType || 'Queen Bed',
                             view: room.view || 'City View',
-                            priceFrom: room.pricePerNight || 100,
+                            priceFrom: room.basePrice ?? room.pricePerNight ?? 0,
                             tag: room.tag || '',
                             highlights: room.highlights || [],
                             amenities: room.amenities || [],
@@ -261,12 +249,6 @@ const Rooms: React.FC = () => {
             return;
         }
 
-        if (paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
-            if (!cardDetails.cardNumber || !cardDetails.expiryDate || !cardDetails.cvv) {
-                alert('Please enter all card details');
-                return;
-            }
-        }
 
         setIsProcessing(true);
 
@@ -299,29 +281,9 @@ const Rooms: React.FC = () => {
             const bookingResult = await response.json();
             const bookingId: string = bookingResult.data._id;
 
-            const transactionData = {
-                booking: bookingId,
-                type: paymentMethod,
-                paymentDetails:
-                    paymentMethod === 'credit_card' || paymentMethod === 'debit_card'
-                        ? toPaymentDetails(cardDetails)
-                        : undefined,
-            };
-
-            const txnResponse = await api.post('/api/transactions', transactionData);
-
-            if (txnResponse.ok) {
-                alert(`Booking successful! Booking ID: ${bookingId}`);
-                closeModal();
-                window.location.href = '/bookings';
-            } else {
-                console.error('Transaction creation failed');
-                alert(
-                    `Booking created (ID: ${bookingId}), but transaction record failed. Please contact support.`,
-                );
-                closeModal();
-                window.location.href = '/bookings';
-            }
+            const outcome = await payForBooking(bookingId);
+            alert(outcomeMessage(outcome));
+            window.location.href = '/bookings';
         } catch (err: unknown) {
             console.error('Booking/Transaction error:', err);
             const message =
@@ -969,88 +931,9 @@ const Rooms: React.FC = () => {
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="mt-3 flex flex-col gap-1 text-[0.85rem]">
-                                                                    <label className="font-semibold text-[#2C2416] dark:text-[#F5F0E6]">
-                                                                        Payment Method:
-                                                                    </label>
-                                                                    <select
-                                                                        value={paymentMethod}
-                                                                        onChange={e =>
-                                                                            setPaymentMethod(
-                                                                                e.target.value as
-                                                                                | 'credit_card'
-                                                                                | 'debit_card'
-                                                                                | 'bank_transfer'
-                                                                                | 'cash',
-                                                                            )
-                                                                        }
-                                                                        className="w-full rounded border border-[#D4C4A8] dark:border-[#444] px-2 py-1.5 text-[0.85rem] text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37]"
-                                                                    >
-                                                                        <option value="credit_card">Credit Card</option>
-                                                                        <option value="debit_card">Debit Card</option>
-                                                                        <option value="bank_transfer">Bank Transfer</option>
-                                                                        <option value="cash">Cash</option>
-                                                                    </select>
-                                                                </div>
-
-                                                                {(paymentMethod === 'credit_card' ||
-                                                                    paymentMethod === 'debit_card') && (
-                                                                        <div className="mt-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] p-3 space-y-3">
-                                                                            <div>
-                                                                                <label className="mb-1 block text-[0.85rem] font-semibold text-[#2C2416] dark:text-[#F5F0E6]">
-                                                                                    Card Number:
-                                                                                </label>
-                                                                                <input
-                                                                                    type="text"
-                                                                                    placeholder="1234 5678 9012 3456"
-                                                                                    value={cardDetails.cardNumber}
-                                                                                    onChange={e =>
-                                                                                        setCardDetails(prev => ({
-                                                                                            ...prev,
-                                                                                            cardNumber: e.target.value,
-                                                                                        }))
-                                                                                    }
-                                                                                    className="w-full rounded border border-[#D4C4A8] dark:border-[#444] px-2 py-1.5 text-[0.85rem] text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37]"
-                                                                                />
-                                                                            </div>
-                                                                            <div className="flex gap-3">
-                                                                                <div className="flex-1">
-                                                                                    <label className="mb-1 block text-[0.85rem] font-semibold text-[#2C2416] dark:text-[#F5F0E6]">
-                                                                                        Expiry Date:
-                                                                                    </label>
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        placeholder="MM/YY"
-                                                                                        value={cardDetails.expiryDate}
-                                                                                        onChange={e =>
-                                                                                            setCardDetails(prev => ({
-                                                                                                ...prev,
-                                                                                                expiryDate: e.target.value,
-                                                                                            }))
-                                                                                        }
-                                                                                        className="w-full rounded border border-[#D4C4A8] dark:border-[#444] px-2 py-1.5 text-[0.85rem] text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37]"
-                                                                                    />
-                                                                                </div>
-                                                                                <div className="flex-1">
-                                                                                    <label className="mb-1 block text-[0.85rem] font-semibold text-[#2C2416] dark:text-[#F5F0E6]">
-                                                                                        CVV:
-                                                                                    </label>
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        placeholder="123"
-                                                                                        value={cardDetails.cvv}
-                                                                                        onChange={e =>
-                                                                                            setCardDetails(prev => ({
-                                                                                                ...prev,
-                                                                                                cvv: e.target.value,
-                                                                                            }))
-                                                                                        }
-                                                                                        className="w-full rounded border border-[#D4C4A8] dark:border-[#444] px-2 py-1.5 text-[0.85rem] text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37]"
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
+                                                                <p className="mt-3 flex items-center gap-2 rounded bg-[#F5F0E6] p-2 text-[0.8rem] text-[#6B5B4F] dark:bg-gray-700 dark:text-gray-300">
+                                                                    <span aria-hidden="true">🔒</span> Secure payment by PayHere: Visa, Mastercard, Amex, eZ Cash, mCash &amp; more.
+                                                                </p>
                                                             </div>
 
                                                             <div className="flex items-center md:w-40">

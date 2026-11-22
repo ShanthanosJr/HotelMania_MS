@@ -10,6 +10,7 @@ const {
   withRoomLock,
   priceFor,
   syncRoomStatus,
+  HOLD_MINUTES,
   populateBooking,
 } = require('../utils/bookingService');
 const router = express.Router();
@@ -92,6 +93,8 @@ router.post('/', protect, async (req, res) => {
         totalPrice: priceFor(room, stay.nights),
         status,
         paymentStatus,
+        // Guests' online bookings hold the room until paid; front-desk bookings don't expire
+        ...(staffUser ? {} : { holdExpiresAt: new Date(Date.now() + HOLD_MINUTES * 60 * 1000) }),
       }], { session });
       return created;
     });

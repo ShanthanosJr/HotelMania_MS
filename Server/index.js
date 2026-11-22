@@ -52,6 +52,7 @@ app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/service-requests', require('./routes/serviceRequests'));
+app.use('/api/payments', require('./routes/payments'));
 
 app.use('/api', (req, res) => res.status(404).json({ message: 'Not found' }));
 
@@ -74,7 +75,12 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5001;
 
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, (err) => {
+    // Express 5 passes listen errors (e.g. EADDRINUSE) to this callback
+    if (err) {
+      console.error(`Could not start server on port ${PORT}: ${err.message}`);
+      process.exit(1);
+    }
     console.log(`Server is running on port ${PORT}`);
   });
 }
