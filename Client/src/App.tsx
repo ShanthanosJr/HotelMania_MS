@@ -13,6 +13,8 @@ import RoomDetails from './pages/user/RoomDetails';
 import Hotels from './pages/user/Hotels';
 import HotelDetails from './pages/user/HotelDetails';
 import Bookings from './pages/user/Bookings';
+import Book from './pages/user/Book';
+import BookingConfirmation from './pages/user/BookingConfirmation';
 import Contact from './pages/user/Contact';
 import Login from './pages/user/Login';
 import Register from './pages/user/Register';
@@ -35,6 +37,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/rooms': 'Rooms & Suites',
   '/hotels': 'Our Hotels',
   '/bookings': 'My Bookings',
+  '/book': 'Book Your Stay',
   '/contact': 'Contact',
   '/login': 'Sign In',
   '/register': 'Create Account',
@@ -76,6 +79,8 @@ function App() {
             <Route path="/room/:id" element={<RoomDetails />} />
             <Route path="/hotels" element={<Hotels />} />
             <Route path="/hotel/:id" element={<HotelDetails />} />
+            <Route path="/book" element={<Book />} />
+            <Route path="/booking/:id" element={<RequireRole roles={['guest', 'admin', 'receptionist', 'housekeeping']}><BookingConfirmation /></RequireRole>} />
             <Route path="/bookings" element={<RequireRole roles={['guest', 'admin', 'receptionist', 'housekeeping']}><Bookings /></RequireRole>} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />

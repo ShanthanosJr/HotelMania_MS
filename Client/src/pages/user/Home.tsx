@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { SITE } from '../../config/site';
+import { bookUrl } from '../../utils/booking';
 
 type FeaturedRoom = {
   id: string;
@@ -103,16 +104,14 @@ const Home: React.FC = () => {
       setSearchError('Check-out must be after check-in.');
       return;
     }
-    const params = new URLSearchParams();
-    if (search.checkIn) params.set('checkIn', search.checkIn);
-    if (search.checkOut) params.set('checkOut', search.checkOut);
-    params.set('guests', search.guests);
-    if (search.roomType) {
-      if (search.checkIn) params.set('book', '1');
-      navigate(`/room/${search.roomType}?${params.toString()}`);
-    } else {
-      navigate(`/rooms?${params.toString()}`);
-    }
+    // Straight into the booking flow with live availability for these dates
+    navigate(bookUrl({
+      checkIn: search.checkIn,
+      checkOut: search.checkOut,
+      guests: search.guests,
+      // Skip straight to guest details only once dates are chosen
+      type: search.checkIn && search.roomType ? search.roomType : undefined,
+    }));
   };
 
   const galleryImages = [

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
-import { clearSession, homeForRole, Role } from '../utils/auth';
+import { clearSession, homeForRole, loginUrl, Role } from '../utils/auth';
 
 interface RequireRoleProps {
     roles: Role[];
@@ -55,7 +55,7 @@ const RequireRole: React.FC<RequireRoleProps> = ({ roles, children }) => {
         );
     }
     if (state.status === 'login') {
-        return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+        return <Navigate to={loginUrl(location.pathname + location.search)} replace />;
     }
     if (state.status === 'forbidden') {
         const home = homeForRole(state.role);

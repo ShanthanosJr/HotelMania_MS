@@ -123,7 +123,7 @@ const Navbar: React.FC = () => {
                 </div>
 
                 {/* Desktop nav */}
-                <nav className="hidden items-center gap-9 text-[1rem] uppercase tracking-[0.18em] md:flex">
+                <nav className="hidden items-center gap-6 text-[0.85rem] uppercase tracking-[0.14em] lg:flex xl:gap-9 xl:text-[1rem] xl:tracking-[0.18em]">
                     {navLinks.map(link => (
                         <button
                             key={link.path}
@@ -142,7 +142,7 @@ const Navbar: React.FC = () => {
                 </nav>
 
                 {/* Right actions */}
-                <div className="hidden items-center gap-4 md:flex">
+                <div className="hidden items-center gap-3 whitespace-nowrap lg:flex xl:gap-4">
                     {/* Dark mode toggle button */}
                     <button
                         onClick={toggleTheme}
@@ -150,6 +150,13 @@ const Navbar: React.FC = () => {
                         aria-label="Toggle Dark Mode"
                     >
                         {theme === 'light' ? <BsMoonStars size={18} /> : <BsSun size={18} />}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/book')}
+                        className="rounded border-2 border-gold bg-gold px-5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-ink cursor-pointer transition-all hover:bg-gold/85 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                        Book now
                     </button>
                     {user ? (
                         <>
@@ -163,7 +170,7 @@ const Navbar: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={handleLogout}
-                                className="rounded border-2 border-bronze bg-bronze px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white cursor-pointer transition-all hover:bg-transparent hover:text-bronze hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                                className={`text-[0.72rem] font-semibold uppercase tracking-[0.16em] cursor-pointer transition-colors hover:text-gold ${isScrolled ? 'text-cocoa dark:text-cream' : 'text-white'}`}
                             >
                                 Logout
                             </button>
@@ -172,18 +179,29 @@ const Navbar: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => navigate('/login')}
-                            className="rounded border-2 border-bronze bg-bronze px-5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white cursor-pointer transition-all hover:bg-transparent hover:text-bronze hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                            className={`rounded border-2 px-5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 ${isScrolled ? 'border-bronze text-bronze hover:bg-bronze hover:text-white dark:border-gold dark:text-gold' : 'border-white/80 text-white hover:bg-white hover:text-ink'}`}
                         >
                             Sign In
                         </button>
                     )}
                 </div>
 
+                {/* Mobile: Book is always one tap away */}
+                <div className="flex items-center gap-2 lg:hidden">
+                <button
+                    type="button"
+                    onClick={() => navigate('/book')}
+                    className="rounded bg-gold px-3.5 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink cursor-pointer active:scale-95 transition-transform"
+                >
+                    Book
+                </button>
                 {/* Mobile menu toggle */}
                 <button
                     type="button"
                     onClick={() => setMenuOpen(prev => !prev)}
-                    className="flex flex-col gap-1.5 p-2 md:hidden cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors"
+                    aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                    aria-expanded={menuOpen}
+                    className="flex flex-col gap-1.5 p-2 lg:hidden cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors"
                 >
                     <span
                         className={`h-[2px] w-6 rounded-full transition-all ${isScrolled ? 'bg-cocoa' : 'bg-white'
@@ -198,11 +216,12 @@ const Navbar: React.FC = () => {
                             } ${menuOpen ? '-translate-y-[5px] -rotate-45' : ''}`}
                     />
                 </button>
+                </div>
             </div>
 
             {/* Mobile menu */}
             {menuOpen && (
-                <div className="mt-2 border-t border-sand bg-ivory/95 shadow-md md:hidden">
+                <div className="mt-2 border-t border-sand bg-ivory/95 shadow-md lg:hidden">
                     <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-6 py-4 text-[0.8rem] uppercase tracking-[0.16em] text-ink">
                         {navLinks.map(link => (
                             <button

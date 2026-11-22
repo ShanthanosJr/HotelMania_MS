@@ -48,6 +48,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/hotels', require('./routes/hotels'));
 app.use('/api/room-types', require('./routes/roomTypes'));
 app.use('/api/rooms', require('./routes/rooms'));
+app.use('/api/availability', require('./routes/availability'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/transactions', require('./routes/transactions'));

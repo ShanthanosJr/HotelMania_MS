@@ -10,7 +10,9 @@ import {
     BsCalendarCheck, BsClockHistory, BsXCircle, BsFileText,
     BsGeoAlt, BsGear, BsStars
 } from 'react-icons/bs';
-import { toast, confirmDialog } from '../../components/ui';
+import { toast, confirmDialog, Badge, statusTone } from '../../components/ui';
+import { Link } from 'react-router-dom';
+import { formatMoney, nightsBetween, statusLabel, type PriceQuote } from '../../utils/booking';
 
 const heroImage =
     'https://images.pexels.com/photos/261107/pexels-photo-261107.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -26,6 +28,7 @@ type BookingRoomType = {
 type BookingRoom = {
     _id?: string;
     roomNumber?: string;
+    hotel?: { name?: string } | string;
     type?: BookingRoomType | string;
 };
 
@@ -39,6 +42,10 @@ type Booking = {
     totalPrice?: number;
     user?: BookingUser;
     room?: BookingRoom;
+    confirmationCode?: string;
+    guests?: number;
+    pricing?: PriceQuote;
+    refund?: { status?: 'due' | 'completed'; amount?: number };
 };
 
 type ServiceRequest = {
@@ -240,17 +247,16 @@ const Bookings: React.FC = () => {
     // Keep original upcoming and past for active booking
 
 
-    // NEW: Mock Loyalty Stats (You can calculate real ones later)
-    const stats = {
-        nights: bookings.length * 3, // Mock calculation
-        upcomingCount: bookings.filter(b => new Date(b.checkOutDate || '') >= new Date()).length,
-        status: "Gold Member"
-    };
+    // Real numbers from the guest's own bookings
+    const stats = useMemo(() => {
+        const active = bookings.filter(b => b.status !== 'cancelled');
+        return {
+            completed: bookings.filter(b => b.status === 'checked_out').length,
+            upcomingCount: active.filter(b => new Date(b.checkOutDate || '') >= new Date()).length,
+            nights: active.reduce((sum, b) => sum + nightsBetween(b.checkInDate, b.checkOutDate), 0),
+        };
+    }, [bookings]);
 
-
-
-    const formatStatus = (value?: string) =>
-        value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
 
 
 
@@ -310,22 +316,22 @@ const Bookings: React.FC = () => {
                     <div className="flex items-center gap-4 border-b md:border-b-0 md:border-r border-ivory pb-4 md:pb-0">
                         <div className="p-3 bg-ivory rounded-full text-bronze dark:bg-gray-700 dark:text-gold"><BsStars size={24} /></div>
                         <div>
-                            <p className="text-xs uppercase tracking-widest text-bronze font-bold dark:text-gold">Status</p>
-                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.status}</p>
+                            <p className="text-xs uppercase tracking-widest text-bronze font-bold dark:text-gold">Completed stays</p>
+                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.completed}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4 border-b md:border-b-0 md:border-r border-ivory pb-4 md:pb-0">
                         <div className="p-3 bg-ivory rounded-full text-bronze dark:bg-gray-700 dark:text-gold"><BsCalendarCheck size={24} /></div>
                         <div>
                             <p className="text-xs uppercase tracking-widest text-bronze font-bold dark:text-gold">Upcoming</p>
-                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.upcomingCount} Stays</p>
+                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.upcomingCount} {stats.upcomingCount === 1 ? 'Stay' : 'Stays'}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-ivory rounded-full text-bronze dark:bg-gray-700 dark:text-gold"><BsClockHistory size={24} /></div>
                         <div>
                             <p className="text-xs uppercase tracking-widest text-bronze font-bold dark:text-gold">Total Nights</p>
-                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.nights} Nights</p>
+                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.nights} {stats.nights === 1 ? 'Night' : 'Nights'}</p>
                         </div>
                     </div>
                 </motion.div>
@@ -382,14 +388,14 @@ const Bookings: React.FC = () => {
                                             {/* Left: Date Block */}
                                             <div className="bg-ink p-6 flex flex-col justify-center items-center text-white min-w-[140px] dark:bg-gray-900 dark:text-cream">
                                                 <span className="text-3xl font-serif">
-                                                    {new Date(booking.checkInDate || '').getDate()}
+                                                    {new Date(booking.checkInDate || '').getUTCDate()}
                                                 </span>
                                                 <span className="text-sm uppercase tracking-widest opacity-80">
-                                                    {new Date(booking.checkInDate || '').toLocaleString('default', { month: 'short' })}
+                                                    {new Date(booking.checkInDate || '').toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}
                                                 </span>
                                                 <div className="w-8 h-[1px] bg-white/30 my-3 dark:bg-gray-500"></div>
                                                 <span className="text-xs opacity-60">
-                                                    {new Date(booking.checkInDate || '').getFullYear()}
+                                                    {new Date(booking.checkInDate || '').getUTCFullYear()}
                                                 </span>
                                             </div>
 
@@ -399,19 +405,35 @@ const Bookings: React.FC = () => {
                                                     <h3 className="font-serif text-2xl text-ink dark:text-cream">
                                                         {typeof booking.room === 'object' ? (typeof booking.room.type === 'object' ? booking.room.type?.name : undefined) || 'Luxury Room' : 'Luxury Room'}
                                                     </h3>
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' :
-                                                            booking.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200'
-                                                        }`}>
-                                                        {formatStatus(booking.status)}
-                                                    </span>
+                                                    <Badge tone={statusTone(booking.status)}>{statusLabel(booking.status)}</Badge>
                                                 </div>
 
-                                                <p className="text-taupe mb-4 text-sm flex items-center gap-2 dark:text-gray-300">
-                                                    <BsGeoAlt /> Room {typeof booking.room === 'object' ? booking.room.roomNumber : ''}
+                                                <p className="text-taupe mb-1 text-sm flex flex-wrap items-center gap-x-3 gap-y-1 dark:text-gray-300">
+                                                    {booking.confirmationCode && <span className="font-mono font-semibold tracking-wider text-ink dark:text-cream">{booking.confirmationCode}</span>}
+                                                    <span className="flex items-center gap-1.5">
+                                                        <BsGeoAlt />
+                                                        {typeof booking.room === 'object' && typeof booking.room.hotel === 'object' && booking.room.hotel?.name ? `${booking.room.hotel.name} · ` : ''}
+                                                        {booking.status === 'checked_in' && typeof booking.room === 'object' && booking.room.roomNumber
+                                                            ? `Room ${booking.room.roomNumber}`
+                                                            : `${nightsBetween(booking.checkInDate, booking.checkOutDate)} night${nightsBetween(booking.checkInDate, booking.checkOutDate) === 1 ? '' : 's'} · ${booking.guests || 1} guest${(booking.guests || 1) === 1 ? '' : 's'}`}
+                                                    </span>
                                                 </p>
+                                                {booking.refund?.status && (
+                                                    <p className="mb-2 text-sm text-info">
+                                                        {booking.refund.status === 'due' ? 'Refund being processed' : 'Refund sent'}: {formatMoney(booking.refund.amount, booking.pricing?.currency)}
+                                                    </p>
+                                                )}
 
                                                 <div className="flex flex-wrap gap-4 mt-6">
                                                     {/* Action Buttons */}
+                                                    {booking._id && (
+                                                        <Link
+                                                            to={`/booking/${booking._id}`}
+                                                            className="flex items-center gap-2 px-4 py-2 rounded text-xs font-bold uppercase bg-ink text-white hover:bg-cocoa transition-colors dark:bg-cream dark:text-ink"
+                                                        >
+                                                            View details
+                                                        </Link>
+                                                    )}
                                                     <button
                                                         onClick={() => printReceipt(booking as Parameters<typeof printReceipt>[0])}
                                                         className="flex items-center gap-2 px-4 py-2 border border-stone rounded text-xs font-bold uppercase text-bronze hover:bg-bronze hover:text-white transition-colors dark:border-gray-600 dark:text-gold dark:hover:bg-gold dark:hover:text-ink"
@@ -454,8 +476,8 @@ const Bookings: React.FC = () => {
                                             {/* Right: Price */}
                                             <div className="p-6 bg-ivory flex flex-col justify-center items-end min-w-[150px] text-right dark:bg-gray-700 dark:text-cream">
                                                 <p className="text-xs uppercase tracking-widest text-bronze mb-1 dark:text-gold">Total</p>
-                                                <p className="font-serif text-2xl text-ink dark:text-cream">${booking.totalPrice}</p>
-                                                <p className="text-xs text-taupe mt-1 dark:text-gray-300">{booking.paymentStatus}</p>
+                                                <p className="font-serif text-2xl text-ink dark:text-cream">{formatMoney(booking.totalPrice, booking.pricing?.currency)}</p>
+                                                <Badge tone={statusTone(booking.paymentStatus)} className="mt-2">{statusLabel(booking.paymentStatus)}</Badge>
                                             </div>
                                         </div>
                                     </motion.div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../utils/api';
-import { homeForRole } from '../../utils/auth';
+import { homeForRole, safeRedirect } from '../../utils/auth';
 
 const loginVideo =
     'https://www.pexels.com/download/video/17550507/';
@@ -20,6 +20,8 @@ type LoginErrors = {
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirect = safeRedirect(searchParams.get('redirect'));
 
     const [formData, setFormData] = useState<LoginForm>({
         email: '',
@@ -70,7 +72,8 @@ const Login: React.FC = () => {
             if (response.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                navigate(homeForRole(data.user.role));
+                // Guests return to where they were (e.g. mid-booking); staff go to their workspace
+                navigate(redirect && data.user.role === 'guest' ? redirect : homeForRole(data.user.role));
             } else {
                 setErrors({ server: data.message || 'Login failed' });
             }
@@ -245,7 +248,7 @@ const Login: React.FC = () => {
                             <p>
                                 New to Hotelmania?{' '}
                                 <Link
-                                    to="/register"
+                                    to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : '/register'}
                                     className="font-semibold text-bronze hover:underline dark:text-gold dark:hover:text-gold"
                                 >
                                     Create an account
