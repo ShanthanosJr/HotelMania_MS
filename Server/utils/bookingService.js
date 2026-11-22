@@ -5,6 +5,21 @@ const Room = require('../models/Room');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_NIGHTS = 30;
 const BLOCKING_STATUSES = ['pending', 'confirmed', 'checked_in'];
+const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES || 30);
+
+/**
+ * Filter for bookings that currently occupy a room's calendar:
+ * active statuses, excluding unpaid online holds that have expired.
+ */
+const blockingFilter = () => ({
+  status: { $in: BLOCKING_STATUSES },
+  $or: [
+    { holdExpiresAt: { $exists: false } },
+    { holdExpiresAt: null },
+    { holdExpiresAt: { $gt: new Date() } },
+    { paymentStatus: 'paid' },
+  ],
+});
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -47,8 +62,8 @@ const parseStay = (checkIn, checkOut, { allowPast = false } = {}) => {
 
 const findOverlap = (roomId, checkInDate, checkOutDate, excludeId, session) =>
   Booking.findOne({
+    ...blockingFilter(),
     room: roomId,
-    status: { $in: BLOCKING_STATUSES },
     checkInDate: { $lt: checkOutDate },
     checkOutDate: { $gt: checkInDate },
     ...(excludeId ? { _id: { $ne: excludeId } } : {}),
@@ -127,6 +142,8 @@ const populateBooking = (query) =>
 module.exports = {
   HttpError,
   BLOCKING_STATUSES,
+  HOLD_MINUTES,
+  blockingFilter,
   parseStay,
   findOverlap,
   withRoomLock,

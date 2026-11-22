@@ -37,6 +37,10 @@ const bookingSchema = new mongoose.Schema({
     },
     default: 'pending',
   },
+  // Online bookings hold the room only until this time unless paid
+  holdExpiresAt: {
+    type: Date,
+  },
   paymentStatus: {
     type: String,
     enum: {

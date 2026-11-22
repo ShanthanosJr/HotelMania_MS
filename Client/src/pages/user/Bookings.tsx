@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
+import { payForBooking, outcomeMessage } from '../../utils/payhere';
 // NEW IMPORTS
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -155,6 +156,20 @@ const Bookings: React.FC = () => {
     };
 
     const [cancellingId, setCancellingId] = useState<string | null>(null);
+    const [payingId, setPayingId] = useState<string | null>(null);
+
+    const handlePayNow = async (bookingId: string) => {
+        setPayingId(bookingId);
+        try {
+            const outcome = await payForBooking(bookingId);
+            alert(outcomeMessage(outcome));
+            await fetchMyBookings();
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : 'Could not start payment');
+        } finally {
+            setPayingId(null);
+        }
+    };
 
     const handleCancelBooking = async (bookingId: string) => {
         if (!window.confirm('Cancel this booking? This cannot be undone.')) return;
@@ -377,6 +392,15 @@ const Bookings: React.FC = () => {
                                                             className="flex items-center gap-2 px-4 py-2 border border-[#E6E2D3] rounded text-xs font-bold uppercase text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition-colors dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]"
                                                         >
                                                             <BsGear /> Service Request
+                                                        </button>
+                                                    )}
+                                                    {activeTab === 'upcoming' && booking.status === 'pending' && booking.paymentStatus === 'pending' && (
+                                                        <button
+                                                            onClick={() => booking._id && handlePayNow(booking._id)}
+                                                            disabled={payingId === booking._id}
+                                                            className="flex items-center gap-2 px-4 py-2 rounded text-xs font-bold uppercase bg-[#8B6914] text-white hover:bg-[#5C4033] transition-colors disabled:opacity-50 dark:bg-[#D4AF37] dark:text-[#2C2416]"
+                                                        >
+                                                            {payingId === booking._id ? 'Opening PayHere…' : 'Pay Now'}
                                                         </button>
                                                     )}
                                                     {activeTab === 'upcoming' &&

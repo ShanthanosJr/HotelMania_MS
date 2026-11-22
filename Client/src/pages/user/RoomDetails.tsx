@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
-import { toPaymentDetails } from '../../utils/payment';
+import { payForBooking, outcomeMessage } from '../../utils/payhere';
 
 type RoomType = {
     _id?: string;
@@ -37,12 +37,6 @@ type BookingDates = {
     checkOutDate: string;
 };
 
-type CardDetails = {
-    cardNumber: string;
-    expiryDate: string;
-    cvv: string;
-};
-
 const fallbackHero =
     'https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1600';
 
@@ -63,20 +57,8 @@ const RoomDetails: React.FC = () => {
         checkInDate: '',
         checkOutDate: '',
     });
-    const [paymentMethod] = useState<
-        'credit_card' | 'debit_card' | 'bank_transfer' | 'cash'
-    >('credit_card');
 
-    // Saved cards state
-    const [savedCards, setSavedCards] = useState<any[]>([]);
-    const [useSavedCard, setUseSavedCard] = useState(false);
-    const [selectedSavedCardIdx, setSelectedSavedCardIdx] = useState(-1);
 
-    const [cardDetails, setCardDetails] = useState<CardDetails>({
-        cardNumber: '',
-        expiryDate: '',
-        cvv: '',
-    });
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
@@ -128,16 +110,6 @@ const RoomDetails: React.FC = () => {
         setBookingStep(1);
         setAvailableRooms([]);
 
-        // Pre-fetch profile for saved cards
-        try {
-            const profileRes = await api.get('/api/auth/profile');
-            const profileData = await profileRes.json();
-            if (profileData.success && profileData.user.savedCards) {
-                setSavedCards(profileData.user.savedCards);
-            }
-        } catch (e) {
-            console.error(e);
-        }
     };
 
     const closeModal = () => {
@@ -195,14 +167,6 @@ const RoomDetails: React.FC = () => {
     const initiateBooking = async () => {
         if (!room || !selectedPhysicalRoom) return;
 
-        if (paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
-            if (!cardDetails.cardNumber || !cardDetails.expiryDate || !cardDetails.cvv) {
-                if (!useSavedCard) { // If using saved card, we might not need to re-enter everything in a real app, but here we require strictness or just flow 
-                    alert('Enter card details');
-                    return;
-                }
-            }
-        }
 
         setIsProcessing(true);
 
@@ -226,23 +190,9 @@ const RoomDetails: React.FC = () => {
             const result = await res.json();
             const bookingId: string = result.data._id;
 
-            const txnData = {
-                booking: bookingId,
-                type: paymentMethod,
-                paymentDetails:
-                    (paymentMethod === 'credit_card' || paymentMethod === 'debit_card')
-                        ? toPaymentDetails(cardDetails)
-                        : undefined,
-            };
-
-            const txnRes = await api.post('/api/transactions', txnData);
-            if (txnRes.ok) {
-                alert('Booking Successful!');
-                window.location.href = '/bookings';
-            } else {
-                alert('Booking created but payment failed.');
-                window.location.href = '/bookings';
-            }
+            const outcome = await payForBooking(bookingId);
+            alert(outcomeMessage(outcome));
+            window.location.href = '/bookings';
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Error';
             alert(message);
@@ -594,100 +544,13 @@ const RoomDetails: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Saved Cards */}
-                                    {savedCards.length > 0 && (
-                                        <div>
-                                            <label className="mb-3 block text-sm font-bold uppercase tracking-wider text-[#6B5B4F] dark:text-gray-300">
-                                                Saved Payment Methods
-                                            </label>
-                                            <div className="space-y-3">
-                                                {savedCards.map((card, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        onClick={() => {
-                                                            setUseSavedCard(true);
-                                                            setSelectedSavedCardIdx(idx);
-                                                            setCardDetails({
-                                                                cardNumber: card.cardNumber,
-                                                                expiryDate: card.expiryDate || '',
-                                                                cvv: '***', // CVV usually not saved, but for simplicity
-                                                            });
-                                                        }}
-                                                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${useSavedCard && selectedSavedCardIdx === idx
-                                                            ? 'border-[#8B6914] bg-[#F5F0E6] dark:bg-gray-700 dark:border-[#D4AF37]'
-                                                            : 'border-[#D4C4A8] hover:border-[#8B6914] dark:border-gray-600 dark:hover:border-[#D4AF37]'
-                                                            }`}
-                                                    >
-                                                        <div className="flex h-8 w-12 items-center justify-center rounded bg-gray-200 dark:bg-gray-600 text-xs font-bold text-[#555] dark:text-gray-300">
-                                                            {card.cardType === 'credit_card' ? 'CARD' : 'BANK'}
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <p className="text-sm font-semibold text-[#2C2416] dark:text-[#F5F0E6]">{card.cardNumber}</p>
-                                                            <p className="text-xs text-[#6B5B4F] dark:text-gray-400">Exp: {card.expiryDate}</p>
-                                                        </div>
-                                                        {useSavedCard && selectedSavedCardIdx === idx && (
-                                                            <span className="text-[#8B6914] dark:text-[#D4AF37]">✓</span>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                                <div
-                                                    onClick={() => {
-                                                        setUseSavedCard(false);
-                                                        setSelectedSavedCardIdx(-1);
-                                                        setCardDetails({ cardNumber: '', expiryDate: '', cvv: '' });
-                                                    }}
-                                                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${!useSavedCard
-                                                        ? 'border-[#8B6914] bg-[#F5F0E6] dark:bg-gray-700 dark:border-[#D4AF37]'
-                                                        : 'border-[#D4C4A8] hover:border-[#8B6914] dark:border-gray-600 dark:hover:border-[#D4AF37]'
-                                                        }`}
-                                                >
-                                                    <div className="flex h-8 w-12 items-center justify-center rounded bg-white border border-dashed border-gray-400 text-xs font-bold text-[#555]">
-                                                        +
-                                                    </div>
-                                                    <span className="text-sm font-semibold text-[#2C2416] dark:text-[#F5F0E6]">Use a new card</span>
-                                                    {!useSavedCard && <span className="text-[#8B6914] dark:text-[#D4AF37]">✓</span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* New Card Form */}
-                                    {!useSavedCard && (
-                                        <div className="space-y-4 pt-2">
-                                            <div>
-                                                <label className="mb-1 block text-sm font-semibold text-[#6B5B4F] dark:text-gray-300">Card Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={cardDetails.cardNumber}
-                                                    onChange={e => setCardDetails({ ...cardDetails, cardNumber: e.target.value })}
-                                                    placeholder="0000 0000 0000 0000"
-                                                    className="w-full rounded-lg border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2 text-[#2C2416] outline-none focus:border-[#8B6914] dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
-                                                />
-                                            </div>
-                                            <div className="flex gap-4">
-                                                <div className="flex-1">
-                                                    <label className="mb-1 block text-sm font-semibold text-[#6B5B4F] dark:text-gray-300">Expiry</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cardDetails.expiryDate}
-                                                        onChange={e => setCardDetails({ ...cardDetails, expiryDate: e.target.value })}
-                                                        placeholder="MM/YY"
-                                                        className="w-full rounded-lg border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2 text-[#2C2416] outline-none focus:border-[#8B6914] dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <label className="mb-1 block text-sm font-semibold text-[#6B5B4F] dark:text-gray-300">CVV</label>
-                                                    <input
-                                                        type="text"
-                                                        value={cardDetails.cvv}
-                                                        onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })}
-                                                        placeholder="123"
-                                                        className="w-full rounded-lg border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2 text-[#2C2416] outline-none focus:border-[#8B6914] dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div className="flex items-start gap-3 rounded-xl border border-[#E8DCC8] bg-white p-4 text-sm text-[#6B5B4F] dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                        <span aria-hidden="true" className="text-lg">🔒</span>
+                                        <p>
+                                            You&apos;ll complete payment securely with <strong className="text-[#2C2416] dark:text-[#F5F0E6]">PayHere</strong> (Visa, Mastercard, Amex, eZ Cash, mCash, bank apps).
+                                            Card details are entered on PayHere&apos;s page and never touch our servers.
+                                        </p>
+                                    </div>
 
                                     <div className="flex gap-3 pt-4">
                                         <button
@@ -701,7 +564,7 @@ const RoomDetails: React.FC = () => {
                                             disabled={isProcessing}
                                             className="flex-1 rounded-full bg-[#8B6914] text-white text-sm font-bold uppercase hover:bg-[#705510] transition disabled:opacity-50"
                                         >
-                                            {isProcessing ? 'Processing...' : `Pay $${calculateTotal()}`}
+                                            {isProcessing ? 'Opening PayHere…' : `Pay $${calculateTotal()} with PayHere`}
                                         </button>
                                     </div>
                                 </div>

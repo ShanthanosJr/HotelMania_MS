@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
-import { toPaymentDetails } from '../../utils/payment';
+import { payForBooking, outcomeMessage } from '../../utils/payhere';
 import { motion } from 'framer-motion';
 
 const heroImage =
@@ -53,12 +53,6 @@ type Filters = {
 type BookingDates = {
     checkInDate: string;
     checkOutDate: string;
-};
-
-type CardDetails = {
-    cardNumber: string;
-    expiryDate: string;
-    cvv: string;
 };
 
 const applyFiltersAndSort = (
@@ -138,14 +132,6 @@ const Hotels: React.FC = () => {
     const [bookingDates, setBookingDates] = useState<BookingDates>({
         checkInDate: '',
         checkOutDate: '',
-    });
-    const [paymentMethod, setPaymentMethod] = useState<
-        'credit_card' | 'debit_card' | 'bank_transfer' | 'cash'
-    >('credit_card');
-    const [cardDetails, setCardDetails] = useState<CardDetails>({
-        cardNumber: '',
-        expiryDate: '',
-        cvv: '',
     });
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -297,12 +283,6 @@ const Hotels: React.FC = () => {
             return;
         }
 
-        if (paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
-            if (!cardDetails.cardNumber || !cardDetails.expiryDate || !cardDetails.cvv) {
-                alert('Please enter all card details');
-                return;
-            }
-        }
 
         setIsProcessing(true);
 
@@ -335,29 +315,9 @@ const Hotels: React.FC = () => {
             const bookingResult = await response.json();
             const bookingId: string = bookingResult.data._id;
 
-            const transactionData = {
-                booking: bookingId,
-                type: paymentMethod,
-                paymentDetails:
-                    paymentMethod === 'credit_card' || paymentMethod === 'debit_card'
-                        ? toPaymentDetails(cardDetails)
-                        : undefined,
-            };
-
-            const txnResponse = await api.post('/api/transactions', transactionData);
-
-            if (txnResponse.ok) {
-                alert(`Booking successful! Booking ID: ${bookingId}`);
-                closeModal();
-                window.location.href = '/bookings';
-            } else {
-                console.error('Transaction creation failed');
-                alert(
-                    `Booking created (ID: ${bookingId}), but transaction record failed. Please contact support.`,
-                );
-                closeModal();
-                window.location.href = '/bookings';
-            }
+            const outcome = await payForBooking(bookingId);
+            alert(outcomeMessage(outcome));
+            window.location.href = '/bookings';
         } catch (err: unknown) {
             console.error('Booking/Transaction error:', err);
             const message =
@@ -856,88 +816,9 @@ const Hotels: React.FC = () => {
                                                             </div>
                                                         </div>
 
-                                                        <div className="mt-3 flex flex-col gap-1 text-[0.85rem]">
-                                                            <label className="font-semibold dark:text-[#F5F0E6]">
-                                                                Payment Method:
-                                                            </label>
-                                                            <select
-                                                                value={paymentMethod}
-                                                                onChange={e =>
-                                                                    setPaymentMethod(
-                                                                        e.target.value as
-                                                                        | 'credit_card'
-                                                                        | 'debit_card'
-                                                                        | 'bank_transfer'
-                                                                        | 'cash',
-                                                                    )
-                                                                }
-                                                                className="w-full rounded border border-[#D4C4A8] px-2 py-1.5 text-[0.85rem] text-[#2C2416] focus:border-[#8B6914] focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] focus:dark:border-[#D4AF37]"
-                                                            >
-                                                                <option value="credit_card">Credit Card</option>
-                                                                <option value="debit_card">Debit Card</option>
-                                                                <option value="bank_transfer">Bank Transfer</option>
-                                                                <option value="cash">Cash</option>
-                                                            </select>
-                                                        </div>
-
-                                                        {(paymentMethod === 'credit_card' ||
-                                                            paymentMethod === 'debit_card') && (
-                                                                <div className="mt-3 space-y-2 rounded bg-[#F5F0E6] p-3">
-                                                                    <div>
-                                                                        <label className="mb-1 block text-[0.85rem] font-semibold dark:text-[#F5F0E6]">
-                                                                            Card Number:
-                                                                        </label>
-                                                                        <input
-                                                                            type="text"
-                                                                            placeholder="1234 5678 9012 3456"
-                                                                            value={cardDetails.cardNumber}
-                                                                            onChange={e =>
-                                                                                setCardDetails(prev => ({
-                                                                                    ...prev,
-                                                                                    cardNumber: e.target.value,
-                                                                                }))
-                                                                            }
-                                                                            className="w-full rounded border border-[#D4C4A8] px-2 py-1.5 text-[0.85rem] text-[#2C2416] focus:border-[#8B6914] focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] focus:dark:border-[#D4AF37]"
-                                                                        />
-                                                                    </div>
-                                                                    <div className="flex gap-2">
-                                                                        <div className="flex-1">
-                                                                            <label className="mb-1 block text-[0.85rem] font-semibold dark:text-[#F5F0E6]">
-                                                                                Expiry Date:
-                                                                            </label>
-                                                                            <input
-                                                                                type="text"
-                                                                                placeholder="MM/YY"
-                                                                                value={cardDetails.expiryDate}
-                                                                                onChange={e =>
-                                                                                    setCardDetails(prev => ({
-                                                                                        ...prev,
-                                                                                        expiryDate: e.target.value,
-                                                                                    }))
-                                                                                }
-                                                                                className="w-full rounded border border-[#D4C4A8] px-2 py-1.5 text-[0.85rem] text-[#2C2416] focus:border-[#8B6914] focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] focus:dark:border-[#D4AF37]"
-                                                                            />
-                                                                        </div>
-                                                                        <div className="flex-1">
-                                                                            <label className="mb-1 block text-[0.85rem] font-semibold dark:text-[#F5F0E6]">
-                                                                                CVV:
-                                                                            </label>
-                                                                            <input
-                                                                                type="text"
-                                                                                placeholder="123"
-                                                                                value={cardDetails.cvv}
-                                                                                onChange={e =>
-                                                                                    setCardDetails(prev => ({
-                                                                                        ...prev,
-                                                                                        cvv: e.target.value,
-                                                                                    }))
-                                                                                }
-                                                                                className="w-full rounded border border-[#D4C4A8] px-2 py-1.5 text-[0.85rem] text-[#2C2416] focus:border-[#8B6914] focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] focus:dark:border-[#D4AF37]"
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                                                        <p className="mt-3 flex items-center gap-2 rounded bg-[#F5F0E6] p-2 text-[0.8rem] text-[#6B5B4F] dark:bg-gray-700 dark:text-gray-300">
+                                                            <span aria-hidden="true">🔒</span> Secure payment by PayHere: Visa, Mastercard, Amex, eZ Cash, mCash &amp; more.
+                                                        </p>
                                                     </div>
 
                                                     <div className="flex items-center md:w-40">

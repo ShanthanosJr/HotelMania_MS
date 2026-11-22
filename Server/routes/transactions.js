@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, authorize } = require('../middleware/auth');
 const { pick } = require('../middleware/sanitize');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
@@ -62,9 +62,10 @@ router.get('/:id', protect, async (req, res) => {
   res.status(200).json({ success: true, data: transaction });
 });
 
-// Pay for a booking
-router.post('/', protect, async (req, res) => {
-  const staffUser = ['admin', 'receptionist'].includes(req.user.role);
+// Record a payment taken at the front desk (cash, card terminal, bank transfer).
+// Guests pay online through PayHere (/api/payments/payhere), never through this route.
+router.post('/', protect, authorize('admin', 'receptionist'), async (req, res) => {
+  const staffUser = true;
   const { booking: bookingId, type } = req.body;
 
   if (!bookingId || !TYPES.includes(type)) {

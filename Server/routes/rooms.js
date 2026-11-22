@@ -6,7 +6,7 @@ const RoomType = require('../models/RoomType');
 const Hotel = require('../models/Hotel');
 const { protect, admin, staff } = require('../middleware/auth');
 const { pick } = require('../middleware/sanitize');
-const { BLOCKING_STATUSES } = require('../utils/bookingService');
+const { BLOCKING_STATUSES, blockingFilter } = require('../utils/bookingService');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
 
@@ -43,14 +43,10 @@ router.get('/', async (req, res) => {
       // Find bookings that overlap with the requested range
       // Overlap logic: (StartA < EndB) and (EndA > StartB)
       const conflictBookings = await Booking.find({
-        status: { $in: BLOCKING_STATUSES },
-        room: { $exists: true }, // Ensure room field exists
-        $or: [
-          {
-            checkInDate: { $lt: checkOutDate },
-            checkOutDate: { $gt: checkInDate }
-          }
-        ]
+        ...blockingFilter(),
+        room: { $exists: true },
+        checkInDate: { $lt: checkOutDate },
+        checkOutDate: { $gt: checkInDate },
       }).select('room');
 
       const conflictRoomIds = conflictBookings.map(b => b.room);
