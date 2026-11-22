@@ -35,6 +35,15 @@ const hotelSchema = new mongoose.Schema({
   },
 }, {
   timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+});
+
+// Room types belonging to this hotel (resolved by RoomType.hotel)
+hotelSchema.virtual('roomTypes', {
+  ref: 'RoomType',
+  localField: '_id',
+  foreignField: 'hotel',
 });
 
 module.exports = mongoose.model('Hotel', hotelSchema);

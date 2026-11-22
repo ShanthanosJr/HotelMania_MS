@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
+import { toPaymentDetails } from '../../utils/payment';
 
 const heroImage =
     'https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -300,12 +301,10 @@ const Rooms: React.FC = () => {
 
             const transactionData = {
                 booking: bookingId,
-                amount: totalPrice,
                 type: paymentMethod,
-                transactionId: `TXN-${Date.now()}`,
                 paymentDetails:
                     paymentMethod === 'credit_card' || paymentMethod === 'debit_card'
-                        ? cardDetails
+                        ? toPaymentDetails(cardDetails)
                         : undefined,
             };
 

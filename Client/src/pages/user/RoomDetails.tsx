@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
+import { toPaymentDetails } from '../../utils/payment';
 
 type RoomType = {
     _id?: string;
@@ -227,12 +228,10 @@ const RoomDetails: React.FC = () => {
 
             const txnData = {
                 booking: bookingId,
-                amount: totalPrice,
                 type: paymentMethod,
-                transactionId: `TXN-${Date.now()}`,
                 paymentDetails:
                     (paymentMethod === 'credit_card' || paymentMethod === 'debit_card')
-                        ? cardDetails
+                        ? toPaymentDetails(cardDetails)
                         : undefined,
             };
 

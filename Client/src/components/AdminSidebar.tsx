@@ -15,6 +15,7 @@ import {
     BsMoon
 } from 'react-icons/bs';
 import { useTheme } from '../context/ThemeContext';
+import { ADMIN_ROUTE_ROLES, getStoredUser } from '../utils/auth';
 
 interface AdminSidebarProps {
     isCollapsed: boolean;
@@ -26,7 +27,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, toggleSidebar 
     const location = useLocation();
     const { theme, toggleTheme } = useTheme();
 
-    const adminModules = [
+    const role = getStoredUser()?.role;
+    const allModules = [
         { title: 'Dashboard', path: '/admin/dashboard', icon: <BsGrid size={20} /> },
         { title: 'Hotels', path: '/admin/hotels', icon: <BsBuilding size={20} /> },
         { title: 'Rooms', path: '/admin/rooms', icon: <BsDoorOpen size={20} /> },
@@ -35,6 +37,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, toggleSidebar 
         { title: 'Feedbacks', path: '/admin/feedbacks', icon: <BsChatSquareQuote size={20} /> },
         { title: 'Users', path: '/admin/users', icon: <BsPeople size={20} /> },
     ];
+    // Only show modules this role can open
+    const adminModules = allModules.filter(m => !!role && (ADMIN_ROUTE_ROLES[m.path] || []).includes(role));
 
     const isActive = (path: string) => {
         return location.pathname === path;

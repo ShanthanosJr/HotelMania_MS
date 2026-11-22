@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
+import { toPaymentDetails } from '../../utils/payment';
 import { motion } from 'framer-motion';
 
 const heroImage =
@@ -336,12 +337,10 @@ const Hotels: React.FC = () => {
 
             const transactionData = {
                 booking: bookingId,
-                amount: totalPrice,
                 type: paymentMethod,
-                transactionId: `TXN-${Date.now()}`,
                 paymentDetails:
                     paymentMethod === 'credit_card' || paymentMethod === 'debit_card'
-                        ? cardDetails
+                        ? toPaymentDetails(cardDetails)
                         : undefined,
             };
 

@@ -39,6 +39,11 @@ export const api = {
 
         try {
             const response = await fetch(url, config);
+            // Session expired or revoked: clear it so the UI stops acting logged in
+            if (response.status === 401 && token && !endpoint.startsWith('/api/auth/login')) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+            }
             return response;
         } catch (error) {
             console.error(`API Error for ${url}:`, error);

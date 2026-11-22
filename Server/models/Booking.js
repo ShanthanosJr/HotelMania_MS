@@ -11,6 +11,11 @@ const bookingSchema = new mongoose.Schema({
     ref: 'Room',
     required: [true, 'Room is required'],
   },
+  guests: {
+    type: Number,
+    min: 1,
+    default: 1,
+  },
   checkInDate: {
     type: Date,
     required: [true, 'Check-in date is required'],
@@ -43,5 +48,8 @@ const bookingSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+bookingSchema.index({ room: 1, checkInDate: 1, checkOutDate: 1 });
+bookingSchema.index({ user: 1 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

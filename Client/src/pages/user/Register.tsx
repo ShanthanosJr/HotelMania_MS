@@ -39,10 +39,16 @@ const Register: React.FC = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState<RegisterErrors>({});
     const [loading, setLoading] = useState(false);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                setErrors(prev => ({ ...prev, server: 'Profile photo must be under 5MB' }));
+                return;
+            }
+            setPhotoFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData(prev => ({ ...prev, profilePhoto: reader.result as string }));
@@ -58,19 +64,19 @@ const Register: React.FC = () => {
             case 'name':
                 if (!value.trim()) {
                     error = 'Name is required';
-                } else if (!/^[a-zA-Z\\s]+$/.test(value.trim())) {
+                } else if (!/^[a-zA-Z\s]+$/.test(value.trim())) {
                     error = 'Name can only contain letters and spaces';
                 } else if (value.trim().length < 2) {
                     error = 'Name must be at least 2 characters';
                 }
                 break;
             case 'email':
-                if (value.trim() && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/.test(value.trim())) {
+                if (value.trim() && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value.trim())) {
                     error = 'Enter a valid email address';
                 }
                 break;
             case 'phone':
-                if (value.trim() && !/^\\+94\\d{9}$|^0\\d{9}$/.test(value.trim())) {
+                if (value.trim() && !/^\+94\d{9}$|^0\d{9}$/.test(value.trim())) {
                     error = 'Phone must be in format +94xxxxxxxxx or 0xxxxxxxxx';
                 }
                 break;
@@ -116,7 +122,7 @@ const Register: React.FC = () => {
         // Name validation: only letters and spaces, at least 2 characters
         if (!formData.name.trim()) {
             newErrors.name = 'Name is required';
-        } else if (!/^[a-zA-Z\\s]+$/.test(formData.name.trim())) {
+        } else if (!/^[a-zA-Z\s]+$/.test(formData.name.trim())) {
             newErrors.name = 'Name can only contain letters and spaces';
         } else if (formData.name.trim().length < 2) {
             newErrors.name = 'Name must be at least 2 characters';
@@ -125,12 +131,12 @@ const Register: React.FC = () => {
         // Email validation: proper email format
         if (!formData.email.trim()) {
             newErrors.email = 'Email is required';
-        } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/.test(formData.email.trim())) {
+        } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email.trim())) {
             newErrors.email = 'Enter a valid email address';
         }
         
         // Phone validation: +94 or 0xx format
-        if (formData.phone.trim() && !/^\\+94\\d{9}$|^0\\d{9}$/.test(formData.phone.trim())) {
+        if (formData.phone.trim() && !/^\+94\d{9}$|^0\d{9}$/.test(formData.phone.trim())) {
             newErrors.phone = 'Phone must be in format +94xxxxxxxxx or 0xxxxxxxxx';
         }
         
@@ -160,19 +166,27 @@ const Register: React.FC = () => {
                 email: formData.email,
                 password: formData.password,
                 phone: formData.phone,
-                role: formData.role,
-                profilePhoto: formData.profilePhoto,
             });
             const data = await response.json();
 
             if (response.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                if (data.user.role === 'admin') {
-                    navigate('/admin/dashboard');
-                } else {
-                    navigate('/');
+                // Upload the photo as a file now that we're authenticated (non-blocking for sign-up)
+                if (photoFile) {
+                    const fd = new FormData();
+                    fd.append('photo', photoFile);
+                    try {
+                        const photoRes = await api.put('/api/auth/profile-photo', fd);
+                        if (photoRes.ok) {
+                            const photoData = await photoRes.json();
+                            localStorage.setItem('user', JSON.stringify(photoData.user));
+                        }
+                    } catch (photoErr) {
+                        console.error('Profile photo upload failed:', photoErr);
+                    }
                 }
+                navigate('/');
             } else {
                 setErrors({ server: data.message || 'Registration failed' });
             }
@@ -383,23 +397,6 @@ const Register: React.FC = () => {
                                         {errors.phone}
                                     </p>
                                 )}
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
-                                    Role
-                                </label>
-                                <select
-                                    name="role"
-                                    value={formData.role}
-                                    onChange={handleChange}
-                                    className="w-full rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-1.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#FDF8F3] dark:focus:border-[#D4AF37] dark:focus:bg-gray-600"
-                                >
-                                    <option value="guest">Guest</option>
-                                    {/* <option value="admin">Admin</option> 
-                                    {/* <option value="receptionist">Receptionist</option>
-                                    <option value="housekeeping">Housekeeping</option> */}
-                                </select>
                             </div>
 
                             <div className="flex items-start gap-2 text-[0.85rem] text-[#6B5B4F] dark:text-gray-300">

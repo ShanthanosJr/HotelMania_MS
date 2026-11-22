@@ -1,9 +1,16 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('./models/User');
 
 async function createAdmin() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hotelmania');
+    const { MONGO_URI, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
+    if (!MONGO_URI || !ADMIN_EMAIL || !ADMIN_PASSWORD || ADMIN_PASSWORD.length < 12) {
+      console.error('Set MONGO_URI, ADMIN_EMAIL and ADMIN_PASSWORD (12+ chars), e.g.\n  ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=... node createAdmin.js');
+      process.exitCode = 1;
+      return;
+    }
+    await mongoose.connect(MONGO_URI);
     
     const adminExists = await User.findOne({ role: 'admin' });
     if (adminExists) {
@@ -13,9 +20,8 @@ async function createAdmin() {
     
     const admin = await User.create({
       name: 'Admin User',
-      email: 'admin@hotelmania.com',
-      password: 'admin123',
-      phone: '1234567890',
+      email: ADMIN_EMAIL.toLowerCase(),
+      password: ADMIN_PASSWORD,
       role: 'admin'
     });
     

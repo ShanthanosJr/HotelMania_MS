@@ -243,6 +243,7 @@ const Profile: React.FC = () => {
             console.error('Logout error:', error);
         } finally {
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
             sessionStorage.removeItem('token');
             window.location.href = '/login';
         }
@@ -306,38 +307,28 @@ const Profile: React.FC = () => {
         }
 
         setUploadingPhoto(true);
-        const reader = new FileReader();
+        const previewUrl = URL.createObjectURL(file);
+        // Optimistic preview
+        setProfile(prev => prev ? { ...prev, profilePhoto: previewUrl } : null);
 
-        reader.onloadend = async () => {
-            const base64String = reader.result as string;
+        try {
+            const fd = new FormData();
+            fd.append('photo', file);
+            const response = await api.put('/api/auth/profile-photo', fd);
 
-            try {
-                // Optimistic update
-                setProfile(prev => prev ? { ...prev, profilePhoto: base64String } : null);
-
-                const response = await api.put('/api/auth/update-details', {
-                    profilePhoto: base64String
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to update photo');
-                }
-
-                // Refresh profile to confirm
-                fetchProfile();
-            } catch (error: unknown) {
-                console.error('Error uploading photo:', error);
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                alert(`Failed to update profile photo: ${errorMessage}`);
-                // Revert optimistic update
-                fetchProfile();
-            } finally {
-                setUploadingPhoto(false);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to update photo');
             }
-        };
-
-        reader.readAsDataURL(file);
+        } catch (error: unknown) {
+            console.error('Error uploading photo:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Failed to update profile photo: ${errorMessage}`);
+        } finally {
+            setUploadingPhoto(false);
+            URL.revokeObjectURL(previewUrl);
+            fetchProfile();
+        }
     };
 
     // --- Derived State ---

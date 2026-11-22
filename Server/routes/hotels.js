@@ -1,8 +1,14 @@
 const express = require('express');
 const Hotel = require('../models/Hotel');
+const Room = require('../models/Room');
+const RoomType = require('../models/RoomType');
 const { protect, admin } = require('../middleware/auth');
+const { pick } = require('../middleware/sanitize');
 const upload = require('../middleware/upload');
 const router = express.Router();
+router.param('id', require('../middleware/sanitize').validateId);
+
+const HOTEL_FIELDS = ['name', 'address', 'description', 'rating', 'amenities', 'contactInfo'];
 
 // @desc    Get all hotels
 // @route   GET /api/hotels
@@ -40,7 +46,7 @@ router.get('/:id', async (req, res) => {
 // @access  Private/Admin
 router.post('/', protect, admin, upload.array('photos', 5), async (req, res) => {
   try {
-    const hotelData = req.body;
+    const hotelData = pick(req.body, HOTEL_FIELDS);
 
     // Parse JSON strings back to objects/arrays if sent as form-data
     if (typeof hotelData.amenities === 'string') {
@@ -93,7 +99,7 @@ router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) =
       return res.status(404).json({ success: false, message: 'Hotel not found' });
     }
 
-    const updateData = req.body;
+    const updateData = pick(req.body, HOTEL_FIELDS);
 
     // Handle amenities
     if (typeof updateData.amenities === 'string') {
@@ -124,12 +130,6 @@ router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) =
       // However, if the user wants to DELETE photos, we need a mechanism.
       // For now, let's just append.
       updateData.photos = [...(hotel.photos || []), ...newPhotos];
-    } else {
-      // If no new files, don't overwrite photos with undefined/empty unless intended.
-      // If the client sends 'photos' field with existing urls, we use that.
-      // But with multipart/form-data, arrays of strings are tricky.
-      // Let's preserve existing photos if no new ones are uploaded, OR if 'photos' is sent in body, we use it (to handle deletions likely not supported yet but good for safety).
-      delete updateData.photos;
     }
 
     hotel = await Hotel.findByIdAndUpdate(req.params.id, updateData, {
@@ -153,11 +153,24 @@ router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) =
 // @access  Private/Admin
 router.delete('/:id', protect, admin, async (req, res) => {
   try {
-    const hotel = await Hotel.findByIdAndDelete(req.params.id);
-
+    const hotel = await Hotel.findById(req.params.id);
     if (!hotel) {
       return res.status(404).json({ success: false, message: 'Hotel not found' });
     }
+
+    // Prevent orphaned rooms / room types / bookings
+    const [rooms, roomTypes] = await Promise.all([
+      Room.countDocuments({ hotel: hotel._id }),
+      RoomType.countDocuments({ hotel: hotel._id }),
+    ]);
+    if (rooms || roomTypes) {
+      return res.status(400).json({
+        success: false,
+        message: `This hotel still has ${rooms} room(s) and ${roomTypes} room type(s). Remove them first.`,
+      });
+    }
+
+    await hotel.deleteOne();
 
     res.status(200).json({ success: true, message: 'Hotel deleted' });
   } catch (error) {

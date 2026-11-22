@@ -38,7 +38,7 @@ const isAuthenticated = () => {
   return token !== null && token !== undefined && token !== '';
 };
 
-type Role = 'admin' | 'manager' | 'guest' | string;
+type Role = 'admin' | 'receptionist' | 'housekeeping' | 'guest' | string;
 
 interface User {
   _id: string;
@@ -90,7 +90,7 @@ const ManageUsers: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] =
-    useState<'all' | 'admin' | 'manager' | 'guest'>('all');
+    useState<'all' | 'admin' | 'receptionist' | 'housekeeping' | 'guest'>('all');
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
@@ -573,7 +573,8 @@ const ManageUsers: React.FC = () => {
           >
             <option value="all">All Roles</option>
             <option value="admin">Admins</option>
-            <option value="manager">Managers</option>
+            <option value="receptionist">Receptionists</option>
+            <option value="housekeeping">Housekeeping</option>
             <option value="guest">Guests</option>
           </select>
         </div>
@@ -1087,8 +1088,8 @@ const ManageUsers: React.FC = () => {
                   <label className="block text-xs font-bold text-[#5D4037] uppercase tracking-wider mb-2">
                     Access Role <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-3 gap-4">
-                    {['guest', 'manager', 'admin'].map((role) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {['guest', 'receptionist', 'housekeeping', 'admin'].map((role) => (
                       <label key={role} className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all ${userForm.role === role ? 'border-[#8D6E63] bg-[#FDFBF7]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
                         <input
                           type="radio"
