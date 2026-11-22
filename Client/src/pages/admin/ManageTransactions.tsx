@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../../utils/api';
+import { toError } from '../../utils/errors';
 import AdminLayout from '../../components/AdminLayout';
 import {
   BsArrowLeft,
@@ -32,6 +33,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import { toast, confirmDialog } from '../../components/ui';
 
 type TransactionType = 'credit_card' | 'debit_card' | 'cash' | 'bank_transfer' | string;
 type TransactionStatus = 'success' | 'failed' | 'pending';
@@ -120,7 +122,8 @@ const ManageTransactions: React.FC = () => {
       if (data.success && Array.isArray(data.data)) {
         setTransactions(data.data);
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Failed to fetch transactions: ${err.message}`);
       }
@@ -185,7 +188,7 @@ const ManageTransactions: React.FC = () => {
     setTransactionForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     try {
       let response;
@@ -201,7 +204,7 @@ const ManageTransactions: React.FC = () => {
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           setError('Authentication failed. Please log in as an admin user.');
-          alert('Authentication failed. Please log in as an admin user.');
+          toast.error('Authentication failed. Please log in as an admin user.');
           return;
         }
         const errorData = await response.json();
@@ -214,21 +217,20 @@ const ManageTransactions: React.FC = () => {
           setTransactions(prev =>
             prev.map(t => (t._id === editingId ? result.data : t)),
           );
-          alert('Transaction updated successfully!');
+          toast.success('Transaction updated successfully!');
         } else {
           setTransactions(prev => [...prev, result.data]);
-          alert('Transaction created successfully!');
+          toast.success('Transaction created successfully!');
         }
         setEditingId(null);
         resetForm();
         setShowModal(false);
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Operation failed: ${err.message}`);
-        alert(
-          `Operation failed: ${err.message || 'Please check console for details.'}`,
-        );
+        toast.error(`Operation failed: ${err.message || 'Please check console for details.'}`);
       }
       console.error(err);
     }
@@ -250,18 +252,18 @@ const ManageTransactions: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (
-      !window.confirm(
-        'Are you sure you want to delete this transaction? This action cannot be undone.',
-      )
-    )
-      return;
+    if (!(await confirmDialog({
+      title: 'Delete this transaction?',
+      message: 'The payment record will be removed. This cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    }))) return;
     try {
       const response = await api.delete(`/api/transactions/${id}`);
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           setError('Authentication failed. Please log in as an admin user.');
-          alert('Authentication failed. Please log in as an admin user.');
+          toast.error('Authentication failed. Please log in as an admin user.');
           return;
         }
         const errorData = await response.json();
@@ -270,14 +272,13 @@ const ManageTransactions: React.FC = () => {
       const result = await response.json();
       if (result.success) {
         setTransactions(prev => prev.filter(t => t._id !== id));
-        alert('Transaction deleted successfully!');
+        toast.success('Transaction deleted successfully!');
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = toError(caught);
       if (!String(err.message).includes('Authentication failed')) {
         setError(`Failed to delete transaction: ${err.message}`);
-        alert(
-          `Failed to delete transaction: ${err.message || 'Please check console for details.'}`,
-        );
+        toast.error(`Failed to delete transaction: ${err.message || 'Please check console for details.'}`);
       }
       console.error(err);
     }
@@ -404,7 +405,7 @@ const ManageTransactions: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9F7F2] flex items-center justify-center text-[#5D4037] font-serif text-xl">
+      <div className="min-h-screen bg-linen flex items-center justify-center text-umber font-serif text-xl">
         Loading transactions...
       </div>
     );
@@ -413,19 +414,19 @@ const ManageTransactions: React.FC = () => {
   return (
     <AdminLayout>
       {/* HERO HEADER */}
-      <div className="relative bg-gradient-to-r from-[#4E342E] to-[#8D6E63] text-[#F9F7F2] px-8 py-10 shadow-lg mb-8 overflow-hidden">
+      <div className="relative bg-gradient-to-r from-[#4E342E] to-clay text-linen px-8 py-10 shadow-lg mb-8 overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-inner">
-                <BsWallet2 className="text-3xl text-[#E6E2D3]" />
+                <BsWallet2 className="text-3xl text-stone" />
               </div>
               <h1 className="text-4xl font-serif font-bold tracking-tight">
                 Transactions
               </h1>
             </div>
-            <p className="text-[#E6E2D3] text-lg font-light max-w-xl">
+            <p className="text-stone text-lg font-light max-w-xl">
               Monitor payment activity, reconcile revenue, and keep your Hotelmania ledger in sync.
             </p>
           </div>
@@ -444,7 +445,7 @@ const ManageTransactions: React.FC = () => {
                 resetForm();
                 setShowModal(true);
               }}
-              className="flex items-center gap-2 px-6 py-3 bg-[#E6E2D3] text-[#5D4037] hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1 cursor-pointer"
+              className="flex items-center gap-2 px-6 py-3 bg-stone text-umber hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1 cursor-pointer"
             >
               <BsPlusCircle /> Add Transaction
             </button>
@@ -468,21 +469,21 @@ const ManageTransactions: React.FC = () => {
 
         {/* KPI CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
-            <div className="p-4 rounded-full bg-[#FDFBF7] text-[#8D6E63]">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
+            <div className="p-4 rounded-full bg-pearl text-clay">
               <BsCreditCard size={24} />
             </div>
             <div>
               <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
                 Total Volume
               </p>
-              <h3 className="text-2xl font-serif font-bold text-[#5D4037]">
+              <h3 className="text-2xl font-serif font-bold text-umber">
                 ${metrics.totalVolume.toFixed(2)}
               </h3>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
             <div className="p-4 rounded-full bg-green-50 text-green-600">
               <BsCheckCircle size={24} />
             </div>
@@ -490,13 +491,13 @@ const ManageTransactions: React.FC = () => {
               <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
                 Successful
               </p>
-              <h3 className="text-2xl font-serif font-bold text-[#5D4037]">
+              <h3 className="text-2xl font-serif font-bold text-umber">
                 {metrics.successCount}
               </h3>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
             <div className="p-4 rounded-full bg-red-50 text-red-600">
               <BsExclamationTriangle size={24} />
             </div>
@@ -504,13 +505,13 @@ const ManageTransactions: React.FC = () => {
               <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
                 Failed
               </p>
-              <h3 className="text-2xl font-serif font-bold text-[#5D4037]">
+              <h3 className="text-2xl font-serif font-bold text-umber">
                 {metrics.failedCount}
               </h3>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
             <div className="p-4 rounded-full bg-amber-50 text-amber-600">
               <BsClockHistory size={24} />
             </div>
@@ -518,7 +519,7 @@ const ManageTransactions: React.FC = () => {
               <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
                 Pending
               </p>
-              <h3 className="text-2xl font-serif font-bold text-[#5D4037]">
+              <h3 className="text-2xl font-serif font-bold text-umber">
                 {metrics.pendingCount}
               </h3>
             </div>
@@ -526,14 +527,14 @@ const ManageTransactions: React.FC = () => {
         </div>
 
         {/* TOOLBAR */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex bg-[#F9F7F2] p-1 rounded-xl">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex bg-linen p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${viewMode === 'grid'
-                ? 'bg-[#5D4037] text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-[#5D4037]'
+                ? 'bg-umber text-white shadow-md'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-umber'
                 }`}
             >
               <BsGrid /> Cards
@@ -542,8 +543,8 @@ const ManageTransactions: React.FC = () => {
               type="button"
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${viewMode === 'table'
-                ? 'bg-[#5D4037] text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-[#5D4037]'
+                ? 'bg-umber text-white shadow-md'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-umber'
                 }`}
             >
               <BsList /> Table
@@ -552,11 +553,11 @@ const ManageTransactions: React.FC = () => {
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
             <div className="relative group w-full md:w-72">
-              <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#8D6E63] transition-colors" />
+              <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-clay transition-colors" />
               <input
                 type="text"
                 placeholder="Search by room, guest or ID..."
-                className="pl-10 pr-4 py-2.5 w-full bg-[#F9F7F2] border border-[#E6E2D3] rounded-xl focus:ring-2 focus:ring-[#8D6E63] focus:outline-none transition-all"
+                className="pl-10 pr-4 py-2.5 w-full bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none transition-all"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -564,7 +565,7 @@ const ManageTransactions: React.FC = () => {
             <button
               type="button"
               onClick={resetFilters}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#5D4037] border border-[#E6E2D3] rounded-full hover:bg-[#F9F7F2] cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-umber border border-stone rounded-full hover:bg-linen cursor-pointer"
             >
               <BsFilter /> Reset Filters
             </button>
@@ -572,9 +573,9 @@ const ManageTransactions: React.FC = () => {
         </div>
 
         {/* FILTER STRIP */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-8 flex flex-wrap gap-4 items-center">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-wrap gap-4 items-center">
           <select
-            className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+            className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
             value={typeFilter}
             onChange={e =>
               setTypeFilter(e.target.value as 'all' | TransactionType)
@@ -587,7 +588,7 @@ const ManageTransactions: React.FC = () => {
           </select>
 
           <select
-            className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+            className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
             value={statusFilter}
             onChange={e =>
               setStatusFilter(e.target.value as 'all' | TransactionStatus)
@@ -603,7 +604,7 @@ const ManageTransactions: React.FC = () => {
             <span>From</span>
             <input
               type="date"
-              className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm focus:ring-2 focus:ring-[#8D6E63] outline-none"
+              className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm focus:ring-2 focus:ring-clay outline-none"
               value={dateRange.from}
               onChange={e =>
                 setDateRange(prev => ({ ...prev, from: e.target.value }))
@@ -612,7 +613,7 @@ const ManageTransactions: React.FC = () => {
             <span>To</span>
             <input
               type="date"
-              className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm focus:ring-2 focus:ring-[#8D6E63] outline-none"
+              className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm focus:ring-2 focus:ring-clay outline-none"
               value={dateRange.to}
               onChange={e =>
                 setDateRange(prev => ({ ...prev, to: e.target.value }))
@@ -623,8 +624,8 @@ const ManageTransactions: React.FC = () => {
 
         {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-            <h3 className="text-lg font-serif font-bold text-[#5D4037] mb-4 flex items-center gap-2">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+            <h3 className="text-lg font-serif font-bold text-umber mb-4 flex items-center gap-2">
               Payment Methods
             </h3>
             <div className="h-64">
@@ -650,7 +651,7 @@ const ManageTransactions: React.FC = () => {
                       borderRadius: '12px',
                       border: 'none',
                     }}
-                    formatter={(value: any) => [`$${value}`, 'Volume']}
+                    formatter={(value: unknown) => [`$${value}`, 'Volume']}
                   />
                   <Legend />
                 </PieChart>
@@ -658,8 +659,8 @@ const ManageTransactions: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-            <h3 className="text-lg font-serif font-bold text-[#5D4037] mb-4 flex items-center gap-2">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+            <h3 className="text-lg font-serif font-bold text-umber mb-4 flex items-center gap-2">
               Status Breakdown
             </h3>
             <div className="h-64">
@@ -707,8 +708,8 @@ const ManageTransactions: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-            <h3 className="text-lg font-serif font-bold text-[#5D4037] mb-4 flex items-center gap-2">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+            <h3 className="text-lg font-serif font-bold text-umber mb-4 flex items-center gap-2">
               Volume by Day
             </h3>
             <div className="h-64">
@@ -738,7 +739,7 @@ const ManageTransactions: React.FC = () => {
                       borderRadius: '12px',
                       border: 'none',
                     }}
-                    formatter={(value: any) => [`$${value}`, 'Volume']}
+                    formatter={(value: unknown) => [`$${value}`, 'Volume']}
                   />
                   <Bar
                     dataKey="value"
@@ -753,7 +754,7 @@ const ManageTransactions: React.FC = () => {
 
         {/* MAIN VIEW: CARDS OR TABLE */}
         {filteredTransactions.length === 0 ? (
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-[#E6E2D3] text-center text-sm text-gray-500">
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone text-center text-sm text-gray-500">
             No transactions found.
           </div>
         ) : viewMode === 'grid' ? (
@@ -768,7 +769,7 @@ const ManageTransactions: React.FC = () => {
               return (
                 <div
                   key={t._id}
-                  className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] p-5 flex flex-col gap-3"
+                  className="bg-white rounded-2xl shadow-sm border border-stone p-5 flex flex-col gap-3"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -778,7 +779,7 @@ const ManageTransactions: React.FC = () => {
                           ? String(bookingObj.room.roomNumber)
                           : 'N/A'}
                       </p>
-                      <h4 className="text-lg font-serif font-bold text-[#5D4037]">
+                      <h4 className="text-lg font-serif font-bold text-umber">
                         {bookingObj?.user?.name || 'N/A'}
                       </h4>
                     </div>
@@ -796,14 +797,14 @@ const ManageTransactions: React.FC = () => {
 
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm text-gray-500">Amount</span>
-                    <span className="text-xl font-bold text-[#5D4037]">
+                    <span className="text-xl font-bold text-umber">
                       ${t.amount.toFixed(2)}
                     </span>
                   </div>
 
                   <p className="text-xs text-gray-500">
                     Method:{' '}
-                    <span className="font-semibold text-[#5D4037]">
+                    <span className="font-semibold text-umber">
                       {t.type.replace('_', ' ')}
                     </span>
                   </p>
@@ -819,7 +820,7 @@ const ManageTransactions: React.FC = () => {
                     {new Date(t.createdAt).toLocaleString()}
                   </p>
 
-                  <div className="flex justify-end gap-2 pt-2 border-t border-dashed border-[#E6E2D3] mt-2">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-dashed border-stone mt-2">
                     <button
                       type="button"
                       onClick={() => handleEdit(t)}
@@ -840,38 +841,38 @@ const ManageTransactions: React.FC = () => {
             })}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
-                <thead className="bg-[#F9F7F2] text-[#5D4037] font-serif">
+                <thead className="bg-linen text-umber font-serif">
                   <tr>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                    <th className="p-4 font-bold border-b border-stone">
                       Booking
                     </th>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                    <th className="p-4 font-bold border-b border-stone">
                       User
                     </th>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                    <th className="p-4 font-bold border-b border-stone">
                       Amount
                     </th>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                    <th className="p-4 font-bold border-b border-stone">
                       Type
                     </th>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                    <th className="p-4 font-bold border-b border-stone">
                       Status
                     </th>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                    <th className="p-4 font-bold border-b border-stone">
                       Transaction ID
                     </th>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3]">
+                    <th className="p-4 font-bold border-b border-stone">
                       Date
                     </th>
-                    <th className="p-4 font-bold border-b border-[#E6E2D3] text-center">
+                    <th className="p-4 font-bold border-b border-stone text-center">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E6E2D3]">
+                <tbody className="divide-y divide-stone">
                   {paginatedTransactions.map(t => {
                     const bookingObj =
                       typeof t.booking === 'string'
@@ -882,7 +883,7 @@ const ManageTransactions: React.FC = () => {
                     return (
                       <tr
                         key={t._id}
-                        className="hover:bg-[#FDFBF7] transition-colors"
+                        className="hover:bg-pearl transition-colors"
                       >
                         <td className="p-4">
                           Room{' '}
@@ -946,15 +947,15 @@ const ManageTransactions: React.FC = () => {
 
         {/* PAGINATION */}
         {filteredTransactions.length > 0 && (
-          <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-white border border-[#E6E2D3] rounded-2xl shadow-sm mt-8">
-            <div className="text-sm text-[#5D4037] mb-4 md:mb-0">
+          <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-white border border-stone rounded-2xl shadow-sm mt-8">
+            <div className="text-sm text-umber mb-4 md:mb-0">
               Showing <span className="font-bold">{filteredTransactions.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-bold">{Math.min(currentPage * itemsPerPage, filteredTransactions.length)}</span> of <span className="font-bold">{filteredTransactions.length}</span> entries
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 transition-colors cursor-pointer"
+                className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 transition-colors cursor-pointer"
               >
                 <BsChevronLeft />
               </button>
@@ -963,7 +964,7 @@ const ManageTransactions: React.FC = () => {
                   <button
                     key={num}
                     onClick={() => setCurrentPage(num)}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === num ? 'bg-[#5D4037] text-white shadow-md' : 'bg-white border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2]'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === num ? 'bg-umber text-white shadow-md' : 'bg-white border border-stone text-umber hover:bg-linen'}`}
                   >
                     {num}
                   </button>
@@ -972,7 +973,7 @@ const ManageTransactions: React.FC = () => {
               <button
                 onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 transition-colors cursor-pointer"
+                className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 transition-colors cursor-pointer"
               >
                 <BsChevronRight />
               </button>
@@ -983,11 +984,11 @@ const ManageTransactions: React.FC = () => {
 
       {/* MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[#2C2416]/70 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-[#E6E2D3] dark:border-gray-700 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-charcoal w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-stone dark:border-gray-700 flex flex-col max-h-[90vh]">
 
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-[#5D4037] to-[#8D6E63] p-6 text-white flex justify-between items-center shrink-0">
+            <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                   <BsCreditCard size={24} />
@@ -1013,15 +1014,15 @@ const ManageTransactions: React.FC = () => {
             {/* Modal Body */}
             <form
               onSubmit={handleSubmit}
-              className="flex-1 overflow-y-auto p-8 bg-white dark:bg-[#1E1E1E] space-y-8"
+              className="flex-1 overflow-y-auto p-8 bg-white dark:bg-charcoal space-y-8"
             >
               {/* Section 1: Link Booking */}
               <div className="space-y-4">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                  <BsCheckCircle className="text-[#8D6E63]" /> Booking Reference
+                <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                  <BsCheckCircle className="text-clay" /> Booking Reference
                 </h3>
                 <div>
-                  <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">
                     Select Booking
                   </label>
                   <div className="relative">
@@ -1029,7 +1030,7 @@ const ManageTransactions: React.FC = () => {
                       name="booking"
                       value={transactionForm.booking}
                       onChange={handleInputChange}
-                      className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none"
+                      className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none"
                       required
                     >
                       <option value="">Select a booking...</option>
@@ -1048,13 +1049,13 @@ const ManageTransactions: React.FC = () => {
 
               {/* Section 2: Payment Details */}
               <div className="space-y-4">
-                <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                  <BsWallet2 className="text-[#8D6E63]" /> Payment Details
+                <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                  <BsWallet2 className="text-clay" /> Payment Details
                 </h3>
 
                 {/* Payment Method - Visual Selection */}
                 <div>
-                  <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-3">
                     Payment Method
                   </label>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1069,8 +1070,8 @@ const ManageTransactions: React.FC = () => {
                         type="button"
                         onClick={() => setTransactionForm(prev => ({ ...prev, type: method.id }))}
                         className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${transactionForm.type === method.id
-                          ? 'bg-[#5D4037] text-white border-[#5D4037] shadow-lg scale-105 cursor-pointer'
-                          : 'bg-[#F9F7F2] text-[#6B5B4F] border-[#E6E2D3] hover:bg-white hover:border-[#8D6E63]'
+                          ? 'bg-umber text-white border-umber shadow-lg scale-105 cursor-pointer'
+                          : 'bg-linen text-taupe border-stone hover:bg-white hover:border-clay'
                           }`}
                       >
                         <method.icon size={20} />
@@ -1082,24 +1083,24 @@ const ManageTransactions: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                   <div>
-                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">
                       Amount ($)
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8D6E63] font-bold">$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-clay font-bold">$</span>
                       <input
                         type="number"
                         name="amount"
                         value={transactionForm.amount}
                         onChange={handleInputChange}
                         placeholder="0.00"
-                        className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-bold text-lg"
+                        className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-bold text-lg"
                         required
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">
                       Transaction ID
                     </label>
                     <input
@@ -1108,7 +1109,7 @@ const ManageTransactions: React.FC = () => {
                       value={transactionForm.transactionId}
                       onChange={handleInputChange}
                       placeholder="e.g. TXN-12345"
-                      className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium font-mono"
+                      className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium font-mono"
                       required
                     />
                   </div>
@@ -1117,18 +1118,18 @@ const ManageTransactions: React.FC = () => {
             </form>
 
             {/* Modal Footer */}
-            <div className="p-6 bg-gray-50 dark:bg-[#121212] border-t border-[#E6E2D3] dark:border-gray-800 flex justify-end gap-3 shrink-0">
+            <div className="p-6 bg-gray-50 dark:bg-night border-t border-stone dark:border-gray-800 flex justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="px-6 py-2.5 rounded-xl text-[#5D4037] font-bold hover:bg-[#E6E2D3] transition-colors cursor-pointer"
+                className="px-6 py-2.5 rounded-xl text-umber font-bold hover:bg-stone transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
-                onClick={(e) => handleSubmit(e as any)}
+                onClick={(e) => handleSubmit(e)}
                 type="button"
-                className="px-8 py-2.5 bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-white font-bold rounded-xl shadow-lg shadow-[#5D4037]/20 hover:shadow-xl hover:shadow-[#5D4037]/30 transform hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="px-8 py-2.5 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-xl shadow-lg shadow-umber/20 hover:shadow-xl hover:shadow-umber/30 transform hover:-translate-y-0.5 transition-all cursor-pointer"
               >
                 {editingId ? 'Update Transaction' : 'Record Payment'}
               </button>

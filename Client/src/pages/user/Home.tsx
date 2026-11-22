@@ -28,7 +28,7 @@ const StarRating: React.FC<RatingProps> = ({ value }) => (
     {Array.from({ length: 5 }).map((_, i) => (
       <svg
         key={i}
-        className={`w-5 h-5 ${i < value ? 'text-[#E8DCC8]' : 'text-[#D4C4A8]'
+        className={`w-5 h-5 ${i < value ? 'text-sand' : 'text-wheat'
           }`}
         viewBox="0 0 24 24"
         fill="currentColor"
@@ -166,7 +166,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDF8F3] dark:bg-[#121212] text-[#2C2416] dark:text-[#F5F0E6] font-[Lato,sans-serif] transition-colors duration-300">
+    <div className="min-h-screen bg-ivory dark:bg-night text-ink dark:text-cream font-body transition-colors duration-300">
       {/* HEADER */}
       <Navbar />
 
@@ -193,7 +193,7 @@ const Home: React.FC = () => {
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           <motion.p
-            className="text-subtitle !text-[#E8DCC8] dark:text-[#A8A29E] mb-5"
+            className="text-subtitle !text-sand dark:text-[#A8A29E] mb-5"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.4 }}
@@ -201,7 +201,7 @@ const Home: React.FC = () => {
             Welcome to Luxury
           </motion.p>
           <motion.h1
-            className="text-display text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight drop-shadow-xl text-white dark:text-[#F5F0E6]"
+            className="text-display text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight drop-shadow-xl text-white dark:text-cream"
             style={{ fontFamily: 'Playfair Display, serif' }}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -210,7 +210,7 @@ const Home: React.FC = () => {
             Experience Timeless Elegance &amp; Comfort
           </motion.h1>
           <motion.p
-            className="text-sm md:text-base text-[#F5F0E6] dark:text-gray-300 max-w-xl mx-auto mb-8"
+            className="text-sm md:text-base text-cream dark:text-gray-300 max-w-xl mx-auto mb-8"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.6 }}
@@ -224,10 +224,10 @@ const Home: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.7 }}
           >
-            <button onClick={() => navigate('/rooms')} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-[#8B6914] dark:bg-[#D4AF37] border-2 border-[#8B6914] dark:border-[#D4AF37] rounded text-white hover:bg-white hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+            <button onClick={() => navigate('/rooms')} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-bronze dark:bg-gold border-2 border-bronze dark:border-gold rounded text-white hover:bg-white hover:text-bronze dark:hover:bg-gold dark:hover:text-black transition">
               Explore Rooms
             </button>
-            <button onClick={() => document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' })} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-transparent dark:bg-transparent border-2 border-white dark:border-[#D4AF37] rounded text-white dark:text-[#D4AF37] hover:bg-white hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+            <button onClick={() => document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' })} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-transparent dark:bg-transparent border-2 border-white dark:border-gold rounded text-white dark:text-gold hover:bg-white hover:text-bronze dark:hover:bg-gold dark:hover:text-black transition">
               View Gallery
             </button>
           </motion.div>
@@ -265,11 +265,11 @@ const Home: React.FC = () => {
           variants={fadeInUp}
         >
           <motion.div
-            className="bg-white dark:bg-[#1E1E1E] rounded-xl shadow-2xl px-6 py-6 md:px-8 md:py-7 flex flex-wrap gap-4 items-end justify-between"
+            className="bg-white dark:bg-charcoal rounded-xl shadow-2xl px-6 py-6 md:px-8 md:py-7 flex flex-wrap gap-4 items-end justify-between"
             variants={stagger}
           >
             <motion.div className="flex-1 min-w-[150px] md:max-w-[230px]" variants={fadeInUp}>
-              <label htmlFor="home-checkin" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
+              <label htmlFor="home-checkin" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
                 Check In
               </label>
               <input
@@ -278,11 +278,11 @@ const Home: React.FC = () => {
                 min={todayIso()}
                 value={search.checkIn}
                 onChange={e => setSearch(prev => ({ ...prev, checkIn: e.target.value, checkOut: prev.checkOut && prev.checkOut <= e.target.value ? '' : prev.checkOut }))}
-                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
               />
             </motion.div>
             <motion.div className="flex-1 min-w-[150px] md:max-w-[230px]" variants={fadeInUp}>
-              <label htmlFor="home-checkout" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
+              <label htmlFor="home-checkout" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
                 Check Out
               </label>
               <input
@@ -291,21 +291,21 @@ const Home: React.FC = () => {
                 min={search.checkIn || todayIso()}
                 value={search.checkOut}
                 onChange={e => setSearch(prev => ({ ...prev, checkOut: e.target.value }))}
-                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
               />
             </motion.div>
             <motion.div
               className="flex-1 min-w-[150px] md:max-w-[230px]"
               variants={fadeInUp}
             >
-              <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
+              <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
                 Guests
               </label>
               <select
                 aria-label="Guests"
                 value={search.guests}
                 onChange={e => setSearch(prev => ({ ...prev, guests: e.target.value }))}
-                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
               >
                 {[1, 2, 3, 4, 5].map(n => (
                   <option key={n} value={String(n)}>{n} Guest{n > 1 && 's'}</option>
@@ -316,14 +316,14 @@ const Home: React.FC = () => {
               className="flex-1 min-w-[150px] md:max-w-[230px]"
               variants={fadeInUp}
             >
-              <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
+              <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
                 Room Type
               </label>
               <select
                 aria-label="Room type"
                 value={search.roomType}
                 onChange={e => setSearch(prev => ({ ...prev, roomType: e.target.value }))}
-                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
               >
                 <option value="">All Rooms</option>
                 {roomCards.map(r => (
@@ -334,7 +334,7 @@ const Home: React.FC = () => {
             <motion.button
               type="button"
               onClick={handleSearch}
-              className="w-full md:w-auto px-6 py-3 bg-[#8B6914] dark:bg-[#D4AF37] text-white dark:text-black text-[0.75rem] font-semibold tracking-[0.18em] uppercase rounded border-none shadow-md hover:bg-[#5C4033] dark:hover:bg-[#A67C52] transition"
+              className="w-full md:w-auto px-6 py-3 bg-bronze dark:bg-gold text-white dark:text-black text-[0.75rem] font-semibold tracking-[0.18em] uppercase rounded border-none shadow-md hover:bg-cocoa dark:hover:bg-[#A67C52] transition"
               variants={fadeInUp}
             >
               Check Availability
@@ -349,7 +349,7 @@ const Home: React.FC = () => {
       {/* ABOUT */}
       <motion.section
         id="about"
-        className="py-24 bg-[#FDF8F3] dark:bg-[#121212]"
+        className="py-24 bg-ivory dark:bg-night"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
@@ -399,26 +399,26 @@ const Home: React.FC = () => {
             variants={stagger}
           >
             <motion.p
-              className="text-subtitle text-[#2C2416] dark:text-[#F5F0E6]"
+              className="text-subtitle text-ink dark:text-cream"
               variants={fadeInUp}
             >
               About Our Hotel
             </motion.p>
             <motion.h2
-              className="text-section-title text-[#2C2416] dark:text-[#F5F0E6]"
+              className="text-section-title text-ink dark:text-cream"
               variants={fadeInUp}
             >
               Sri Lankan Hospitality, Refined
             </motion.h2>
             <motion.p
-              className="text-body mb-4 text-[#6B5B4F] dark:text-gray-300"
+              className="text-body mb-4 text-taupe dark:text-gray-300"
               variants={fadeInUp}
             >
               From the Colombo coastline to the hills of Kandy, {SITE.name} hotels pair warm
               Sri Lankan hospitality with thoughtfully designed rooms and attentive service.
             </motion.p>
             <motion.p
-              className="text-body mb-6 text-[#6B5B4F] dark:text-gray-300"
+              className="text-body mb-6 text-taupe dark:text-gray-300"
               variants={fadeInUp}
             >
               Every corner of our establishment tells a story of timeless beauty, where
@@ -435,17 +435,17 @@ const Home: React.FC = () => {
                     className="flex items-center gap-3"
                     variants={fadeInUp}
                   >
-                    <div className="w-11 h-11 rounded-full bg-[#E8DCC8] flex items-center justify-center">
-                      <span className="w-2 h-2 rounded-full bg-[#8B6914]" />
+                    <div className="w-11 h-11 rounded-full bg-sand flex items-center justify-center">
+                      <span className="w-2 h-2 rounded-full bg-bronze" />
                     </div>
-                    <span className="text-sm font-medium text-[#2C2416] dark:text-gray-300">{feature}</span>
+                    <span className="text-sm font-medium text-ink dark:text-gray-300">{feature}</span>
                   </motion.div>
                 )
               )}
             </motion.div>
             <motion.button
               onClick={() => navigate('/about')}
-              className="inline-flex items-center gap-2 px-6 py-3 border-2 border-[#8B6914] dark:border-[#D4AF37] text-[#8B6914] dark:text-[#D4AF37] text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-[#8B6914] hover:text-white dark:hover:bg-[#D4AF37] dark:hover:text-black transition"
+              className="inline-flex items-center gap-2 px-6 py-3 border-2 border-bronze dark:border-gold text-bronze dark:text-gold text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-bronze hover:text-white dark:hover:bg-gold dark:hover:text-black transition"
               variants={fadeInUp}
             >
               Learn More
@@ -470,7 +470,7 @@ const Home: React.FC = () => {
       {/* ROOMS */}
       <motion.section
         id="rooms"
-        className="py-24 bg-[#F5F0E6] dark:bg-[#1E1E1E]"
+        className="py-24 bg-cream dark:bg-charcoal"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
@@ -498,7 +498,7 @@ const Home: React.FC = () => {
             </motion.h2>
           </motion.div>
           {roomsLoaded && roomCards.length === 0 && (
-            <p className="text-center text-sm text-[#6B5B4F] dark:text-gray-300">Rooms will appear here once they are added.</p>
+            <p className="text-center text-sm text-taupe dark:text-gray-300">Rooms will appear here once they are added.</p>
           )}
           <motion.div
             className="grid md:grid-cols-3 gap-6"
@@ -523,30 +523,30 @@ const Home: React.FC = () => {
                   >
                     {room.title}
                   </h3>
-                  <p className="text-sm text-[#6B5B4F] dark:text-gray-300 mb-4 leading-6">
+                  <p className="text-sm text-taupe dark:text-gray-300 mb-4 leading-6">
                     {room.description}
                   </p>
-                  <div className="flex flex-wrap gap-3 mb-4 text-[0.78rem] text-[#6B5B4F]">
+                  <div className="flex flex-wrap gap-3 mb-4 text-[0.78rem] text-taupe">
                     {room.amenities.map(label => (
                       <span
                         key={label}
                         className="inline-flex items-center gap-1"
                       >
-                        <span className="w-3 h-3 rounded-full bg-[#8B6914]" />
+                        <span className="w-3 h-3 rounded-full bg-bronze" />
                         {label}
                       </span>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-[#E8DCC8]">
+                  <div className="flex items-center justify-between pt-3 border-t border-sand">
                     <div>
-                      <span className="text-xl font-semibold text-[#8B6914]">
+                      <span className="text-xl font-semibold text-bronze">
                         ${room.price}
                       </span>
-                      <span className="text-xs text-[#6B5B4F] ml-1">/ night</span>
+                      <span className="text-xs text-taupe ml-1">/ night</span>
                     </div>
                     <button
                       onClick={() => navigate(`/room/${room.id}`)}
-                      className="px-4 py-2 bg-[#E8DCC8] text-[#8B6914] text-[0.75rem] font-semibold uppercase tracking-[0.14em] rounded hover:bg-[#8B6914] hover:text-white transition"
+                      className="px-4 py-2 bg-sand text-bronze text-[0.75rem] font-semibold uppercase tracking-[0.14em] rounded hover:bg-bronze hover:text-white transition"
                     >
                       View &amp; Book
                     </button>
@@ -561,7 +561,7 @@ const Home: React.FC = () => {
       {/* AMENITIES SECTION */}
       <motion.section
         id="amenities"
-        className="py-24 bg-[#FDF8F3] dark:bg-[#121212]"
+        className="py-24 bg-ivory dark:bg-night"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
@@ -698,8 +698,8 @@ const Home: React.FC = () => {
                 <div className="relative mx-auto mb-5 flex items-center justify-center">
                   <div className="relative">
                     {/* outer ring that glows */}
-                    <div className="h-16 w-16 rounded-full bg-[#B8D4E3] flex items-center justify-center transition-all duration-300 group-hover:bg-[#8B6914] group-hover:shadow-[0_0_30px_rgba(139,105,20,0.75)]">
-                      <span className="text-[#5C4033] group-hover:text-white transition-colors">
+                    <div className="h-16 w-16 rounded-full bg-[#B8D4E3] flex items-center justify-center transition-all duration-300 group-hover:bg-bronze group-hover:shadow-[0_0_30px_rgba(139,105,20,0.75)]">
+                      <span className="text-cocoa group-hover:text-white transition-colors">
                         {amenity.icon}
                       </span>
                     </div>
@@ -713,7 +713,7 @@ const Home: React.FC = () => {
                 >
                   {amenity.title}
                 </h3>
-                <p className="text-sm text-[#6B5B4F] leading-6">
+                <p className="text-sm text-taupe leading-6">
                   {amenity.desc}
                 </p>
               </motion.div>
@@ -725,7 +725,7 @@ const Home: React.FC = () => {
       {/* GALLERY */}
       <motion.section
         id="gallery"
-        className="py-24 bg-[#F5F0E6] dark:bg-[#1E1E1E]"
+        className="py-24 bg-cream dark:bg-charcoal"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
@@ -794,7 +794,7 @@ const Home: React.FC = () => {
       {/* TESTIMONIALS */}
       {testimonials.length > 0 && (
       <motion.section
-        className="py-24 relative overflow-hidden bg-[#F5F0E6] dark:bg-[#1E1E1E]"
+        className="py-24 relative overflow-hidden bg-cream dark:bg-charcoal"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
@@ -817,7 +817,7 @@ const Home: React.FC = () => {
           variants={stagger}
         >
           <motion.p
-            className="text-subtitle !text-[#E8DCC8] mb-4"
+            className="text-subtitle !text-sand mb-4"
             variants={fadeInUp}
           >
             Guest Reviews
@@ -858,7 +858,7 @@ const Home: React.FC = () => {
                   {t.name}
                 </motion.h3>
                 <motion.p
-                  className="text-xs text-[#E8DCC8]"
+                  className="text-xs text-sand"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4, delay: 0.3 }}
@@ -885,7 +885,7 @@ const Home: React.FC = () => {
               <button
                 key={index}
                 onClick={() => setCurrentTestimonial(index)}
-                className={`h-2 w-6 rounded-full transition-all ${index === currentTestimonial ? 'bg-white' : 'bg-[#E8DCC8]/50'
+                className={`h-2 w-6 rounded-full transition-all ${index === currentTestimonial ? 'bg-white' : 'bg-sand/50'
                   }`}
                 aria-label={`Go to testimonial ${index + 1}`}
               />
@@ -953,13 +953,13 @@ const Home: React.FC = () => {
           variants={fadeInUp}
         >
           <motion.h2
-            className="text-section-title text-[#2C2416] dark:text-[#F5F0E6]"
+            className="text-section-title text-ink dark:text-cream"
             variants={fadeInUp}
           >
             Ready to Experience Luxury?
           </motion.h2>
           <motion.p
-            className="text-body text-[#2C2416] dark:text-gray-300 mb-8"
+            className="text-body text-ink dark:text-gray-300 mb-8"
             variants={fadeInUp}
           >
             Book directly with us for the best available rate, instant confirmation and
@@ -969,10 +969,10 @@ const Home: React.FC = () => {
             className="flex flex-wrap justify-center gap-4"
             variants={fadeInUp}
           >
-            <button onClick={() => navigate('/rooms')} className="px-7 py-3 bg-[#8B6914] dark:bg-[#D4AF37] text-white dark:text-black text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-[#8B6914] dark:border-[#D4AF37] hover:bg-transparent hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+            <button onClick={() => navigate('/rooms')} className="px-7 py-3 bg-bronze dark:bg-gold text-white dark:text-black text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-bronze dark:border-gold hover:bg-transparent hover:text-bronze dark:hover:bg-gold dark:hover:text-black transition">
               Book Your Stay
             </button>
-            <button onClick={() => navigate('/contact')} className="px-7 py-3 bg-transparent dark:bg-transparent text-[#8B6914] dark:text-[#D4AF37] text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-[#8B6914] dark:border-[#D4AF37] hover:bg-[#8B6914] hover:text-white dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+            <button onClick={() => navigate('/contact')} className="px-7 py-3 bg-transparent dark:bg-transparent text-bronze dark:text-gold text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-bronze dark:border-gold hover:bg-bronze hover:text-white dark:hover:bg-gold dark:hover:text-black transition">
               Contact Us
             </button>
           </motion.div>

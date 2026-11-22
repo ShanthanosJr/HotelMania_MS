@@ -72,7 +72,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Server error' });
 });
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5050;
 
 if (require.main === module) {
   app.listen(PORT, (err) => {

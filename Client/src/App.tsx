@@ -1,7 +1,10 @@
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import RequireRole from './components/RequireRole';
+import { Toaster } from './components/ui';
+import { SITE } from './config/site';
 import { ADMIN_ROUTE_ROLES } from './utils/auth';
 import Home from './pages/user/Home';
 import About from './pages/user/About';
@@ -25,11 +28,47 @@ import ManageTransactions from './pages/admin/ManageTransactions';
 import ManageFeedbacks from './pages/admin/ManageFeedbacks';
 import ManageUsers from './pages/admin/ManageUsers';
 
+// Browser-tab titles per route (detail pages keep the default until they load their own)
+const PAGE_TITLES: Record<string, string> = {
+  '/': `${SITE.name} | Boutique Hotels in Sri Lanka`,
+  '/about': 'About Us',
+  '/rooms': 'Rooms & Suites',
+  '/hotels': 'Our Hotels',
+  '/bookings': 'My Bookings',
+  '/contact': 'Contact',
+  '/login': 'Sign In',
+  '/register': 'Create Account',
+  '/profile': 'My Profile',
+  '/policies': 'Policies',
+  '/admin': 'Dashboard · Admin',
+  '/admin/dashboard': 'Dashboard · Admin',
+  '/admin/bookings': 'Bookings · Admin',
+  '/admin/hotels': 'Hotels · Admin',
+  '/admin/rooms': 'Rooms · Admin',
+  '/admin/transactions': 'Transactions · Admin',
+  '/admin/feedbacks': 'Feedback & Requests · Admin',
+  '/admin/users': 'Users · Admin',
+};
+
+function RouteEffects() {
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    const title = PAGE_TITLES[pathname];
+    document.title = !title ? SITE.name : pathname === '/' ? title : `${title} | ${SITE.name}`;
+    // New page starts at the top, unless it links to an anchor (e.g. /policies#privacy)
+    if (!hash) window.scrollTo(0, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <div className="bg-dark text-light">
+        <RouteEffects />
+        <Toaster />
+        <div className="bg-ivory text-ink dark:bg-night dark:text-cream">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />

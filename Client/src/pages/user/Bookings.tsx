@@ -10,6 +10,7 @@ import {
     BsCalendarCheck, BsClockHistory, BsXCircle, BsFileText,
     BsGeoAlt, BsGear, BsStars
 } from 'react-icons/bs';
+import { toast, confirmDialog } from '../../components/ui';
 
 const heroImage =
     'https://images.pexels.com/photos/261107/pexels-photo-261107.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -24,6 +25,7 @@ type BookingRoomType = {
 
 type BookingRoom = {
     _id?: string;
+    roomNumber?: string;
     type?: BookingRoomType | string;
 };
 
@@ -187,26 +189,26 @@ const Bookings: React.FC = () => {
         setPayingId(bookingId);
         try {
             const outcome = await payForBooking(bookingId);
-            alert(outcomeMessage(outcome));
+            toast[outcome === 'dismissed' ? 'warning' : 'success'](outcomeMessage(outcome));
             await fetchMyBookings();
         } catch (err: unknown) {
-            alert(err instanceof Error ? err.message : 'Could not start payment');
+            toast.error(err instanceof Error ? err.message : 'Could not start payment');
         } finally {
             setPayingId(null);
         }
     };
 
     const handleCancelBooking = async (bookingId: string) => {
-        if (!window.confirm('Cancel this booking? This cannot be undone.')) return;
+        if (!(await confirmDialog({ title: 'Cancel this booking?', message: 'Your room will be released. If you have already paid, our team will process your refund. This cannot be undone.', confirmLabel: 'Cancel booking', cancelLabel: 'Keep booking', tone: 'danger' }))) return;
         setCancellingId(bookingId);
         try {
             const res = await api.request(`/api/bookings/${bookingId}/cancel`, { method: 'PATCH' });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.message || 'Could not cancel booking');
-            alert(data.message || 'Booking cancelled.');
+            toast.success(data.message || 'Booking cancelled.');
             await fetchMyBookings();
         } catch (err: unknown) {
-            alert(err instanceof Error ? err.message : 'Could not cancel booking');
+            toast.error(err instanceof Error ? err.message : 'Could not cancel booking');
         } finally {
             setCancellingId(null);
         }
@@ -217,6 +219,8 @@ const Bookings: React.FC = () => {
         if (isAuthenticated()) {
             fetchServiceRequests();
         }
+        // Load once on mount; the fetchers only read state setters
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // NEW: Smart Filtering Logic
@@ -253,7 +257,7 @@ const Bookings: React.FC = () => {
 
 
     return (
-        <div className="bg-[#FDF8F3] min-h-screen font-sans selection:bg-[#8B6914] selection:text-white dark:bg-[#121212] dark:text-[#F5F0E6] transition-colors duration-300">
+        <div className="bg-ivory min-h-screen font-sans selection:bg-bronze selection:text-white dark:bg-night dark:text-cream transition-colors duration-300">
             <Navbar />
 
             {/* HERO */}
@@ -271,20 +275,20 @@ const Bookings: React.FC = () => {
                     variants={stagger}
                 >
                     <motion.p
-                        className="text-[0.85rem] font-semibold tracking-[0.18em] uppercase text-[#E8DCC8] mb-2 mt-10 dark:text-[#A8A29E]"
+                        className="text-[0.85rem] font-semibold tracking-[0.18em] uppercase text-sand mb-2 mt-10 dark:text-[#A8A29E]"
                         variants={fadeInUp}
                     >
                         Your Stays at a Glance
                     </motion.p>
                     <motion.h1
-                        className="text-3xl md:text-4xl lg:text-[3.2rem] font-semibold mb-4 dark:text-[#F5F0E6]"
+                        className="text-3xl md:text-4xl lg:text-[3.2rem] font-semibold mb-4 dark:text-cream"
                         style={{ fontFamily: 'Playfair Display, serif' }}
                         variants={fadeInUp}
                     >
                         Your Bookings &amp; Requests
                     </motion.h1>
                     <motion.p
-                        className="max-w-xl text-[0.98rem] leading-7 text-[#F5F0E6] mb-6 dark:text-gray-300"
+                        className="max-w-xl text-[0.98rem] leading-7 text-cream mb-6 dark:text-gray-300"
                         variants={fadeInUp}
                     >
                         View upcoming reservations, revisit past stays, and keep every detail
@@ -301,27 +305,27 @@ const Bookings: React.FC = () => {
                     whileInView="visible"
                     viewport={{ once: true, margin: "-50px" }}
                     variants={fadeInUp}
-                    className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-xl border border-[#FDF8F3] grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 dark:bg-[#0f0f0f] dark:border-gray-700"
+                    className="mx-auto max-w-5xl rounded-xl bg-white p-6 shadow-xl border border-ivory grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 dark:bg-[#0f0f0f] dark:border-gray-700"
                 >
-                    <div className="flex items-center gap-4 border-b md:border-b-0 md:border-r border-[#FDF8F3] pb-4 md:pb-0">
-                        <div className="p-3 bg-[#FDF8F3] rounded-full text-[#8B6914] dark:bg-gray-700 dark:text-[#D4AF37]"><BsStars size={24} /></div>
+                    <div className="flex items-center gap-4 border-b md:border-b-0 md:border-r border-ivory pb-4 md:pb-0">
+                        <div className="p-3 bg-ivory rounded-full text-bronze dark:bg-gray-700 dark:text-gold"><BsStars size={24} /></div>
                         <div>
-                            <p className="text-xs uppercase tracking-widest text-[#8B6914] font-bold dark:text-[#D4AF37]">Status</p>
-                            <p className="font-serif text-xl text-[#2C2416] dark:text-[#F5F0E6]">{stats.status}</p>
+                            <p className="text-xs uppercase tracking-widest text-bronze font-bold dark:text-gold">Status</p>
+                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.status}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 border-b md:border-b-0 md:border-r border-[#FDF8F3] pb-4 md:pb-0">
-                        <div className="p-3 bg-[#FDF8F3] rounded-full text-[#8B6914] dark:bg-gray-700 dark:text-[#D4AF37]"><BsCalendarCheck size={24} /></div>
+                    <div className="flex items-center gap-4 border-b md:border-b-0 md:border-r border-ivory pb-4 md:pb-0">
+                        <div className="p-3 bg-ivory rounded-full text-bronze dark:bg-gray-700 dark:text-gold"><BsCalendarCheck size={24} /></div>
                         <div>
-                            <p className="text-xs uppercase tracking-widest text-[#8B6914] font-bold dark:text-[#D4AF37]">Upcoming</p>
-                            <p className="font-serif text-xl text-[#2C2416] dark:text-[#F5F0E6]">{stats.upcomingCount} Stays</p>
+                            <p className="text-xs uppercase tracking-widest text-bronze font-bold dark:text-gold">Upcoming</p>
+                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.upcomingCount} Stays</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-[#FDF8F3] rounded-full text-[#8B6914] dark:bg-gray-700 dark:text-[#D4AF37]"><BsClockHistory size={24} /></div>
+                        <div className="p-3 bg-ivory rounded-full text-bronze dark:bg-gray-700 dark:text-gold"><BsClockHistory size={24} /></div>
                         <div>
-                            <p className="text-xs uppercase tracking-widest text-[#8B6914] font-bold dark:text-[#D4AF37]">Total Nights</p>
-                            <p className="font-serif text-xl text-[#2C2416] dark:text-[#F5F0E6]">{stats.nights} Nights</p>
+                            <p className="text-xs uppercase tracking-widest text-bronze font-bold dark:text-gold">Total Nights</p>
+                            <p className="font-serif text-xl text-ink dark:text-cream">{stats.nights} Nights</p>
                         </div>
                     </div>
                 </motion.div>
@@ -342,10 +346,10 @@ const Bookings: React.FC = () => {
                     ].map(tab => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
+                            onClick={() => setActiveTab(tab.id as typeof activeTab)}
                             className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
-                                    ? 'bg-[#8B6914] text-white shadow-lg transform scale-105 dark:bg-[#D4AF37] dark:text-[#2C2416]'
-                                    : 'bg-white text-[#6B5B4F] hover:bg-[#FDF8F3] dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                                    ? 'bg-bronze text-white shadow-lg transform scale-105 dark:bg-gold dark:text-ink'
+                                    : 'bg-white text-taupe hover:bg-ivory dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                                 }`}
                         >
                             <tab.icon /> {tab.label}
@@ -356,11 +360,11 @@ const Bookings: React.FC = () => {
                 {/* 3. BOOKING LIST */}
                 <div className="mx-auto max-w-5xl">
                     {status.loading ? (
-                        <div className="flex justify-center py-20"><div className="h-10 w-10 animate-spin rounded-full border-2 border-[#8B6914] border-t-transparent" /></div>
+                        <div className="flex justify-center py-20"><div className="h-10 w-10 animate-spin rounded-full border-2 border-bronze border-t-transparent" /></div>
                     ) : filteredBookings.length === 0 ? (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 bg-white rounded-xl shadow-sm dark:bg-gray-800 dark:text-[#F5F0E6]">
-                            <p className="font-serif text-2xl text-[#2C2416] mb-2 dark:text-[#F5F0E6]">No bookings found</p>
-                            <p className="text-[#6B5B4F] dark:text-gray-300">You have no {activeTab} stays recorded.</p>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 bg-white rounded-xl shadow-sm dark:bg-gray-800 dark:text-cream">
+                            <p className="font-serif text-2xl text-ink mb-2 dark:text-cream">No bookings found</p>
+                            <p className="text-taupe dark:text-gray-300">You have no {activeTab} stays recorded.</p>
                         </motion.div>
                     ) : (
                         <div className="grid gap-6">
@@ -372,11 +376,11 @@ const Bookings: React.FC = () => {
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -20 }}
                                         transition={{ delay: index * 0.1 }}
-                                        className="group relative overflow-hidden rounded-xl bg-white shadow-sm transition-all hover:shadow-md border border-[#FDF8F3] dark:bg-gray-800 dark:border-gray-700"
+                                        className="group relative overflow-hidden rounded-xl bg-white shadow-sm transition-all hover:shadow-md border border-ivory dark:bg-gray-800 dark:border-gray-700"
                                     >
                                         <div className="flex flex-col md:flex-row">
                                             {/* Left: Date Block */}
-                                            <div className="bg-[#2C2416] p-6 flex flex-col justify-center items-center text-white min-w-[140px] dark:bg-gray-900 dark:text-[#F5F0E6]">
+                                            <div className="bg-ink p-6 flex flex-col justify-center items-center text-white min-w-[140px] dark:bg-gray-900 dark:text-cream">
                                                 <span className="text-3xl font-serif">
                                                     {new Date(booking.checkInDate || '').getDate()}
                                                 </span>
@@ -390,10 +394,10 @@ const Bookings: React.FC = () => {
                                             </div>
 
                                             {/* Middle: Info */}
-                                            <div className="p-6 flex-1 dark:text-[#F5F0E6]">
+                                            <div className="p-6 flex-1 dark:text-cream">
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <h3 className="font-serif text-2xl text-[#2C2416] dark:text-[#F5F0E6]">
-                                                        {typeof booking.room === 'object' ? (booking.room.type as any)?.name || 'Luxury Room' : 'Luxury Room'}
+                                                    <h3 className="font-serif text-2xl text-ink dark:text-cream">
+                                                        {typeof booking.room === 'object' ? (typeof booking.room.type === 'object' ? booking.room.type?.name : undefined) || 'Luxury Room' : 'Luxury Room'}
                                                     </h3>
                                                     <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' :
                                                             booking.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200'
@@ -402,15 +406,15 @@ const Bookings: React.FC = () => {
                                                     </span>
                                                 </div>
 
-                                                <p className="text-[#6B5B4F] mb-4 text-sm flex items-center gap-2 dark:text-gray-300">
-                                                    <BsGeoAlt /> Room {typeof booking.room === 'object' ? (booking.room as any).roomNumber : ''}
+                                                <p className="text-taupe mb-4 text-sm flex items-center gap-2 dark:text-gray-300">
+                                                    <BsGeoAlt /> Room {typeof booking.room === 'object' ? booking.room.roomNumber : ''}
                                                 </p>
 
                                                 <div className="flex flex-wrap gap-4 mt-6">
                                                     {/* Action Buttons */}
                                                     <button
                                                         onClick={() => printReceipt(booking as Parameters<typeof printReceipt>[0])}
-                                                        className="flex items-center gap-2 px-4 py-2 border border-[#E6E2D3] rounded text-xs font-bold uppercase text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition-colors dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]"
+                                                        className="flex items-center gap-2 px-4 py-2 border border-stone rounded text-xs font-bold uppercase text-bronze hover:bg-bronze hover:text-white transition-colors dark:border-gray-600 dark:text-gold dark:hover:bg-gold dark:hover:text-ink"
                                                     >
                                                         <BsFileText /> Receipt
                                                     </button>
@@ -419,7 +423,7 @@ const Bookings: React.FC = () => {
                                                         new Date(booking.checkInDate || '').getTime() <= Date.now() && (
                                                         <button
                                                             onClick={() => { setSelectedBookingId(booking._id || null); setShowRequestModal(true); }}
-                                                            className="flex items-center gap-2 px-4 py-2 border border-[#E6E2D3] rounded text-xs font-bold uppercase text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition-colors dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]"
+                                                            className="flex items-center gap-2 px-4 py-2 border border-stone rounded text-xs font-bold uppercase text-bronze hover:bg-bronze hover:text-white transition-colors dark:border-gray-600 dark:text-gold dark:hover:bg-gold dark:hover:text-ink"
                                                         >
                                                             <BsGear /> Service Request
                                                         </button>
@@ -428,7 +432,7 @@ const Bookings: React.FC = () => {
                                                         <button
                                                             onClick={() => booking._id && handlePayNow(booking._id)}
                                                             disabled={payingId === booking._id}
-                                                            className="flex items-center gap-2 px-4 py-2 rounded text-xs font-bold uppercase bg-[#8B6914] text-white hover:bg-[#5C4033] transition-colors disabled:opacity-50 dark:bg-[#D4AF37] dark:text-[#2C2416]"
+                                                            className="flex items-center gap-2 px-4 py-2 rounded text-xs font-bold uppercase bg-bronze text-white hover:bg-cocoa transition-colors disabled:opacity-50 dark:bg-gold dark:text-ink"
                                                         >
                                                             {payingId === booking._id ? 'Opening PayHere…' : 'Pay Now'}
                                                         </button>
@@ -448,10 +452,10 @@ const Bookings: React.FC = () => {
                                             </div>
 
                                             {/* Right: Price */}
-                                            <div className="p-6 bg-[#FDF8F3] flex flex-col justify-center items-end min-w-[150px] text-right dark:bg-gray-700 dark:text-[#F5F0E6]">
-                                                <p className="text-xs uppercase tracking-widest text-[#8B6914] mb-1 dark:text-[#D4AF37]">Total</p>
-                                                <p className="font-serif text-2xl text-[#2C2416] dark:text-[#F5F0E6]">${booking.totalPrice}</p>
-                                                <p className="text-xs text-[#6B5B4F] mt-1 dark:text-gray-300">{booking.paymentStatus}</p>
+                                            <div className="p-6 bg-ivory flex flex-col justify-center items-end min-w-[150px] text-right dark:bg-gray-700 dark:text-cream">
+                                                <p className="text-xs uppercase tracking-widest text-bronze mb-1 dark:text-gold">Total</p>
+                                                <p className="font-serif text-2xl text-ink dark:text-cream">${booking.totalPrice}</p>
+                                                <p className="text-xs text-taupe mt-1 dark:text-gray-300">{booking.paymentStatus}</p>
                                             </div>
                                         </div>
                                     </motion.div>
@@ -478,19 +482,19 @@ const Bookings: React.FC = () => {
                     >
                         <motion.div
                             initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-                            className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden dark:bg-gray-800 dark:text-[#F5F0E6]"
+                            className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden dark:bg-gray-800 dark:text-cream"
                         >
-                            <div className="bg-[#2C2416] p-4 flex justify-between items-center text-white dark:bg-gray-900 dark:text-[#F5F0E6]">
-                                <h3 className="font-serif text-xl dark:text-[#F5F0E6]">New Service Request</h3>
-                                <button onClick={closeRequestModal} aria-label="Close" className="dark:text-[#F5F0E6]"><BsXCircle size={20} /></button>
+                            <div className="bg-ink p-4 flex justify-between items-center text-white dark:bg-gray-900 dark:text-cream">
+                                <h3 className="font-serif text-xl dark:text-cream">New Service Request</h3>
+                                <button onClick={closeRequestModal} aria-label="Close" className="dark:text-cream"><BsXCircle size={20} /></button>
                             </div>
                             <div className="p-6 space-y-4 dark:bg-gray-800">
                                 <div>
-                                    <label className="block text-xs font-bold uppercase text-[#8B6914] mb-2 dark:text-[#D4AF37]">Service Type</label>
+                                    <label className="block text-xs font-bold uppercase text-bronze mb-2 dark:text-gold">Service Type</label>
                                     <select
                                         value={requestForm.type}
                                         onChange={e => setRequestForm(prev => ({ ...prev, type: e.target.value as 'cleaning' | 'food' | 'repair' }))}
-                                        className="w-full p-3 border border-[#E6E2D3] rounded bg-[#FDF8F3] outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6]"
+                                        className="w-full p-3 border border-stone rounded bg-ivory outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream"
                                     >
                                         <option value="cleaning">Room Cleaning</option>
                                         <option value="food">In-Room Dining</option>
@@ -498,12 +502,12 @@ const Bookings: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold uppercase text-[#8B6914] mb-2 dark:text-[#D4AF37]">Notes</label>
+                                    <label className="block text-xs font-bold uppercase text-bronze mb-2 dark:text-gold">Notes</label>
                                     <textarea
                                         value={requestForm.notes}
                                         maxLength={500}
                                         onChange={e => setRequestForm(prev => ({ ...prev, notes: e.target.value }))}
-                                        className="w-full p-3 border border-[#E6E2D3] rounded bg-[#FDF8F3] outline-none h-24 dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6]"
+                                        className="w-full p-3 border border-stone rounded bg-ivory outline-none h-24 dark:bg-gray-700 dark:border-gray-600 dark:text-cream"
                                         placeholder="Describe your request..."
                                     />
                                 </div>
@@ -516,7 +520,7 @@ const Bookings: React.FC = () => {
                                 <button
                                     onClick={submitServiceRequest}
                                     disabled={requestStatus.sending}
-                                    className="w-full py-3 bg-[#8B6914] text-white font-bold uppercase tracking-widest rounded hover:bg-[#5C4033] transition-colors disabled:opacity-50 dark:bg-[#D4AF37] dark:text-[#2C2416] dark:hover:bg-[#b8952d]"
+                                    className="w-full py-3 bg-bronze text-white font-bold uppercase tracking-widest rounded hover:bg-cocoa transition-colors disabled:opacity-50 dark:bg-gold dark:text-ink dark:hover:bg-[#b8952d]"
                                 >
                                     {requestStatus.sending ? 'Sending…' : 'Submit Request'}
                                 </button>

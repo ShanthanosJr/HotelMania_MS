@@ -38,6 +38,8 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import { toast, confirmDialog } from '../../components/ui';
+import { toError } from '../../utils/errors';
 
 type RoomStatus = 'available' | 'occupied' | 'maintenance' | string;
 
@@ -269,7 +271,7 @@ const ManageRooms: React.FC = () => {
     setIsEditing(hasItem);
 
     if (hasItem && item) {
-      setEditId((item as any)._id);
+      setEditId((item as { _id: string })._id);
       if (activeTab === 'rooms') {
         const room = item as Room;
         setRoomForm({
@@ -383,10 +385,23 @@ const ManageRooms: React.FC = () => {
   }, [roomForm.hotel, roomForm.type, showModal, isEditing, rooms, activeTab]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Confirm deletion?')) return;
-    const endpoint = activeTab === 'rooms' ? `/api/rooms/${id}` : `/api/room-types/${id}`;
-    await api.delete(endpoint);
-    fetchData();
+    const isRoom = activeTab === 'rooms';
+    if (!(await confirmDialog({
+      title: isRoom ? 'Delete this room?' : 'Delete this room type?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    }))) return;
+    const endpoint = isRoom ? `/api/rooms/${id}` : `/api/room-types/${id}`;
+    try {
+      const res = await api.delete(endpoint);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Could not delete');
+      toast.success(isRoom ? 'Room deleted' : 'Room type deleted');
+      fetchData();
+    } catch (caught: unknown) {
+      toast.error(toError(caught).message);
+    }
   };
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
@@ -398,7 +413,7 @@ const ManageRooms: React.FC = () => {
 
     const method = isEditing ? 'put' : 'post';
 
-    let payload: any;
+    let payload: unknown;
 
     if (activeTab === 'rooms') {
       payload = roomForm;
@@ -429,7 +444,7 @@ const ManageRooms: React.FC = () => {
       payload = formData;
     }
 
-    const res = await (api as any)[method](endpoint, payload);
+    const res = await api[method](endpoint, payload);
     if (res.ok) {
       setShowModal(false);
       fetchData();
@@ -437,23 +452,23 @@ const ManageRooms: React.FC = () => {
   };
 
   const renderPagination = () => (
-    <div className="flex items-center justify-between border-t border-[#E6E2D3] pt-4 mt-6">
+    <div className="flex items-center justify-between border-t border-stone pt-4 mt-6">
       <div className="text-sm text-gray-500">
-        Page <span className="font-semibold text-[#5D4037]">{currentPage}</span> of{' '}
-        <span className="font-semibold text-[#5D4037]">{Math.max(1, totalPages)}</span>
+        Page <span className="font-semibold text-umber">{currentPage}</span> of{' '}
+        <span className="font-semibold text-umber">{Math.max(1, totalPages)}</span>
       </div>
       <div className="flex gap-2">
         <button
           onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
           disabled={currentPage === 1}
-          className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F9F7F2] transition-colors cursor-pointer"
+          className="p-2 rounded-lg border border-stone text-umber disabled:opacity-50 disabled:cursor-not-allowed hover:bg-linen transition-colors cursor-pointer"
         >
           <BsChevronLeft />
         </button>
         <button
           onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
           disabled={currentPage >= totalPages}
-          className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F9F7F2] transition-colors cursor-pointer"
+          className="p-2 rounded-lg border border-stone text-umber disabled:opacity-50 disabled:cursor-not-allowed hover:bg-linen transition-colors cursor-pointer"
         >
           <BsChevronRight />
         </button>
@@ -463,7 +478,7 @@ const ManageRooms: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9F7F2] flex items-center justify-center text-[#5D4037] font-serif text-xl">
+      <div className="min-h-screen bg-linen flex items-center justify-center text-umber font-serif text-xl">
         Loading HotelMania Inventory...
       </div>
     );
@@ -472,19 +487,19 @@ const ManageRooms: React.FC = () => {
   return (
     <AdminLayout>
       {/* HERO */}
-      <div className="relative bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-[#F9F7F2] px-8 py-10 shadow-lg mb-8 overflow-hidden">
+      <div className="relative bg-gradient-to-r from-umber to-clay text-linen px-8 py-10 shadow-lg mb-8 overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-inner">
-                {activeTab === 'rooms' ? <BsHouseDoor className="text-3xl text-[#E6E2D3]" /> : <BsTags className="text-3xl text-[#E6E2D3]" />}
+                {activeTab === 'rooms' ? <BsHouseDoor className="text-3xl text-stone" /> : <BsTags className="text-3xl text-stone" />}
               </div>
               <h1 className="text-4xl font-serif font-bold tracking-tight">
                 {activeTab === 'rooms' ? 'Room Management' : 'Room Types'}
               </h1>
             </div>
-            <p className="text-[#E6E2D3] text-lg font-light max-w-xl">
+            <p className="text-stone text-lg font-light max-w-xl">
               {activeTab === 'rooms'
                 ? 'Manage availability, status, and assignments.'
                 : 'Define pricing, amenities, and occupancy limits.'}
@@ -504,12 +519,12 @@ const ManageRooms: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-6 pb-12">
         {/* TAB NAV */}
-        <div className="flex gap-4 mb-8 border-b border-[#E6E2D3]">
+        <div className="flex gap-4 mb-8 border-b border-stone">
           <button
             onClick={() => setActiveTab('rooms')}
             className={`pb-4 px-4 font-bold text-lg transition-colors relative cursor-pointer ${activeTab === 'rooms'
-              ? 'text-[#5D4037] border-b-4 border-[#5D4037]'
-              : 'text-gray-400 hover:text-[#5D4037]'
+              ? 'text-umber border-b-4 border-umber'
+              : 'text-gray-400 hover:text-umber'
               }`}
           >
             Rooms
@@ -517,8 +532,8 @@ const ManageRooms: React.FC = () => {
           <button
             onClick={() => setActiveTab('types')}
             className={`pb-4 px-4 font-bold text-lg transition-colors relative cursor-pointer ${activeTab === 'types'
-              ? 'text-[#5D4037] border-b-4 border-[#5D4037]'
-              : 'text-gray-400 hover:text-[#5D4037]'
+              ? 'text-umber border-b-4 border-umber'
+              : 'text-gray-400 hover:text-umber'
               }`}
           >
             Room Types
@@ -532,47 +547,47 @@ const ManageRooms: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* Stats Cards */}
               <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
                   <div className="p-4 rounded-full bg-blue-50 text-blue-600">
                     <BsHouseDoor size={24} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">Total Rooms</p>
-                    <h3 className="text-2xl font-serif font-bold text-[#5D4037]">{roomMetrics.total}</h3>
+                    <h3 className="text-2xl font-serif font-bold text-umber">{roomMetrics.total}</h3>
                   </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
                   <div className="p-4 rounded-full bg-green-50 text-green-600">
                     <BsCheckCircle size={24} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">Available</p>
-                    <h3 className="text-2xl font-serif font-bold text-[#5D4037]">{roomMetrics.available}</h3>
+                    <h3 className="text-2xl font-serif font-bold text-umber">{roomMetrics.available}</h3>
                   </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
                   <div className="p-4 rounded-full bg-gray-100 text-gray-600">
                     <BsPeople size={24} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">Occupied</p>
-                    <h3 className="text-2xl font-serif font-bold text-[#5D4037]">{roomMetrics.occupied}</h3>
+                    <h3 className="text-2xl font-serif font-bold text-umber">{roomMetrics.occupied}</h3>
                   </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
                   <div className="p-4 rounded-full bg-red-50 text-red-600">
                     <BsExclamationTriangle size={24} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">Maintenance</p>
-                    <h3 className="text-2xl font-serif font-bold text-[#5D4037]">{roomMetrics.maintenance}</h3>
+                    <h3 className="text-2xl font-serif font-bold text-umber">{roomMetrics.maintenance}</h3>
                   </div>
                 </div>
               </div>
 
               {/* Pie Chart */}
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex flex-col justify-center items-center">
-                <h4 className="text-sm font-bold text-[#5D4037] mb-2 self-start flex items-center gap-2">
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex flex-col justify-center items-center">
+                <h4 className="text-sm font-bold text-umber mb-2 self-start flex items-center gap-2">
                   <BsPieChart /> Status Distribution
                 </h4>
                 <div className="w-full h-40">
@@ -592,20 +607,20 @@ const ManageRooms: React.FC = () => {
             </div>
 
             {/* ROOMS CONTROLS */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-6 flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-6 flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
               <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto">
                 <div className="relative group w-full md:w-64">
                   <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search room number..."
-                    className="pl-10 pr-4 py-2 w-full bg-[#F9F7F2] border border-[#E6E2D3] rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none"
+                    className="pl-10 pr-4 py-2 w-full bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay outline-none"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <select
-                  className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+                  className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
                   value={roomStatusFilter}
                   onChange={e => setRoomStatusFilter(e.target.value as RoomStatus | 'all')}
                 >
@@ -615,7 +630,7 @@ const ManageRooms: React.FC = () => {
                   <option value="maintenance">Maintenance</option>
                 </select>
                 <select
-                  className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+                  className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
                   value={hotelFilter}
                   onChange={e => setHotelFilter(e.target.value)}
                 >
@@ -623,7 +638,7 @@ const ManageRooms: React.FC = () => {
                   {hotels.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
                 </select>
                 <select
-                  className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+                  className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
                   value={roomTypeFilter}
                   onChange={e => setRoomTypeFilter(e.target.value)}
                 >
@@ -633,30 +648,30 @@ const ManageRooms: React.FC = () => {
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#5D4037] border border-[#E6E2D3] rounded-xl hover:bg-[#F9F7F2] transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-umber border border-stone rounded-xl hover:bg-linen transition-colors cursor-pointer"
                 >
                   Reset
                 </button>
               </div>
 
               <div className="flex gap-3 w-full md:w-auto justify-between md:justify-end">
-                <div className="flex bg-[#F9F7F2] p-1 rounded-lg">
+                <div className="flex bg-linen p-1 rounded-lg">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'grid' ? 'bg-white shadow text-[#5D4037]' : 'text-gray-400'}`}
+                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'grid' ? 'bg-white shadow text-umber' : 'text-gray-400'}`}
                   >
                     <BsGrid />
                   </button>
                   <button
                     onClick={() => setViewMode('table')}
-                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'table' ? 'bg-white shadow text-[#5D4037]' : 'text-gray-400'}`}
+                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'table' ? 'bg-white shadow text-umber' : 'text-gray-400'}`}
                   >
                     <BsList />
                   </button>
                 </div>
                 <button
                   onClick={() => openModal()}
-                  className="flex items-center gap-2 px-5 py-2 bg-[#5D4037] text-white rounded-xl font-bold hover:bg-[#3E2723] transition-colors shadow-lg cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2 bg-umber text-white rounded-xl font-bold hover:bg-[#3E2723] transition-colors shadow-lg cursor-pointer"
                 >
                   <BsPlusCircle /> Add Room
                 </button>
@@ -676,9 +691,9 @@ const ManageRooms: React.FC = () => {
                     : (room.type as RoomType)?.name;
 
                   return (
-                    <div key={room._id} className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+                    <div key={room._id} className="bg-white rounded-2xl shadow-sm border border-stone p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-serif font-bold text-[#5D4037]">Room {room.roomNumber}</h4>
+                        <h4 className="text-lg font-serif font-bold text-umber">Room {room.roomNumber}</h4>
                         <span className={`px-3 py-1 text-xs rounded-full font-semibold ${room.status === 'available' ? 'bg-green-50 text-green-700' :
                           room.status === 'occupied' ? 'bg-gray-100 text-gray-700' :
                             'bg-red-50 text-red-700'
@@ -690,7 +705,7 @@ const ManageRooms: React.FC = () => {
                         <p className="flex items-center gap-2"><BsHouseDoor className="text-gray-400" /> {hName || 'Unknown Hotel'}</p>
                         <p className="flex items-center gap-2"><BsTags className="text-gray-400" /> {tName || 'Unknown Type'}</p>
                       </div>
-                      <div className="flex gap-2 pt-3 border-t border-dashed border-[#E6E2D3] mt-auto">
+                      <div className="flex gap-2 pt-3 border-t border-dashed border-stone mt-auto">
                         <button onClick={() => openModal(room)} className="flex-1 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-semibold cursor-pointer">Edit</button>
                         <button onClick={() => handleDelete(room._id)} className="flex-1 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-semibold cursor-pointer">Delete</button>
                       </div>
@@ -699,10 +714,10 @@ const ManageRooms: React.FC = () => {
                 })}
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-[#F9F7F2] text-[#5D4037] font-serif">
+                    <thead className="bg-linen text-umber font-serif">
                       <tr>
                         <th className="p-4 font-bold">Room #</th>
                         <th className="p-4 font-bold">Hotel</th>
@@ -711,11 +726,11 @@ const ManageRooms: React.FC = () => {
                         <th className="p-4 font-bold text-center">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E6E2D3]">
+                    <tbody className="divide-y divide-stone">
                       {paginatedItems.map(item => {
                         const room = item as Room;
                         return (
-                          <tr key={room._id} className="hover:bg-[#FDFBF7]">
+                          <tr key={room._id} className="hover:bg-pearl">
                             <td className="p-4 font-bold">{room.roomNumber}</td>
                             <td className="p-4">{
                               (typeof room.hotel === 'string' ? hotels.find(h => h._id === room.hotel)?.name : (room.hotel as Hotel)?.name)
@@ -753,38 +768,38 @@ const ManageRooms: React.FC = () => {
             {/* TYPES OVERVIEW */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
                   <div className="p-4 rounded-full bg-indigo-50 text-indigo-600">
                     <BsTags size={24} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">Total Types</p>
-                    <h3 className="text-2xl font-serif font-bold text-[#5D4037]">{typeMetrics.total}</h3>
+                    <h3 className="text-2xl font-serif font-bold text-umber">{typeMetrics.total}</h3>
                   </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
                   <div className="p-4 rounded-full bg-emerald-50 text-emerald-600">
                     <BsCurrencyDollar size={24} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">Avg Price</p>
-                    <h3 className="text-2xl font-serif font-bold text-[#5D4037]">${typeMetrics.avgPrice.toFixed(0)}</h3>
+                    <h3 className="text-2xl font-serif font-bold text-umber">${typeMetrics.avgPrice.toFixed(0)}</h3>
                   </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex items-center gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
                   <div className="p-4 rounded-full bg-amber-50 text-amber-600">
                     <BsGraphUp size={24} />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">Range</p>
-                    <h3 className="text-lg font-serif font-bold text-[#5D4037]">${typeMetrics.minPrice} - ${typeMetrics.maxPrice}</h3>
+                    <h3 className="text-lg font-serif font-bold text-umber">${typeMetrics.minPrice} - ${typeMetrics.maxPrice}</h3>
                   </div>
                 </div>
               </div>
 
               {/* Bar Chart */}
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E2D3] flex flex-col justify-center">
-                <h4 className="text-sm font-bold text-[#5D4037] mb-2 flex items-center gap-2"><BsGraphUp /> Price per Type</h4>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone flex flex-col justify-center">
+                <h4 className="text-sm font-bold text-umber mb-2 flex items-center gap-2"><BsGraphUp /> Price per Type</h4>
                 <div className="w-full h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={typeMetrics.priceData}>
@@ -799,20 +814,20 @@ const ManageRooms: React.FC = () => {
             </div>
 
             {/* TYPES CONTROLS */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-6 flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-6 flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
               <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto">
                 <div className="relative group w-full md:w-64">
                   <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search type name..."
-                    className="pl-10 pr-4 py-2 w-full bg-[#F9F7F2] border border-[#E6E2D3] rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none"
+                    className="pl-10 pr-4 py-2 w-full bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay outline-none"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <select
-                  className="px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm"
+                  className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
                   value={hotelFilter}
                   onChange={e => setHotelFilter(e.target.value)}
                 >
@@ -823,7 +838,7 @@ const ManageRooms: React.FC = () => {
                   <input
                     type="number"
                     placeholder="Min $$"
-                    className="w-20 px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm outline-none focus:ring-2 focus:ring-[#8D6E63]"
+                    className="w-20 px-3 py-2 rounded-xl bg-linen border border-stone text-sm outline-none focus:ring-2 focus:ring-clay"
                     value={priceRangeFilter.min}
                     onChange={e => setPriceRangeFilter(prev => ({ ...prev, min: e.target.value }))}
                   />
@@ -831,7 +846,7 @@ const ManageRooms: React.FC = () => {
                   <input
                     type="number"
                     placeholder="Max $$"
-                    className="w-20 px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm outline-none focus:ring-2 focus:ring-[#8D6E63]"
+                    className="w-20 px-3 py-2 rounded-xl bg-linen border border-stone text-sm outline-none focus:ring-2 focus:ring-clay"
                     value={priceRangeFilter.max}
                     onChange={e => setPriceRangeFilter(prev => ({ ...prev, max: e.target.value }))}
                   />
@@ -840,37 +855,37 @@ const ManageRooms: React.FC = () => {
                   type="number"
                   min="1"
                   placeholder="Min Occ."
-                  className="w-24 px-3 py-2 rounded-xl bg-[#F9F7F2] border border-[#E6E2D3] text-sm outline-none focus:ring-2 focus:ring-[#8D6E63]"
+                  className="w-24 px-3 py-2 rounded-xl bg-linen border border-stone text-sm outline-none focus:ring-2 focus:ring-clay"
                   value={occupancyFilter}
                   onChange={e => setOccupancyFilter(e.target.value)}
                 />
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#5D4037] border border-[#E6E2D3] rounded-xl hover:bg-[#F9F7F2] transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-umber border border-stone rounded-xl hover:bg-linen transition-colors cursor-pointer"
                 >
                   Reset
                 </button>
               </div>
 
               <div className="flex gap-3 w-full md:w-auto justify-between md:justify-end">
-                <div className="flex bg-[#F9F7F2] p-1 rounded-lg">
+                <div className="flex bg-linen p-1 rounded-lg">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'grid' ? 'bg-white shadow text-[#5D4037]' : 'text-gray-400'}`}
+                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'grid' ? 'bg-white shadow text-umber' : 'text-gray-400'}`}
                   >
                     <BsGrid />
                   </button>
                   <button
                     onClick={() => setViewMode('table')}
-                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'table' ? 'bg-white shadow text-[#5D4037]' : 'text-gray-400'}`}
+                    className={`p-2 rounded-md cursor-pointer ${viewMode === 'table' ? 'bg-white shadow text-umber' : 'text-gray-400'}`}
                   >
                     <BsList />
                   </button>
                 </div>
                 <button
                   onClick={() => openModal()}
-                  className="flex items-center gap-2 px-5 py-2 bg-[#5D4037] text-white rounded-xl font-bold hover:bg-[#3E2723] transition-colors shadow-lg cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2 bg-umber text-white rounded-xl font-bold hover:bg-[#3E2723] transition-colors shadow-lg cursor-pointer"
                 >
                   <BsPlusCircle /> Add Type
                 </button>
@@ -885,19 +900,19 @@ const ManageRooms: React.FC = () => {
                   const hName = typeof type.hotel === 'string' ? hotels.find(h => h._id === type.hotel)?.name : (type.hotel as Hotel)?.name;
 
                   return (
-                    <div key={type._id} className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+                    <div key={type._id} className="bg-white rounded-2xl shadow-sm border border-stone p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-serif font-bold text-[#5D4037] w-full truncate" title={type.name}>{type.name}</h4>
-                        <span className="shrink-0 px-3 py-1 text-xs rounded-full font-semibold bg-[#F9F7F2] text-[#5D4037] border border-[#E6E2D3]">
+                        <h4 className="text-lg font-serif font-bold text-umber w-full truncate" title={type.name}>{type.name}</h4>
+                        <span className="shrink-0 px-3 py-1 text-xs rounded-full font-semibold bg-linen text-umber border border-stone">
                           Max {type.maxOccupancy}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 space-y-1">
                         <p className="flex items-center gap-2"><BsHouseDoor className="text-gray-400" /> {hName || 'Unknown Hotel'}</p>
-                        <p className="flex items-center gap-2 font-semibold text-[#8D6E63]"><BsCurrencyDollar /> {type.basePrice} / night</p>
+                        <p className="flex items-center gap-2 font-semibold text-clay"><BsCurrencyDollar /> {type.basePrice} / night</p>
                       </div>
                       <p className="text-xs text-gray-400 line-clamp-2">{type.description}</p>
-                      <div className="flex gap-2 pt-3 border-t border-dashed border-[#E6E2D3] mt-auto">
+                      <div className="flex gap-2 pt-3 border-t border-dashed border-stone mt-auto">
                         <button onClick={() => openModal(type)} className="flex-1 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-semibold cursor-pointer">Edit</button>
                         <button onClick={() => handleDelete(type._id)} className="flex-1 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-semibold cursor-pointer">Delete</button>
                       </div>
@@ -906,10 +921,10 @@ const ManageRooms: React.FC = () => {
                 })}
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-[#F9F7F2] text-[#5D4037] font-serif">
+                    <thead className="bg-linen text-umber font-serif">
                       <tr>
                         <th className="p-4 font-bold">Name</th>
                         <th className="p-4 font-bold">Hotel</th>
@@ -918,11 +933,11 @@ const ManageRooms: React.FC = () => {
                         <th className="p-4 font-bold text-center">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E6E2D3]">
+                    <tbody className="divide-y divide-stone">
                       {paginatedItems.map(item => {
                         const type = item as RoomType;
                         return (
-                          <tr key={type._id} className="hover:bg-[#FDFBF7]">
+                          <tr key={type._id} className="hover:bg-pearl">
                             <td className="p-4 font-bold">{type.name}</td>
                             <td className="p-4">{
                               (typeof type.hotel === 'string' ? hotels.find(h => h._id === type.hotel)?.name : (type.hotel as Hotel)?.name)
@@ -949,10 +964,10 @@ const ManageRooms: React.FC = () => {
 
         {/* MODAL */}
         {showModal && (
-          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[#2C2416]/70 backdrop-blur-md animate-fade-in">
-            <div className={`bg-white dark:bg-[#1E1E1E] w-full ${activeTab === 'types' ? 'max-w-4xl' : 'max-w-2xl'} rounded-3xl shadow-2xl overflow-hidden border border-[#E6E2D3] dark:border-gray-700 flex flex-col max-h-[90vh]`}>
+          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md animate-fade-in">
+            <div className={`bg-white dark:bg-charcoal w-full ${activeTab === 'types' ? 'max-w-4xl' : 'max-w-2xl'} rounded-3xl shadow-2xl overflow-hidden border border-stone dark:border-gray-700 flex flex-col max-h-[90vh]`}>
               {/* Modal Header */}
-              <div className="bg-gradient-to-r from-[#5D4037] to-[#8D6E63] p-6 text-white flex justify-between items-center shrink-0">
+              <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                     {activeTab === 'rooms' ? <BsHouseDoor size={24} /> : <BsTags size={24} />}
@@ -978,7 +993,7 @@ const ManageRooms: React.FC = () => {
               <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar Tabs (Only for Room Types) */}
                 {activeTab === 'types' && (
-                  <div className="w-64 bg-[#F9F7F2] dark:bg-[#121212] border-r border-[#E6E2D3] dark:border-gray-800 p-6 space-y-2 shrink-0 hidden md:block">
+                  <div className="w-64 bg-linen dark:bg-night border-r border-stone dark:border-gray-800 p-6 space-y-2 shrink-0 hidden md:block">
                     {[
                       { id: 'general', label: 'General Info', icon: BsInfoCircle },
                       { id: 'details', label: 'Pricing & Occ.', icon: BsCurrencyDollar },
@@ -988,13 +1003,13 @@ const ManageRooms: React.FC = () => {
                       <button
                         key={tab.id}
                         type="button"
-                        onClick={() => setModalTab(tab.id as any)}
+                        onClick={() => setModalTab(tab.id as typeof modalTab)}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer ${modalTab === tab.id
-                          ? 'bg-[#5D4037] text-white shadow-lg shadow-[#5D4037]/20 translate-x-1'
-                          : 'text-[#6B5B4F] dark:text-gray-400 hover:bg-white dark:hover:bg-[#1E1E1E] hover:text-[#5D4037] dark:hover:text-[#FDF8F3]'
+                          ? 'bg-umber text-white shadow-lg shadow-umber/20 translate-x-1'
+                          : 'text-taupe dark:text-gray-400 hover:bg-white dark:hover:bg-charcoal hover:text-umber dark:hover:text-ivory'
                           }`}
                       >
-                        <tab.icon className={modalTab === tab.id ? 'text-[#D4AF37]' : ''} />
+                        <tab.icon className={modalTab === tab.id ? 'text-gold' : ''} />
                         {tab.label}
                       </button>
                     ))}
@@ -1002,7 +1017,7 @@ const ManageRooms: React.FC = () => {
                 )}
 
                 {/* Main Form Area */}
-                <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#1E1E1E]">
+                <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-charcoal">
                   <div className="flex-1 overflow-y-auto p-8">
 
                     {/* Mobile Tabs for Types */}
@@ -1017,10 +1032,10 @@ const ManageRooms: React.FC = () => {
                           <button
                             key={tab.id}
                             type="button"
-                            onClick={() => setModalTab(tab.id as any)}
+                            onClick={() => setModalTab(tab.id as typeof modalTab)}
                             className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${modalTab === tab.id
-                              ? 'bg-[#5D4037] text-white'
-                              : 'bg-[#F9F7F2] text-[#6B5B4F]'
+                              ? 'bg-umber text-white'
+                              : 'bg-linen text-taupe'
                               }`}
                           >
                             {tab.label}
@@ -1034,12 +1049,12 @@ const ManageRooms: React.FC = () => {
                       <div className="space-y-6 animate-fade-in">
                         <div className="grid gap-6">
                           <div>
-                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Room Number</label>
+                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Room Number</label>
                             <div className="relative">
                               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-xs">#</span>
                               <input
                                 type="text"
-                                className="w-full pl-8 pr-4 py-3 bg-gray-100 dark:bg-[#121212]/50 border border-[#E6E2D3] dark:border-gray-700 rounded-xl text-[#2C2416] dark:text-[#FDF8F3] font-bold cursor-not-allowed opacity-70"
+                                className="w-full pl-8 pr-4 py-3 bg-gray-100 dark:bg-night/50 border border-stone dark:border-gray-700 rounded-xl text-ink dark:text-ivory font-bold cursor-not-allowed opacity-70"
                                 value={roomForm.roomNumber}
                                 readOnly
                                 title="Auto-generated based on Hotel and Room Type"
@@ -1055,11 +1070,11 @@ const ManageRooms: React.FC = () => {
                             </p>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Hotel</label>
+                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Hotel</label>
                             <div className="relative">
                               <BsHouseDoor className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                               <select
-                                className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none"
+                                className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none"
                                 value={roomForm.hotel}
                                 onChange={e => setRoomForm(prev => ({ ...prev, hotel: e.target.value }))}
                                 required
@@ -1070,11 +1085,11 @@ const ManageRooms: React.FC = () => {
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Room Type</label>
+                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Room Type</label>
                             <div className="relative">
                               <BsTags className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                               <select
-                                className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none"
+                                className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none"
                                 value={roomForm.type}
                                 onChange={e => setRoomForm(prev => ({ ...prev, type: e.target.value }))}
                                 required
@@ -1085,7 +1100,7 @@ const ManageRooms: React.FC = () => {
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Status</label>
+                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Status</label>
                             <div className="grid grid-cols-3 gap-3">
                               {['available', 'occupied', 'maintenance'].map(status => (
                                 <button
@@ -1096,7 +1111,7 @@ const ManageRooms: React.FC = () => {
                                     ? status === 'available' ? 'border-green-500 bg-green-50 text-green-700'
                                       : status === 'occupied' ? 'border-blue-500 bg-blue-50 text-blue-700'
                                         : 'border-red-500 bg-red-50 text-red-700'
-                                    : 'border-transparent bg-[#F9F7F2] text-gray-500 hover:bg-gray-200'
+                                    : 'border-transparent bg-linen text-gray-500 hover:bg-gray-200'
                                     }`}
                                 >
                                   {status}
@@ -1113,15 +1128,15 @@ const ManageRooms: React.FC = () => {
                       <>
                         {modalTab === 'general' && (
                           <div className="space-y-6 animate-fade-in">
-                            <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                               Basic Information
                             </h3>
                             <div className="grid gap-6">
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Type Name</label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Type Name</label>
                                 <input
                                   type="text"
-                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium"
+                                  className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
                                   value={typeForm.name}
                                   onChange={e => setTypeForm(prev => ({ ...prev, name: e.target.value }))}
                                   required
@@ -1129,11 +1144,11 @@ const ManageRooms: React.FC = () => {
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Hotel</label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Hotel</label>
                                 <div className="relative">
                                   <BsHouseDoor className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                   <select
-                                    className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none"
+                                    className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none"
                                     value={typeForm.hotel}
                                     onChange={e => setTypeForm(prev => ({ ...prev, hotel: e.target.value }))}
                                     required
@@ -1144,10 +1159,10 @@ const ManageRooms: React.FC = () => {
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Description</label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Description</label>
                                 <textarea
                                   rows={5}
-                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium resize-none"
+                                  className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium resize-none"
                                   value={typeForm.description}
                                   onChange={e => setTypeForm(prev => ({ ...prev, description: e.target.value }))}
                                   placeholder="Describe the room features..."
@@ -1159,17 +1174,17 @@ const ManageRooms: React.FC = () => {
 
                         {modalTab === 'details' && (
                           <div className="space-y-6 animate-fade-in">
-                            <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                               Pricing & Occupancy
                             </h3>
                             <div className="grid gap-6">
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Base Price (per night)</label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Base Price (per night)</label>
                                 <div className="relative">
-                                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8D6E63] font-bold">$</span>
+                                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-clay font-bold">$</span>
                                   <input
                                     type="number"
-                                    className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium text-lg"
+                                    className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium text-lg"
                                     value={typeForm.basePrice}
                                     onChange={e => setTypeForm(prev => ({ ...prev, basePrice: Number(e.target.value) }))}
                                     required
@@ -1177,19 +1192,19 @@ const ManageRooms: React.FC = () => {
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Max Occupancy</label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Max Occupancy</label>
                                 <div className="flex items-center gap-4">
                                   <button
                                     type="button"
                                     onClick={() => setTypeForm(prev => ({ ...prev, maxOccupancy: Math.max(1, prev.maxOccupancy - 1) }))}
-                                    className="w-12 h-12 rounded-xl bg-[#F9F7F2] hover:bg-[#E6E2D3] text-[#5D4037] flex items-center justify-center font-bold text-xl transition-colors cursor-pointer"
+                                    className="w-12 h-12 rounded-xl bg-linen hover:bg-stone text-umber flex items-center justify-center font-bold text-xl transition-colors cursor-pointer"
                                   >
                                     -
                                   </button>
                                   <input
                                     type="number"
                                     min={1}
-                                    className="w-24 text-center py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-bold text-lg"
+                                    className="w-24 text-center py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-bold text-lg"
                                     value={typeForm.maxOccupancy}
                                     onChange={e => setTypeForm(prev => ({ ...prev, maxOccupancy: Number(e.target.value) }))}
                                     required
@@ -1197,7 +1212,7 @@ const ManageRooms: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => setTypeForm(prev => ({ ...prev, maxOccupancy: prev.maxOccupancy + 1 }))}
-                                    className="w-12 h-12 rounded-xl bg-[#F9F7F2] hover:bg-[#E6E2D3] text-[#5D4037] flex items-center justify-center font-bold text-xl transition-colors cursor-pointer"
+                                    className="w-12 h-12 rounded-xl bg-linen hover:bg-stone text-umber flex items-center justify-center font-bold text-xl transition-colors cursor-pointer"
                                   >
                                     +
                                   </button>
@@ -1207,31 +1222,31 @@ const ManageRooms: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Size (m²) <span className="normal-case font-normal">optional</span></label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Size (m²) <span className="normal-case font-normal">optional</span></label>
                                 <input
                                   type="number"
                                   min={0}
-                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3]"
+                                  className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory"
                                   value={typeForm.size}
                                   onChange={e => setTypeForm(prev => ({ ...prev, size: e.target.value }))}
                                   placeholder="e.g. 35"
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Bed <span className="normal-case font-normal">optional</span></label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Bed <span className="normal-case font-normal">optional</span></label>
                                 <input
                                   type="text"
-                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3]"
+                                  className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory"
                                   value={typeForm.bedType}
                                   onChange={e => setTypeForm(prev => ({ ...prev, bedType: e.target.value }))}
                                   placeholder="e.g. King Bed"
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">View <span className="normal-case font-normal">optional</span></label>
+                                <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">View <span className="normal-case font-normal">optional</span></label>
                                 <input
                                   type="text"
-                                  className="w-full px-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3]"
+                                  className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory"
                                   value={typeForm.view}
                                   onChange={e => setTypeForm(prev => ({ ...prev, view: e.target.value }))}
                                   placeholder="e.g. Ocean View"
@@ -1243,28 +1258,28 @@ const ManageRooms: React.FC = () => {
 
                         {modalTab === 'amenities' && (
                           <div className="space-y-6 animate-fade-in">
-                            <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                               Room Amenities
                             </h3>
                             <div>
-                              <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Features List</label>
+                              <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Features List</label>
                               <div className="relative">
                                 <BsWifi className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                   type="text"
                                   placeholder="Wifi, TV, Ocean View, Mini Bar..."
-                                  className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium"
+                                  className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
                                   value={typeForm.amenities}
                                   onChange={e => setTypeForm(prev => ({ ...prev, amenities: e.target.value }))}
                                 />
                               </div>
-                              <p className="text-xs text-[#8D6E63] mt-2 flex items-center gap-1">
+                              <p className="text-xs text-clay mt-2 flex items-center gap-1">
                                 <BsInfoCircle /> Separate amenities with commas
                               </p>
 
                               <div className="mt-4 flex flex-wrap gap-2">
                                 {typeForm.amenities.split(',').filter(a => a.trim()).map((a, i) => (
-                                  <span key={i} className="px-3 py-1 bg-[#E6E2D3] text-[#5D4037] rounded-full text-xs font-bold flex items-center gap-1">
+                                  <span key={i} className="px-3 py-1 bg-stone text-umber rounded-full text-xs font-bold flex items-center gap-1">
                                     <BsCheckCircle size={10} /> {a.trim()}
                                   </span>
                                 ))}
@@ -1275,10 +1290,10 @@ const ManageRooms: React.FC = () => {
 
                         {modalTab === 'media' && (
                           <div className="space-y-6 animate-fade-in">
-                            <h3 className="text-xl font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2">
+                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
                               Gallery & Photos
                             </h3>
-                            <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-[#E6E2D3] dark:border-gray-700 bg-[#F9F7F2] dark:bg-[#121212] flex flex-col items-center justify-center relative group hover:border-[#8D6E63] transition-colors cursor-pointer">
+                            <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-stone dark:border-gray-700 bg-linen dark:bg-night flex flex-col items-center justify-center relative group hover:border-clay transition-colors cursor-pointer">
                               <input
                                 type="file"
                                 multiple
@@ -1290,19 +1305,19 @@ const ManageRooms: React.FC = () => {
                                   }
                                 }}
                               />
-                              <div className="p-4 rounded-full bg-white dark:bg-[#2C2416] shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                                <BsCloudUpload className="text-3xl text-[#8D6E63]" />
+                              <div className="p-4 rounded-full bg-white dark:bg-ink shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                                <BsCloudUpload className="text-3xl text-clay" />
                               </div>
-                              <h4 className="text-lg font-bold text-[#5D4037] dark:text-[#FDF8F3]">Click to upload photos</h4>
-                              <p className="text-sm text-[#6B5B4F] dark:text-gray-400 mt-2">SVG, PNG, JPG or GIF (max. 5MB)</p>
+                              <h4 className="text-lg font-bold text-umber dark:text-ivory">Click to upload photos</h4>
+                              <p className="text-sm text-taupe dark:text-gray-400 mt-2">SVG, PNG, JPG or GIF (max. 5MB)</p>
                             </div>
 
                             {typeForm.files.length > 0 && (
                               <div className="space-y-2">
-                                <p className="text-sm font-bold text-[#5D4037]">{typeForm.files.length} files selected</p>
+                                <p className="text-sm font-bold text-umber">{typeForm.files.length} files selected</p>
                                 <div className="flex flex-wrap gap-2">
                                   {typeForm.files.map((file, i) => (
-                                    <div key={i} className="px-3 py-1 bg-[#E6E2D3] rounded-md text-xs text-[#5D4037] flex items-center gap-2">
+                                    <div key={i} className="px-3 py-1 bg-stone rounded-md text-xs text-umber flex items-center gap-2">
                                       <BsFileText /> {file.name}
                                     </div>
                                   ))}
@@ -1316,18 +1331,18 @@ const ManageRooms: React.FC = () => {
                   </div>
 
                   {/* Modal Footer */}
-                  <div className="p-6 bg-gray-50 dark:bg-[#121212] border-t border-[#E6E2D3] dark:border-gray-800 flex justify-end gap-3 shrink-0">
+                  <div className="p-6 bg-gray-50 dark:bg-night border-t border-stone dark:border-gray-800 flex justify-end gap-3 shrink-0">
                     <button
                       type="button"
                       onClick={() => setShowModal(false)}
-                      className="px-6 py-2.5 rounded-xl text-[#5D4037] font-bold hover:bg-[#E6E2D3] transition-colors cursor-pointer"
+                      className="px-6 py-2.5 rounded-xl text-umber font-bold hover:bg-stone transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="px-8 py-2.5 bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-white font-bold rounded-xl shadow-lg shadow-[#5D4037]/20 hover:shadow-xl hover:shadow-[#5D4037]/30 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      className="px-8 py-2.5 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-xl shadow-lg shadow-umber/20 hover:shadow-xl hover:shadow-umber/30 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {activeTab === 'rooms' ? (isEditing ? 'Save Room' : 'Create Room') : (isEditing ? 'Save Type' : 'Create Type')}
                     </button>

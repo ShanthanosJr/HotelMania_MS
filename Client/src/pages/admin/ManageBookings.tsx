@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../utils/api';
+import { toError } from '../../utils/errors';
 import AdminLayout from '../../components/AdminLayout';
 import {
     BsCalendarCheck, BsCurrencyDollar, BsHouseDoor,
@@ -11,6 +12,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { toast, confirmDialog } from '../../components/ui';
 
 // --- Types based on your data structure ---
 interface User {
@@ -39,6 +41,13 @@ interface Booking {
 const isAuthenticated = () => {
     const token = localStorage.getItem('token');
     return token !== null && token !== undefined && token !== '';
+};
+
+const colors = {
+    brown: '#8D6E63',
+    green: '#10B981',
+    red: '#EF4444',
+    gold: '#D4AF37'
 };
 
 const ManageBookings: React.FC = () => {
@@ -72,13 +81,6 @@ const ManageBookings: React.FC = () => {
     const [itemsPerPage, _setItemsPerPage] = useState(10);
 
     // --- Theme Colors ---
-    const colors = {
-        brown: '#8D6E63',
-        green: '#10B981',
-        red: '#EF4444',
-        gold: '#D4AF37'
-    };
-
     // --- Data Fetching (Preserving your Logic) ---
     const fetchBookings = async () => {
         try {
@@ -102,7 +104,8 @@ const ManageBookings: React.FC = () => {
             setUsers(Array.isArray(usersData) ? usersData : []);
             setRooms(Array.isArray(roomsData) ? roomsData : []);
 
-        } catch (err: any) {
+        } catch (caught: unknown) {
+      const err = toError(caught);
             console.error("Error fetching data:", err);
             setError('Failed to load dashboard data. Please check your connection.');
         } finally {
@@ -173,20 +176,21 @@ const ManageBookings: React.FC = () => {
                 throw new Error(data.message || 'Operation failed');
             }
 
-            alert(editingId ? 'Booking updated successfully!' : 'Booking created successfully!');
+            toast.success(editingId ? 'Booking updated successfully!' : 'Booking created successfully!');
 
             resetForm();
             fetchBookings();
-        } catch (err: any) {
+        } catch (caught: unknown) {
+      const err = toError(caught);
             console.error(err);
-            alert(err.message || 'Operation failed');
+            toast.error(err.message || 'Operation failed');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this booking?')) {
+        if (await confirmDialog({ title: 'Delete this booking?', message: 'This removes the record entirely. To keep history, cancel it instead.', confirmLabel: 'Delete booking', tone: 'danger' })) {
             try {
                 const res = await api.delete(`/api/bookings/${id}`);
                 if (!res.ok) {
@@ -194,9 +198,10 @@ const ManageBookings: React.FC = () => {
                     throw new Error(data.message || 'Failed to delete booking');
                 }
                 fetchBookings();
-            } catch (err: any) {
+            } catch (caught: unknown) {
+      const err = toError(caught);
                 console.error(err);
-                alert(err.message || 'Failed to delete booking');
+                toast.error(err.message || 'Failed to delete booking');
             }
         }
     };
@@ -267,13 +272,13 @@ const ManageBookings: React.FC = () => {
         );
     };
 
-    if (error) return <div className="flex h-screen items-center justify-center text-red-600 bg-[#F9F7F2]">{error}</div>;
+    if (error) return <div className="flex h-screen items-center justify-center text-red-600 bg-linen">{error}</div>;
 
     return (
         <AdminLayout>
 
             {/* --- 1. HERO HEADER --- */}
-            <div className="relative bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-[#F9F7F2] px-8 py-10 shadow-lg mb-8 overflow-hidden">
+            <div className="relative bg-gradient-to-r from-umber to-clay text-linen px-8 py-10 shadow-lg mb-8 overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-10 -mb-10 pointer-events-none"></div>
 
@@ -281,11 +286,11 @@ const ManageBookings: React.FC = () => {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-inner">
-                                <BsCalendarCheck className="text-3xl text-[#E6E2D3]" />
+                                <BsCalendarCheck className="text-3xl text-stone" />
                             </div>
                             <h1 className="text-4xl font-serif font-bold tracking-tight">Booking Administration</h1>
                         </div>
-                        <p className="text-[#E6E2D3] text-lg font-light max-w-xl">
+                        <p className="text-stone text-lg font-light max-w-xl">
                             Manage reservations, track revenue, and oversee guest experiences.
                         </p>
                     </div>
@@ -299,7 +304,7 @@ const ManageBookings: React.FC = () => {
                         </button>
                         <button
                             onClick={() => { resetForm(); setShowModal(true); }}
-                            className="flex items-center gap-2 px-6 py-3 bg-[#E6E2D3] text-[#5D4037] hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1 cursor-pointer"
+                            className="flex items-center gap-2 px-6 py-3 bg-stone text-umber hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1 cursor-pointer"
                         >
                             <BsPlusCircle /> Add Booking
                         </button>
@@ -313,27 +318,27 @@ const ManageBookings: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                     {[
                         { label: 'Total Bookings', value: metrics.total, icon: BsHouseDoor, color: 'text-blue-600', bg: 'bg-blue-50' },
-                        { label: 'Total Revenue', value: `$${metrics.revenue.toLocaleString()}`, icon: BsCurrencyDollar, color: 'text-[#8D6E63]', bg: 'bg-[#FDFBF7]' },
+                        { label: 'Total Revenue', value: `$${metrics.revenue.toLocaleString()}`, icon: BsCurrencyDollar, color: 'text-clay', bg: 'bg-pearl' },
                         { label: 'Confirmed', value: metrics.confirmed, icon: BsCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
                         { label: 'Pending', value: metrics.pending, icon: BsClock, color: 'text-yellow-600', bg: 'bg-yellow-50' },
                     ].map((stat, idx) => (
-                        <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-[#E6E2D3] flex items-center gap-4">
+                        <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-stone flex items-center gap-4">
                             <div className={`p-4 rounded-full ${stat.bg} ${stat.color} bg-opacity-50`}>
                                 <stat.icon size={24} />
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">{stat.label}</p>
-                                <h3 className="text-2xl font-serif font-bold text-[#5D4037]">{stat.value}</h3>
+                                <h3 className="text-2xl font-serif font-bold text-umber">{stat.value}</h3>
                             </div>
                         </div>
                     ))}
                 </div>
 
                 {/* --- 3. TOOLBAR & FILTERS --- */}
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E2D3] mb-8 flex flex-col lg:flex-row justify-between items-center gap-4">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-col lg:flex-row justify-between items-center gap-4">
 
                     {/* View Switcher */}
-                    <div className="flex bg-[#F9F7F2] p-1 rounded-xl">
+                    <div className="flex bg-linen p-1 rounded-xl">
                         {[
                             { id: 'overview', label: 'Overview', icon: BsThreeDotsVertical },
                             { id: 'grid', label: 'Grid', icon: BsGrid },
@@ -341,10 +346,10 @@ const ManageBookings: React.FC = () => {
                         ].map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setViewMode(tab.id as any)}
+                                onClick={() => setViewMode(tab.id as typeof viewMode)}
                                 className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer transition-all duration-300 ${viewMode === tab.id
-                                    ? 'bg-[#5D4037] text-white shadow-md'
-                                    : 'text-gray-500 hover:text-[#5D4037] hover:bg-gray-100'
+                                    ? 'bg-umber text-white shadow-md'
+                                    : 'text-gray-500 hover:text-umber hover:bg-gray-100'
                                     }`}
                             >
                                 <tab.icon /> {tab.label}
@@ -355,11 +360,11 @@ const ManageBookings: React.FC = () => {
                     {/* Search & Filter */}
                     <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                         <div className="relative group flex-1 lg:flex-none">
-                            <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#8D6E63] transition-colors" />
+                            <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-clay transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search guests or rooms..."
-                                className="pl-10 pr-4 py-2.5 w-full lg:w-64 bg-[#F9F7F2] border border-[#E6E2D3] rounded-xl focus:ring-2 focus:ring-[#8D6E63] focus:outline-none transition-all"
+                                className="pl-10 pr-4 py-2.5 w-full lg:w-64 bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none transition-all"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -368,7 +373,7 @@ const ManageBookings: React.FC = () => {
                         <div className="relative">
                             <BsFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <select
-                                className="pl-10 pr-8 py-2.5 bg-[#F9F7F2] border border-[#E6E2D3] rounded-xl focus:ring-2 focus:ring-[#8D6E63] focus:outline-none appearance-none cursor-pointer"
+                                className="pl-10 pr-8 py-2.5 bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none appearance-none cursor-pointer"
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                             >
@@ -383,7 +388,7 @@ const ManageBookings: React.FC = () => {
 
                 {/* --- 4. MAIN CONTENT AREA --- */}
                 {loading ? (
-                    <div className="flex justify-center py-20 text-[#8D6E63]">
+                    <div className="flex justify-center py-20 text-clay">
                         <span className="animate-pulse font-serif text-xl">Loading records...</span>
                     </div>
                 ) : (
@@ -391,9 +396,9 @@ const ManageBookings: React.FC = () => {
                         {/* VIEW: OVERVIEW */}
                         {viewMode === 'overview' && (
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-                                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-                                    <h3 className="text-xl font-serif font-bold text-[#5D4037] mb-6 flex items-center gap-2">
-                                        <BsWallet2 className="text-[#8D6E63]" /> Revenue Trends
+                                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-stone">
+                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
+                                        <BsWallet2 className="text-clay" /> Revenue Trends
                                     </h3>
                                     <div className="h-[350px]">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -414,9 +419,9 @@ const ManageBookings: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#E6E2D3]">
-                                    <h3 className="text-xl font-serif font-bold text-[#5D4037] mb-6 flex items-center gap-2">
-                                        <BsCalendarCheck className="text-[#8D6E63]" /> Status
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
+                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
+                                        <BsCalendarCheck className="text-clay" /> Status
                                     </h3>
                                     <div className="h-[350px] flex items-center justify-center">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -439,12 +444,12 @@ const ManageBookings: React.FC = () => {
                         {viewMode === 'grid' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
                                 {currentBookings.map((booking) => (
-                                    <div key={booking._id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-[#E6E2D3] overflow-hidden flex flex-col">
-                                        <div className="h-2 w-full bg-gradient-to-r from-[#5D4037] to-[#8D6E63]"></div>
+                                    <div key={booking._id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-stone overflow-hidden flex flex-col">
+                                        <div className="h-2 w-full bg-gradient-to-r from-umber to-clay"></div>
                                         <div className="p-6 flex-1">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div>
-                                                    <h4 className="text-lg font-bold text-[#5D4037] group-hover:text-[#8D6E63] transition-colors">
+                                                    <h4 className="text-lg font-bold text-umber group-hover:text-clay transition-colors">
                                                         {(booking.user && typeof booking.user === 'object') ? booking.user.name : 'Unknown User'}
                                                     </h4>
                                                     <p className="text-sm text-gray-500">
@@ -454,23 +459,23 @@ const ManageBookings: React.FC = () => {
                                                 {getStatusBadge(booking.status)}
                                             </div>
 
-                                            <div className="space-y-3 py-4 border-t border-b border-dashed border-[#E6E2D3]">
+                                            <div className="space-y-3 py-4 border-t border-b border-dashed border-stone">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-500">Room</span>
-                                                    <span className="font-semibold text-[#5D4037]">
+                                                    <span className="font-semibold text-umber">
                                                         {(booking.room && typeof booking.room === 'object') ? `${booking.room.roomNumber} - ${booking.room.type.name}` : (booking.room || 'Unknown Room')}
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-500">Check-In</span>
-                                                    <span className="font-semibold text-[#5D4037]">{new Date(booking.checkInDate).toLocaleDateString()}</span>
+                                                    <span className="font-semibold text-umber">{new Date(booking.checkInDate).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
 
                                             <div className="mt-4 flex justify-between items-center">
-                                                <span className="text-xl font-bold text-[#8D6E63]">${booking.totalPrice}</span>
+                                                <span className="text-xl font-bold text-clay">${booking.totalPrice}</span>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => handleEdit(booking)} className="p-2 text-blue-600 hover:text-[#5D4037] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                                                    <button onClick={() => handleEdit(booking)} className="p-2 text-blue-600 hover:text-umber hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
                                                         <BsPencil />
                                                     </button>
                                                     <button onClick={() => handleDelete(booking._id)} className="p-2 text-red-600 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
@@ -486,25 +491,25 @@ const ManageBookings: React.FC = () => {
 
                         {/* VIEW: TABLE */}
                         {viewMode === 'table' && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-[#E6E2D3] overflow-hidden animate-fade-in">
+                            <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden animate-fade-in">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
-                                        <thead className="bg-[#F9F7F2] text-[#5D4037] font-serif">
+                                        <thead className="bg-linen text-umber font-serif">
                                             <tr>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Guest</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Room</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Dates</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Status</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3]">Payment</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3] text-right">Total</th>
-                                                <th className="p-5 font-bold border-b border-[#E6E2D3] text-center">Actions</th>
+                                                <th className="p-5 font-bold border-b border-stone">Guest</th>
+                                                <th className="p-5 font-bold border-b border-stone">Room</th>
+                                                <th className="p-5 font-bold border-b border-stone">Dates</th>
+                                                <th className="p-5 font-bold border-b border-stone">Status</th>
+                                                <th className="p-5 font-bold border-b border-stone">Payment</th>
+                                                <th className="p-5 font-bold border-b border-stone text-right">Total</th>
+                                                <th className="p-5 font-bold border-b border-stone text-center">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-[#E6E2D3]">
+                                        <tbody className="divide-y divide-stone">
                                             {currentBookings.map((booking) => (
-                                                <tr key={booking._id} className="hover:bg-[#FDFBF7] transition-colors">
+                                                <tr key={booking._id} className="hover:bg-pearl transition-colors">
                                                     <td className="p-5">
-                                                        <div className="font-bold text-[#5D4037]">
+                                                        <div className="font-bold text-umber">
                                                             {(booking.user && typeof booking.user === 'object') ? booking.user.name : 'Unknown User'}
                                                         </div>
                                                         <div className="text-xs text-gray-500">
@@ -516,7 +521,7 @@ const ManageBookings: React.FC = () => {
                                                             {(booking.room && typeof booking.room === 'object') ? booking.room.roomNumber : (booking.room || '-')}
                                                         </span>
                                                     </td>
-                                                    <td className="p-5 text-sm text-[#5D4037]">
+                                                    <td className="p-5 text-sm text-umber">
                                                         <div>In: <span className="font-medium">{new Date(booking.checkInDate).toLocaleDateString()}</span></div>
                                                         <div>Out: <span className="font-medium">{new Date(booking.checkOutDate).toLocaleDateString()}</span></div>
                                                     </td>
@@ -526,7 +531,7 @@ const ManageBookings: React.FC = () => {
                                                             {booking.paymentStatus.toUpperCase()}
                                                         </span>
                                                     </td>
-                                                    <td className="p-5 text-right font-bold text-[#8D6E63]">${booking.totalPrice}</td>
+                                                    <td className="p-5 text-right font-bold text-clay">${booking.totalPrice}</td>
                                                     <td className="p-5 text-center">
                                                         <div className="flex justify-center gap-2">
                                                             <button onClick={() => handleEdit(booking)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer">
@@ -551,10 +556,10 @@ const ManageBookings: React.FC = () => {
             {/* --- PAGINATION CONTROLS --- */}
             {!loading && filteredBookings.length > 0 && (
                 <div className="max-w-7xl mx-auto px-6 pb-12">
-                    <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-white border border-[#E6E2D3] rounded-2xl shadow-sm">
+                    <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-white border border-stone rounded-2xl shadow-sm">
 
                         {/* Status Text */}
-                        <div className="text-sm text-[#5D4037] mb-4 md:mb-0">
+                        <div className="text-sm text-umber mb-4 md:mb-0">
                             Showing <span className="font-bold">{showingStart}</span> to <span className="font-bold">{showingEnd}</span> of <span className="font-bold">{filteredBookings.length}</span> entries
                         </div>
 
@@ -563,7 +568,7 @@ const ManageBookings: React.FC = () => {
                             <button
                                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                 disabled={currentPage === 1}
-                                className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                             >
                                 <BsChevronLeft />
                             </button>
@@ -574,8 +579,8 @@ const ManageBookings: React.FC = () => {
                                         key={number}
                                         onClick={() => setCurrentPage(number)}
                                         className={`px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${currentPage === number
-                                            ? 'bg-[#5D4037] text-white shadow-md'
-                                            : 'bg-white border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2]'
+                                            ? 'bg-umber text-white shadow-md'
+                                            : 'bg-white border border-stone text-umber hover:bg-linen'
                                             }`}
                                     >
                                         {number}
@@ -586,7 +591,7 @@ const ManageBookings: React.FC = () => {
                             <button
                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                 disabled={currentPage === totalPages}
-                                className="p-2 rounded-lg border border-[#E6E2D3] text-[#5D4037] hover:bg-[#F9F7F2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                             >
                                 <BsChevronRight />
                             </button>
@@ -598,11 +603,11 @@ const ManageBookings: React.FC = () => {
 
             {/* --- 5. ADD/EDIT MODAL --- */}
             {showModal && (
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-[#2C2416]/70 backdrop-blur-md animate-fade-in">
-                    <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border border-[#E6E2D3] dark:border-gray-700 max-h-[90vh] flex flex-col">
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md animate-fade-in">
+                    <div className="bg-white dark:bg-charcoal w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border border-stone dark:border-gray-700 max-h-[90vh] flex flex-col">
 
                         {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-[#5D4037] to-[#8D6E63] p-6 text-white flex justify-between items-center shrink-0">
+                        <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                                     <BsCalendarCheck size={24} />
@@ -625,23 +630,23 @@ const ManageBookings: React.FC = () => {
                         </div>
 
                         {/* Modal Body */}
-                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 bg-white dark:bg-[#1E1E1E]">
+                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 bg-white dark:bg-charcoal">
                             <div className="space-y-8">
 
                                 {/* Section 1: Review Guest & Room */}
                                 <div className="space-y-4">
-                                    <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                                        <BsHouseDoor className="text-[#8D6E63]" /> Guest & Room
+                                    <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                                        <BsHouseDoor className="text-clay" /> Guest & Room
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Select Guest</label>
+                                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Select Guest</label>
                                             <div className="relative">
                                                 <select
                                                     name="user"
                                                     value={bookingForm.user}
                                                     onChange={handleInputChange}
-                                                    className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none cursor-pointer"
+                                                    className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none cursor-pointer"
                                                     required
                                                 >
                                                     <option value="">Select a guest...</option>
@@ -656,13 +661,13 @@ const ManageBookings: React.FC = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Assign Room</label>
+                                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Assign Room</label>
                                             <div className="relative">
                                                 <select
                                                     name="room"
                                                     value={bookingForm.room}
                                                     onChange={handleInputChange}
-                                                    className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium appearance-none cursor-pointer"
+                                                    className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium appearance-none cursor-pointer"
                                                     required
                                                 >
                                                     <option value="">Select a room...</option>
@@ -680,43 +685,43 @@ const ManageBookings: React.FC = () => {
 
                                 {/* Section 2: Dates & Pricing */}
                                 <div className="space-y-4">
-                                    <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                                        <BsCalendarCheck className="text-[#8D6E63]" /> Stay Details
+                                    <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                                        <BsCalendarCheck className="text-clay" /> Stay Details
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div>
-                                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Check-in</label>
+                                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Check-in</label>
                                             <input
                                                 type="date"
                                                 name="checkInDate"
                                                 value={bookingForm.checkInDate}
                                                 onChange={handleInputChange}
-                                                className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium cursor-pointer"
+                                                className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium cursor-pointer"
                                                 required
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Check-out</label>
+                                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Check-out</label>
                                             <input
                                                 type="date"
                                                 name="checkOutDate"
                                                 value={bookingForm.checkOutDate}
                                                 onChange={handleInputChange}
-                                                className="w-full p-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-medium cursor-pointer"
+                                                className="w-full p-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium cursor-pointer"
                                                 required
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Total Price ($)</label>
+                                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Total Price ($)</label>
                                             <div className="relative">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8D6E63] font-bold">$</span>
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-clay font-bold">$</span>
                                                 <input
                                                     type="number"
                                                     name="totalPrice"
                                                     value={bookingForm.totalPrice}
                                                     onChange={handleInputChange}
                                                     placeholder="0.00"
-                                                    className="w-full pl-10 pr-4 py-3 bg-[#F9F7F2] dark:bg-[#121212] border border-[#E6E2D3] dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8D6E63] outline-none text-[#2C2416] dark:text-[#FDF8F3] font-bold text-lg"
+                                                    className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-bold text-lg"
                                                     required
                                                 />
                                             </div>
@@ -726,12 +731,12 @@ const ManageBookings: React.FC = () => {
 
                                 {/* Section 3: Status */}
                                 <div className="space-y-4">
-                                    <h3 className="text-lg font-serif font-bold text-[#5D4037] dark:text-[#FDF8F3] border-b border-[#E6E2D3] dark:border-gray-800 pb-2 flex items-center gap-2">
-                                        <BsCheckCircle className="text-[#8D6E63]" /> Status Management
+                                    <h3 className="text-lg font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2 flex items-center gap-2">
+                                        <BsCheckCircle className="text-clay" /> Status Management
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Reservation Status</label>
+                                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Reservation Status</label>
                                             <div className="flex flex-wrap gap-2">
                                                 {['pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'].map(status => (
                                                     <button
@@ -739,8 +744,8 @@ const ManageBookings: React.FC = () => {
                                                         type="button"
                                                         onClick={() => setBookingForm(prev => ({ ...prev, status }))}
                                                         className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border transition-all cursor-pointer ${bookingForm.status === status
-                                                            ? 'bg-[#5D4037] text-white border-[#5D4037] shadow-md'
-                                                            : 'bg-[#F9F7F2] text-[#6B5B4F] border-[#E6E2D3] hover:bg-white'
+                                                            ? 'bg-umber text-white border-umber shadow-md'
+                                                            : 'bg-linen text-taupe border-stone hover:bg-white'
                                                             }`}
                                                     >
                                                         {status.replace('_', ' ')}
@@ -749,7 +754,7 @@ const ManageBookings: React.FC = () => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-[#6B5B4F] dark:text-gray-400 uppercase tracking-wider mb-2">Payment Status</label>
+                                            <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Payment Status</label>
                                             <div className="flex gap-2">
                                                 {['pending', 'paid', 'refunded'].map(status => (
                                                     <button
@@ -758,7 +763,7 @@ const ManageBookings: React.FC = () => {
                                                         onClick={() => setBookingForm(prev => ({ ...prev, paymentStatus: status }))}
                                                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border transition-all cursor-pointer ${bookingForm.paymentStatus === status
                                                             ? (status === 'paid' ? 'bg-green-600 text-white border-green-600' : status === 'refunded' ? 'bg-red-500 text-white border-red-500' : 'bg-yellow-500 text-white border-yellow-500')
-                                                            : 'bg-[#F9F7F2] text-[#6B5B4F] border-[#E6E2D3] hover:bg-white'
+                                                            : 'bg-linen text-taupe border-stone hover:bg-white'
                                                             }`}
                                                     >
                                                         {status}
@@ -773,18 +778,18 @@ const ManageBookings: React.FC = () => {
                         </form>
 
                         {/* Modal Footer */}
-                        <div className="p-6 bg-gray-50 dark:bg-[#121212] border-t border-[#E6E2D3] dark:border-gray-800 flex justify-end gap-3 shrink-0">
+                        <div className="p-6 bg-gray-50 dark:bg-night border-t border-stone dark:border-gray-800 flex justify-end gap-3 shrink-0">
                             <button
                                 type="button"
                                 onClick={resetForm}
-                                className="px-6 py-2.5 rounded-xl text-[#5D4037] font-bold hover:bg-[#E6E2D3] transition-colors cursor-pointer"
+                                className="px-6 py-2.5 rounded-xl text-umber font-bold hover:bg-stone transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSubmit}
                                 type="button"
-                                className="px-8 py-2.5 bg-gradient-to-r from-[#5D4037] to-[#8D6E63] text-white font-bold rounded-xl shadow-lg shadow-[#5D4037]/20 hover:shadow-xl hover:shadow-[#5D4037]/30 transform hover:-translate-y-0.5 transition-all cursor-pointer"
+                                className="px-8 py-2.5 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-xl shadow-lg shadow-umber/20 hover:shadow-xl hover:shadow-umber/30 transform hover:-translate-y-0.5 transition-all cursor-pointer"
                             >
                                 {editingId ? 'Update Booking' : 'Create Booking'}
                             </button>

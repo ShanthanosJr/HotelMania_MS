@@ -192,6 +192,8 @@ const Contact: React.FC = () => {
             fetchBookings();
             fetchCompletedBookings();
         }
+        // Load once on mount; the fetchers only read state setters
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleServiceSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
@@ -270,7 +272,7 @@ const Contact: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDF8F3] text-[#2C2416] font-[Lato,sans-serif] dark:bg-[#121212] dark:text-[#F5F0E6] transition-colors duration-300">
+        <div className="min-h-screen bg-ivory text-ink font-body dark:bg-night dark:text-cream transition-colors duration-300">
             <Navbar />
 
             {/* HERO WITH OVERLAY + TAGLINE */}
@@ -281,16 +283,16 @@ const Contact: React.FC = () => {
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(44,36,22,0.9)_0%,rgba(139,105,20,0.82)_45%,rgba(184,212,227,0.3)_100%)]" />
                 <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-col px-6 py-16 text-white">
-                    <p className="mb-2 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#E8DCC8] mt-10 dark:text-[#A8A29E]">
+                    <p className="mb-2 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-sand mt-10 dark:text-[#A8A29E]">
                         Contact Hotelmania
                     </p>
                     <h1
-                        className="mb-3 text-3xl md:text-4xl lg:text-[2.6rem] dark:text-[#F5F0E6]"
+                        className="mb-3 text-3xl md:text-4xl lg:text-[2.6rem] dark:text-cream"
                         style={{ fontFamily: 'Playfair Display, serif' }}
                     >
                         Every Question, Seamlessly Answered
                     </h1>
-                    <p className="max-w-xl text-[0.96rem] leading-7 text-[#F5F0E6] dark:text-gray-300">
+                    <p className="max-w-xl text-[0.96rem] leading-7 text-cream dark:text-gray-300">
                         From service requests during your stay to long-term partnership
                         inquiries, the concierge and support teams are only a message away.
                     </p>
@@ -312,40 +314,40 @@ const Contact: React.FC = () => {
                 {/* STATS / QUICK CONTACT STRIP */}
                 <section className="grid gap-4 rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(92,64,51,0.1)] md:grid-cols-3 dark:bg-gray-800">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F0E6] text-[#8B6914] dark:bg-gray-700 dark:text-[#D4AF37]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cream text-bronze dark:bg-gray-700 dark:text-gold">
                             ✉️
                         </div>
                         <div>
-                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-[#8B6914] dark:text-[#D4AF37]">
+                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-bronze dark:text-gold">
                                 Email Us
                             </p>
-                            <p className="text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
+                            <p className="text-[0.9rem] text-ink dark:text-cream">
                                 <a href={`mailto:${SITE.email}`} className="hover:underline">{SITE.email}</a>
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F0E6] text-[#8B6914] dark:bg-gray-700 dark:text-[#D4AF37]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cream text-bronze dark:bg-gray-700 dark:text-gold">
                             ☎️
                         </div>
                         <div>
-                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-[#8B6914] dark:text-[#D4AF37]">
+                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-bronze dark:text-gold">
                                 Call
                             </p>
-                            <p className="text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
+                            <p className="text-[0.9rem] text-ink dark:text-cream">
                                 <a href={`tel:${SITE.phone.replace(/\s+/g, '')}`} className="hover:underline">{SITE.phone}</a>
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F0E6] text-[#8B6914] dark:bg-gray-700 dark:text-[#D4AF37]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cream text-bronze dark:bg-gray-700 dark:text-gold">
                             📍
                         </div>
                         <div>
-                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-[#8B6914] dark:text-[#D4AF37]">
+                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-bronze dark:text-gold">
                                 Visit
                             </p>
-                            <p className="text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
+                            <p className="text-[0.9rem] text-ink dark:text-cream">
                                 {SITE.address}
                             </p>
                         </div>
@@ -358,16 +360,16 @@ const Contact: React.FC = () => {
                     <div className="rounded-2xl bg-white p-6 shadow-[0_4px_24px_rgba(92,64,51,0.12)] dark:bg-gray-800">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#8B6914] dark:text-[#D4AF37]">
+                                <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
                                     In-Stay Service Hub
                                 </p>
                                 <h2
-                                    className="text-xl md:text-2xl dark:text-[#F5F0E6]"
+                                    className="text-xl md:text-2xl dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Request Additional Services During Your Stay
                                 </h2>
-                                <p className="mt-1 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="mt-1 text-[0.9rem] text-taupe dark:text-gray-300">
                                     Cleaning, food and beverage, and maintenance requests routed
                                     directly to your current room.
                                 </p>
@@ -375,7 +377,7 @@ const Contact: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setShowServiceModal(true)}
-                                className="rounded-full border-2 border-[#8B6914] bg-[#8B6914] px-5 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-[#8B6914] transition dark:bg-[#D4AF37] dark:text-[#2C2416] dark:border-[#D4AF37] dark:hover:bg-transparent dark:hover:text-[#D4AF37]"
+                                className="rounded-full border-2 border-bronze bg-bronze px-5 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-bronze transition dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
                                 disabled={!isAuthenticated()}
                             >
                                 Open Service Hub
@@ -383,23 +385,23 @@ const Contact: React.FC = () => {
                         </div>
 
                         {!isAuthenticated() ? (
-                            <div className="rounded-xl bg-[#FDF8F3] px-4 py-4 text-[0.9rem] text-[#6B5B4F] dark:bg-gray-700 dark:text-gray-300">
+                            <div className="rounded-xl bg-ivory px-4 py-4 text-[0.9rem] text-taupe dark:bg-gray-700 dark:text-gray-300">
                                 Sign in to see active bookings and request in-stay services.
                             </div>
                         ) : bookings.length === 0 ? (
-                            <div className="rounded-xl bg-[#FDF8F3] px-4 py-4 text-[0.9rem] text-[#6B5B4F] dark:bg-gray-700 dark:text-gray-300">
+                            <div className="rounded-xl bg-ivory px-4 py-4 text-[0.9rem] text-taupe dark:bg-gray-700 dark:text-gray-300">
                                 You do not have any confirmed or checked-in bookings right
                                 now. Services are available while a stay is active.
                             </div>
                         ) : (
-                            <div className="space-y-2 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                            <div className="space-y-2 text-[0.9rem] text-taupe dark:text-gray-300">
                                 {bookings.slice(0, 3).map(b => (
                                     <div
                                         key={b._id || b.id}
-                                        className="flex justify-between rounded-xl bg-[#F5F0E6] px-4 py-3 dark:bg-gray-700"
+                                        className="flex justify-between rounded-xl bg-cream px-4 py-3 dark:bg-gray-700"
                                     >
                                         <div>
-                                            <p className="text-[0.85rem] font-semibold dark:text-[#F5F0E6]">
+                                            <p className="text-[0.85rem] font-semibold dark:text-cream">
                                                 Booking {b._id || 'N/A'}
                                             </p>
                                             <p className="text-[0.85rem] dark:text-gray-300">
@@ -431,22 +433,22 @@ const Contact: React.FC = () => {
                     {/* Location / Map style card */}
                     <div className="rounded-2xl bg-white p-6 shadow-[0_4px_24px_rgba(92,64,51,0.12)] dark:bg-gray-800">
                         <h2
-                            className="mb-2 text-xl md:text-2xl dark:text-[#F5F0E6]"
+                            className="mb-2 text-xl md:text-2xl dark:text-cream"
                             style={{ fontFamily: 'Playfair Display, serif' }}
                         >
                             Visit {SITE.name}
                         </h2>
-                        <p className="text-[0.95rem] text-[#2C2416] font-semibold dark:text-[#F5F0E6]">
+                        <p className="text-[0.95rem] text-ink font-semibold dark:text-cream">
                             {SITE.name}
                         </p>
-                        <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                        <p className="text-[0.9rem] text-taupe dark:text-gray-300">
                             {SITE.address}
                         </p>
-                        <p className="mt-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                        <p className="mt-3 text-[0.9rem] text-taupe dark:text-gray-300">
                             Steps from the Galle Face promenade, with easy access to Colombo's
                             business district, dining and the ocean front.
                         </p>
-                        <div className="mt-4 h-64 overflow-hidden rounded-xl border border-[#D4C4A8] dark:border-gray-600">
+                        <div className="mt-4 h-64 overflow-hidden rounded-xl border border-wheat dark:border-gray-600">
                             <iframe
                                 title={`${SITE.name} location`}
                                 src={mapEmbedUrl(SITE.address)}
@@ -464,16 +466,16 @@ const Contact: React.FC = () => {
                 <section className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(92,64,51,0.1)] dark:bg-gray-800">
                     <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                         <div className="max-w-xl">
-                            <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#8B6914] dark:text-[#D4AF37]">
+                            <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
                                 The Hotelmania Team
                             </p>
                             <h2
-                                className="text-xl md:text-2xl dark:text-[#F5F0E6]"
+                                className="text-xl md:text-2xl dark:text-cream"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 Crafted by Hoteliers, Designers, and Engineers
                             </h2>
-                            <p className="mt-1 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                            <p className="mt-1 text-[0.9rem] text-taupe dark:text-gray-300">
                                 Hotelmania was shaped by people who live and breathe
                                 hospitality, ensuring every interaction feels graceful and
                                 considered.
@@ -481,21 +483,21 @@ const Contact: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="grid gap-6 md:grid-cols-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
-                        <div className="flex flex-col gap-2 rounded-xl bg-[#FDF8F3] p-4 dark:bg-gray-700">
+                    <div className="grid gap-6 md:grid-cols-3 text-[0.9rem] text-taupe dark:text-gray-300">
+                        <div className="flex flex-col gap-2 rounded-xl bg-ivory p-4 dark:bg-gray-700">
                             <img
                                 src={alexandraImg}
                                 alt="Alexandra Reed"
-                                className="h-16 w-16 rounded-full object-cover border-2 border-[#8B6914]/20"
+                                className="h-16 w-16 rounded-full object-cover border-2 border-bronze/20"
                             />
                             <div>
                                 <h3
-                                    className="text-[1rem] font-semibold text-[#2C2416] dark:text-[#F5F0E6]"
+                                    className="text-[1rem] font-semibold text-ink dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Alexandra Reed
                                 </h3>
-                                <p className="text-[0.85rem] text-[#8B6914] dark:text-[#D4AF37]">
+                                <p className="text-[0.85rem] text-bronze dark:text-gold">
                                     Co‑Founder &amp; Experience Director
                                 </p>
                             </div>
@@ -504,20 +506,20 @@ const Contact: React.FC = () => {
                                 warmth and polish of a true luxury stay.
                             </p>
                         </div>
-                        <div className="flex flex-col gap-2 rounded-xl bg-[#FDF8F3] p-4 dark:bg-gray-700">
+                        <div className="flex flex-col gap-2 rounded-xl bg-ivory p-4 dark:bg-gray-700">
                             <img
                                 src={danielImg}
                                 alt="Daniel Hart"
-                                className="h-16 w-16 rounded-full object-cover border-2 border-[#8B6914]/20"
+                                className="h-16 w-16 rounded-full object-cover border-2 border-bronze/20"
                             />
                             <div>
                                 <h3
-                                    className="text-[1rem] font-semibold text-[#2C2416] dark:text-[#F5F0E6]"
+                                    className="text-[1rem] font-semibold text-ink dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Daniel Hart
                                 </h3>
-                                <p className="text-[0.85rem] text-[#8B6914] dark:text-[#D4AF37]">
+                                <p className="text-[0.85rem] text-bronze dark:text-gold">
                                     Co‑Founder &amp; Technical Lead
                                 </p>
                             </div>
@@ -526,20 +528,20 @@ const Contact: React.FC = () => {
                                 into a seamless platform.
                             </p>
                         </div>
-                        <div className="flex flex-col gap-2 rounded-xl bg-[#FDF8F3] p-4 dark:bg-gray-700">
+                        <div className="flex flex-col gap-2 rounded-xl bg-ivory p-4 dark:bg-gray-700">
                             <img
                                 src={mayaImg}
                                 alt="Maya Chen"
-                                className="h-16 w-16 rounded-full object-cover border-2 border-[#8B6914]/20"
+                                className="h-16 w-16 rounded-full object-cover border-2 border-bronze/20"
                             />
                             <div>
                                 <h3
-                                    className="text-[1rem] font-semibold text-[#2C2416] dark:text-[#F5F0E6]"
+                                    className="text-[1rem] font-semibold text-ink dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Maya Chen
                                 </h3>
-                                <p className="text-[0.85rem] text-[#8B6914] dark:text-[#D4AF37]">
+                                <p className="text-[0.85rem] text-bronze dark:text-gold">
                                     Design &amp; Brand Lead
                                 </p>
                             </div>
@@ -556,16 +558,16 @@ const Contact: React.FC = () => {
                     {/* Review form */}
                     <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(92,64,51,0.1)] dark:bg-gray-800">
                         <div className="mb-4 max-w-xl">
-                            <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#8B6914] dark:text-[#D4AF37]">
+                            <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
                                 Share Your Experience
                             </p>
                             <h2
-                                className="text-xl md:text-2xl dark:text-[#F5F0E6]"
+                                className="text-xl md:text-2xl dark:text-cream"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 Tell Us About Your Stay
                             </h2>
-                            <p className="mt-1 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                            <p className="mt-1 text-[0.9rem] text-taupe dark:text-gray-300">
                                 Reviews help refine the little details, from pillow menus to
                                 check-in rituals, so each new stay feels even better.
                             </p>
@@ -573,21 +575,21 @@ const Contact: React.FC = () => {
 
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             <div className="flex flex-col gap-1">
-                                <label className="text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
                                     Completed stay
                                 </label>
                                 <select
                                     name="room"
                                     value={form.room}
                                     onChange={handleChange}
-                                    className="rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                                 >
                                     <option value="">Choose a room / booking</option>
                                     {completedBookings.map(booking => (
                                         <option
                                             key={booking._id || booking.id}
                                             value={booking.room?._id || ''}
-                                            className="dark:bg-gray-700 dark:text-[#F5F0E6]"
+                                            className="dark:bg-gray-700 dark:text-cream"
                                         >
                                             {booking._id} –{' '}
                                             {typeof booking.room?.type === 'object' &&
@@ -600,14 +602,14 @@ const Contact: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1">
-                                <label className="text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
                                     Rating
                                 </label>
                                 <select
                                     name="rating"
                                     value={form.rating}
                                     onChange={handleChange}
-                                    className="rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                                 >
                                     <option value="">Select rating</option>
                                     <option value="5">5 – Excellent</option>
@@ -619,7 +621,7 @@ const Contact: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1">
-                                <label className="text-[0.85rem] font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
                                     Comments
                                 </label>
                                 <textarea
@@ -628,7 +630,7 @@ const Contact: React.FC = () => {
                                     onChange={handleChange}
                                     rows={4}
                                     placeholder="What made your stay memorable? What could be refined?"
-                                    className="w-full rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2.5 text-[0.9rem] text-[#2C2416] placeholder:text-[#B8A58B] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:placeholder:text-gray-400"
+                                    className="w-full rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink placeholder:text-[#B8A58B] focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:placeholder:text-gray-400"
                                 />
                             </div>
 
@@ -646,7 +648,7 @@ const Contact: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={status.sending}
-                                className="mt-2 inline-flex items-center justify-center rounded border-2 border-[#8B6914] bg-[#8B6914] px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-[#8B6914] transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#D4AF37] dark:text-[#2C2416] dark:border-[#D4AF37] dark:hover:bg-transparent dark:hover:text-[#D4AF37]"
+                                className="mt-2 inline-flex items-center justify-center rounded border-2 border-bronze bg-bronze px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-bronze transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
                             >
                                 {status.sending ? 'Sending...' : 'Submit Review'}
                             </button>
@@ -656,14 +658,14 @@ const Contact: React.FC = () => {
                     {/* FAQ / Support */}
                     <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(92,64,51,0.1)] dark:bg-gray-800">
                         <h2
-                            className="mb-3 text-xl md:text-2xl dark:text-[#F5F0E6]"
+                            className="mb-3 text-xl md:text-2xl dark:text-cream"
                             style={{ fontFamily: 'Playfair Display, serif' }}
                         >
                             Questions, Answered
                         </h2>
-                        <div className="space-y-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                        <div className="space-y-3 text-[0.9rem] text-taupe dark:text-gray-300">
                             <div>
-                                <p className="font-semibold text-[#2C2416] dark:text-[#F5F0E6]">
+                                <p className="font-semibold text-ink dark:text-cream">
                                     How quickly will someone respond?
                                 </p>
                                 <p className="dark:text-gray-300">
@@ -673,7 +675,7 @@ const Contact: React.FC = () => {
                                 </p>
                             </div>
                             <div>
-                                <p className="font-semibold text-[#2C2416] dark:text-[#F5F0E6]">
+                                <p className="font-semibold text-ink dark:text-cream">
                                     Can I modify a booking through this page?
                                 </p>
                                 <p className="dark:text-gray-300">
@@ -682,7 +684,7 @@ const Contact: React.FC = () => {
                                 </p>
                             </div>
                             <div>
-                                <p className="font-semibold text-[#2C2416] dark:text-[#F5F0E6]">
+                                <p className="font-semibold text-ink dark:text-cream">
                                     Do I need an account to submit requests?
                                 </p>
                                 <p className="dark:text-gray-300">
@@ -705,9 +707,9 @@ const Contact: React.FC = () => {
                         className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-800"
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between border-b border-[#E8DCC8] px-6 py-4 dark:border-gray-600">
+                        <div className="flex items-center justify-between border-b border-sand px-6 py-4 dark:border-gray-600">
                             <h2
-                                className="text-lg md:text-xl dark:text-[#F5F0E6]"
+                                className="text-lg md:text-xl dark:text-cream"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 Request a Service
@@ -715,24 +717,24 @@ const Contact: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setShowServiceModal(false)}
-                                className="text-2xl leading-none text-[#6B5B4F] hover:text-[#8B6914] dark:text-gray-300 dark:hover:text-[#D4AF37]"
+                                className="text-2xl leading-none text-taupe hover:text-bronze dark:text-gray-300 dark:hover:text-gold"
                             >
                                 ×
                             </button>
                         </div>
                         <form className="px-6 py-5 space-y-4" onSubmit={handleServiceSubmit}>
                             <div className="flex flex-col gap-1 text-[0.9rem]">
-                                <label className="font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="font-semibold text-taupe dark:text-gray-300">
                                     Booking
                                 </label>
                                 <select
                                     value={serviceRequest.bookingId}
                                     onChange={handleBookingChange}
-                                    className="rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                                 >
                                     <option value="">Choose a booking</option>
                                     {bookings.map(b => (
-                                        <option key={b._id || b.id} value={b._id} className="dark:bg-gray-700 dark:text-[#F5F0E6]">
+                                        <option key={b._id || b.id} value={b._id} className="dark:bg-gray-700 dark:text-cream">
                                             {b._id} –{' '}
                                             {typeof b.room?.type === 'object' &&
                                                 b.room?.type?.name
@@ -744,13 +746,13 @@ const Contact: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1 text-[0.9rem]">
-                                <label className="font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="font-semibold text-taupe dark:text-gray-300">
                                     Room
                                 </label>
                                 <select
                                     value={serviceRequest.roomId}
                                     onChange={handleRoomChange}
-                                    className="rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                                 >
                                     <option value="">Select room</option>
                                     {bookings
@@ -759,7 +761,7 @@ const Contact: React.FC = () => {
                                             <option
                                                 key={b._id || b.id}
                                                 value={b.room?._id || ''}
-                                                className="dark:bg-gray-700 dark:text-[#F5F0E6]"
+                                                className="dark:bg-gray-700 dark:text-cream"
                                             >
                                                 {b.room?._id || 'Room'} –{' '}
                                                 {typeof b.room?.type === 'object' &&
@@ -772,7 +774,7 @@ const Contact: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1 text-[0.9rem]">
-                                <label className="font-semibold text-[#6B5B4F] dark:text-gray-300">
+                                <label className="font-semibold text-taupe dark:text-gray-300">
                                     Service Type
                                 </label>
                                 <select
@@ -783,7 +785,7 @@ const Contact: React.FC = () => {
                                             type: e.target.value,
                                         }))
                                     }
-                                    className="rounded border border-[#D4C4A8] bg-[#FDF8F3] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                                 >
                                     <option value="cleaning">Cleaning</option>
                                     <option value="food">Food &amp; Beverage</option>
@@ -806,7 +808,7 @@ const Contact: React.FC = () => {
                                 <button
                                     type="submit"
                                     disabled={serviceHubStatus.loading}
-                                    className="rounded border-2 border-[#8B6914] bg-[#8B6914] px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-[#8B6914] transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#D4AF37] dark:text-[#2C2416] dark:border-[#D4AF37] dark:hover:bg-transparent dark:hover:text-[#D4AF37]"
+                                    className="rounded border-2 border-bronze bg-bronze px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-bronze transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
                                 >
                                     {serviceHubStatus.loading
                                         ? 'Submitting...'

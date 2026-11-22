@@ -21,7 +21,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDF8F3] dark:bg-[#050607] transition-colors duration-300 font-sans text-[#2C2416] dark:text-[#F5F0E6]">
+        <div className="min-h-screen bg-ivory dark:bg-[#050607] transition-colors duration-300 font-sans text-ink dark:text-cream">
             <AdminSidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
 
             <main

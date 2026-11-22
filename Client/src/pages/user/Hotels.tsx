@@ -5,6 +5,7 @@ import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
 import { payForBooking, outcomeMessage } from '../../utils/payhere';
 import { motion } from 'framer-motion';
+import { toast } from '../../components/ui';
 
 const heroImage =
     'https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg?auto=compress&cs=tinysrgb&w=1600';
@@ -273,13 +274,13 @@ const Hotels: React.FC = () => {
     const initiateBooking = async (room: Room) => {
         const token = localStorage.getItem('token');
         if (!token) {
-            alert('Please log in to make a booking');
+            toast.afterRedirect('info', 'Please log in to make a booking');
             window.location.href = '/login';
             return;
         }
 
         if (!bookingDates.checkInDate || !bookingDates.checkOutDate) {
-            alert('Please select check-in and check-out dates');
+            toast.warning('Please select check-in and check-out dates');
             return;
         }
 
@@ -316,7 +317,7 @@ const Hotels: React.FC = () => {
             const bookingId: string = bookingResult.data._id;
 
             const outcome = await payForBooking(bookingId);
-            alert(outcomeMessage(outcome));
+            toast.afterRedirect(outcome === 'dismissed' ? 'warning' : 'success', outcomeMessage(outcome));
             window.location.href = '/bookings';
         } catch (err: unknown) {
             console.error('Booking/Transaction error:', err);
@@ -324,14 +325,14 @@ const Hotels: React.FC = () => {
                 err && typeof err === 'object' && 'message' in err
                     ? String((err as Error).message)
                     : 'Processing failed';
-            alert(`Error: ${message}`);
+            toast.error(`Error: ${message}`);
         } finally {
             setIsProcessing(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#FDF8F3] text-[#2C2416] font-[Lato,sans-serif] dark:bg-[#121212] dark:text-[#F5F0E6] transition-colors duration-300">
+        <div className="min-h-screen bg-ivory text-ink font-body dark:bg-night dark:text-cream transition-colors duration-300">
             <Navbar />
 
             {/* HERO */}
@@ -349,20 +350,20 @@ const Hotels: React.FC = () => {
                     variants={stagger}
                 >
                     <motion.p
-                        className="mb-3 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#E8DCC8] dark:text-[#A8A29E]"
+                        className="mb-3 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-sand dark:text-[#A8A29E]"
                         variants={fadeInUp}
                     >
                         Find Your Stay
                     </motion.p>
                     <motion.h1
-                        className="mb-4 text-3xl md:text-4xl lg:text-[3rem] dark:text-[#F5F0E6]"
+                        className="mb-4 text-3xl md:text-4xl lg:text-[3rem] dark:text-cream"
                         style={{ fontFamily: 'Playfair Display, serif' }}
                         variants={fadeInUp}
                     >
                         Discover Exceptional Hotels
                     </motion.h1>
                     <motion.p
-                        className="mb-7 max-w-xl text-[0.98rem] leading-7 text-[#F5F0E6] dark:text-gray-300"
+                        className="mb-7 max-w-xl text-[0.98rem] leading-7 text-cream dark:text-gray-300"
                         variants={fadeInUp}
                     >
                         Explore handpicked stays across Sri Lanka, from beachfront escapes to hill
@@ -371,34 +372,34 @@ const Hotels: React.FC = () => {
                     <motion.div className="flex flex-wrap gap-7" variants={stagger}>
                         <motion.div className="flex flex-col gap-1" variants={fadeInUp}>
                             <span
-                                className="text-[1.6rem] text-[#E8DCC8] dark:text-[#A8A29E]"
+                                className="text-[1.6rem] text-sand dark:text-[#A8A29E]"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 120+
                             </span>
-                            <span className="text-[0.8rem] uppercase tracking-[0.12em] text-[#D4C4A8] dark:text-gray-400">
+                            <span className="text-[0.8rem] uppercase tracking-[0.12em] text-wheat dark:text-gray-400">
                                 Luxury &amp; Boutique Hotels
                             </span>
                         </motion.div>
                         <motion.div className="flex flex-col gap-1" variants={fadeInUp}>
                             <span
-                                className="text-[1.6rem] text-[#E8DCC8] dark:text-[#A8A29E]"
+                                className="text-[1.6rem] text-sand dark:text-[#A8A29E]"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 4.7
                             </span>
-                            <span className="text-[0.8rem] uppercase tracking-[0.12em] text-[#D4C4A8] dark:text-gray-400">
+                            <span className="text-[0.8rem] uppercase tracking-[0.12em] text-wheat dark:text-gray-400">
                                 Average Guest Rating
                             </span>
                         </motion.div>
                         <motion.div className="flex flex-col gap-1" variants={fadeInUp}>
                             <span
-                                className="text-[1.6rem] text-[#E8DCC8] dark:text-[#A8A29E]"
+                                className="text-[1.6rem] text-sand dark:text-[#A8A29E]"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 24/7
                             </span>
-                            <span className="text-[0.8rem] uppercase tracking-[0.12em] text-[#D4C4A8] dark:text-gray-400">
+                            <span className="text-[0.8rem] uppercase tracking-[0.12em] text-wheat dark:text-gray-400">
                                 Dedicated Support
                             </span>
                         </motion.div>
@@ -407,18 +408,18 @@ const Hotels: React.FC = () => {
             </section>
 
             {/* FILTERS + SORTING */}
-            <section className="bg-[#FDF8F3] py-10 dark:bg-gray-900 dark:text-[#F5F0E6]">
+            <section className="bg-ivory py-10 dark:bg-gray-900 dark:text-cream">
                 <div className="mx-auto max-w-[1400px] px-6">
                     <div className="mb-5 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
                         <h2
-                            className="text-2xl md:text-[2rem] dark:text-[#F5F0E6]"
+                            className="text-2xl md:text-[2rem] dark:text-cream"
                             style={{ fontFamily: 'Playfair Display, serif' }}
                         >
                             Tailor Your Hotel Search
                         </h2>
                         <button
                             type="button"
-                            className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition md:hidden"
+                            className="rounded border border-wheat bg-cream px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-bronze hover:bg-bronze hover:text-white transition md:hidden"
                             onClick={() => setIsFilterOpen(prev => !prev)}
                         >
                             {isFilterOpen ? 'Hide Filters' : 'Show Filters'}
@@ -430,13 +431,13 @@ const Hotels: React.FC = () => {
                             }`}
                     >
                         <div className="flex flex-col gap-1">
-                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[#6B5B4F] dark:text-gray-300">
+                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-taupe dark:text-gray-300">
                                 Destination
                             </label>
                             <select
                                 value={filters.location}
                                 onChange={e => handleFilterChange('location', e.target.value)}
-                                className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                className="rounded border border-wheat bg-cream px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                             >
                                 {mockFilters.locations.map(option => (
                                     <option key={option}>{option}</option>
@@ -445,13 +446,13 @@ const Hotels: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col gap-1">
-                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[#6B5B4F] dark:text-gray-300">
+                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-taupe dark:text-gray-300">
                                 Star Rating
                             </label>
                             <select
                                 value={filters.starRating}
                                 onChange={e => handleFilterChange('starRating', e.target.value)}
-                                className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                className="rounded border border-wheat bg-cream px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                             >
                                 {mockFilters.starRatings.map(option => (
                                     <option key={option}>{option}</option>
@@ -460,13 +461,13 @@ const Hotels: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col gap-1">
-                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[#6B5B4F] dark:text-gray-300">
+                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-taupe dark:text-gray-300">
                                 Price Range
                             </label>
                             <select
                                 value={filters.priceRange}
                                 onChange={e => handleFilterChange('priceRange', e.target.value)}
-                                className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-3 py-2.5 text-[0.9rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                className="rounded border border-wheat bg-cream px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                             >
                                 {mockFilters.priceRanges.map(option => (
                                     <option key={option}>{option}</option>
@@ -475,7 +476,7 @@ const Hotels: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col gap-1 md:col-span-1">
-                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[#6B5B4F] dark:text-gray-300">
+                            <label className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-taupe dark:text-gray-300">
                                 Search
                             </label>
                             <input
@@ -483,12 +484,12 @@ const Hotels: React.FC = () => {
                                 placeholder="Search by hotel or city"
                                 value={filters.search}
                                 onChange={handleSearchChange}
-                                className="w-full rounded border border-[#D4C4A8] bg-[#F5F0E6] px-3 py-2.5 text-[0.9rem] text-[#2C2416] placeholder:text-[#B8A58B] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:placeholder:text-gray-400 focus:dark:border-[#D4AF37]"
+                                className="w-full rounded border border-wheat bg-cream px-3 py-2.5 text-[0.9rem] text-ink placeholder:text-[#B8A58B] focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:placeholder:text-gray-400 focus:dark:border-gold"
                             />
                         </div>
 
                         <div className="md:col-span-4">
-                            <label className="mb-1 block text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[#6B5B4F] dark:text-gray-300">
+                            <label className="mb-1 block text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-taupe dark:text-gray-300">
                                 Amenities
                             </label>
                             <div className="flex flex-wrap gap-2">
@@ -500,8 +501,8 @@ const Hotels: React.FC = () => {
                                             type="button"
                                             onClick={() => handleAmenityToggle(a)}
                                             className={`rounded-full border px-3 py-1.5 text-[0.8rem] tracking-[0.08em] transition ${active
-                                                ? 'border-[#8B6914] bg-[#8B6914] text-white'
-                                                : 'border-[#D4C4A8] bg-[#F5F0E6] text-[#6B5B4F] hover:border-[#8B6914] hover:bg-[#8B6914] hover:text-white'
+                                                ? 'border-bronze bg-bronze text-white'
+                                                : 'border-wheat bg-cream text-taupe hover:border-bronze hover:bg-bronze hover:text-white'
                                                 }`}
                                         >
                                             {a}
@@ -515,16 +516,16 @@ const Hotels: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={handleClearFilters}
-                                className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition"
+                                className="rounded border border-wheat bg-cream px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-bronze hover:bg-bronze hover:text-white transition"
                             >
                                 Clear Filters
                             </button>
-                            <div className="flex items-center gap-2 text-[0.85rem] text-[#6B5B4F] dark:text-gray-300">
+                            <div className="flex items-center gap-2 text-[0.85rem] text-taupe dark:text-gray-300">
                                 <span>Sort by</span>
                                 <select
                                     value={sortedBy}
                                     onChange={e => setSortedBy(e.target.value)}
-                                    className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-3 py-1.5 text-[0.85rem] text-[#2C2416] focus:border-[#8B6914] focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] dark:focus:border-[#D4AF37]"
+                                    className="rounded border border-wheat bg-cream px-3 py-1.5 text-[0.85rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
                                 >
                                     <option>Recommended</option>
                                     <option>Price (Low to High)</option>
@@ -538,27 +539,27 @@ const Hotels: React.FC = () => {
             </section>
 
             {/* RESULTS */}
-            <section id="hotel-results" className="hotels-results scroll-mt-20 bg-[#F5F0E6] py-12 dark:bg-gray-800 dark:text-[#F5F0E6]">
+            <section id="hotel-results" className="hotels-results scroll-mt-20 bg-cream py-12 dark:bg-gray-800 dark:text-cream">
                 <div className="mx-auto max-w-[1400px] px-6">
                     <div className="mb-6">
-                        <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#8B6914] dark:text-[#D4AF37]">
+                        <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
                             Available Hotels
                         </p>
                         <h2
-                            className="mb-2 text-2xl md:text-[2rem] dark:text-[#F5F0E6]"
+                            className="mb-2 text-2xl md:text-[2rem] dark:text-cream"
                             style={{ fontFamily: 'Playfair Display, serif' }}
                         >
                             {visibleHotels.length}{' '}
                             {visibleHotels.length === 1 ? 'Hotel' : 'Hotels'} Found
                         </h2>
-                        <p className="max-w-xl text-[0.95rem] text-[#6B5B4F] dark:text-gray-300">
+                        <p className="max-w-xl text-[0.95rem] text-taupe dark:text-gray-300">
                             Refine your filters or sort options to discover the ideal stay that matches
                             your preferences.
                         </p>
                     </div>
 
                     {loading && (
-                        <div className="py-16 text-center text-sm text-[#6B5B4F] dark:text-gray-300">
+                        <div className="py-16 text-center text-sm text-taupe dark:text-gray-300">
                             Loading hotels...
                         </div>
                     )}
@@ -569,26 +570,26 @@ const Hotels: React.FC = () => {
 
                     {!loading && !error && visibleHotels.length === 0 && (
                         <motion.div
-                            className="rounded-2xl bg-white px-6 py-10 text-center shadow-[0_8px_30px_rgba(92,64,51,0.12)] dark:bg-gray-800 dark:text-[#F5F0E6]"
+                            className="rounded-2xl bg-white px-6 py-10 text-center shadow-[0_8px_30px_rgba(92,64,51,0.12)] dark:bg-gray-800 dark:text-cream"
                             initial="hidden"
                             whileInView="visible"
                             viewport={{ once: true }}
                             variants={fadeInUp}
                         >
                             <h3
-                                className="mb-2 text-xl dark:text-[#F5F0E6]"
+                                className="mb-2 text-xl dark:text-cream"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 No hotels match your selection
                             </h3>
-                            <p className="mb-4 text-[0.95rem] text-[#6B5B4F] dark:text-gray-300">
+                            <p className="mb-4 text-[0.95rem] text-taupe dark:text-gray-300">
                                 Try adjusting your filters or removing some amenities to see more available
                                 stays.
                             </p>
                             <button
                                 type="button"
                                 onClick={handleClearFilters}
-                                className="rounded border-2 border-[#8B6914] bg-[#8B6914] px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-[#8B6914] transition"
+                                className="rounded border-2 border-bronze bg-bronze px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-bronze transition"
                             >
                                 Reset All Filters
                             </button>
@@ -621,7 +622,7 @@ const Hotels: React.FC = () => {
                                                 className="h-full w-full object-cover transition-transform duration-[900ms] hover:scale-105"
                                             />
                                             {hotel.tag && (
-                                                <span className="absolute left-4 top-4 rounded-full bg-[#8B6914] px-3 py-1 text-[0.7rem] uppercase tracking-[0.12em] text-white">
+                                                <span className="absolute left-4 top-4 rounded-full bg-bronze px-3 py-1 text-[0.7rem] uppercase tracking-[0.12em] text-white">
                                                     {hotel.tag}
                                                 </span>
                                             )}
@@ -630,14 +631,14 @@ const Hotels: React.FC = () => {
                                         <div className="flex flex-1 flex-col px-5 pb-4 pt-4">
                                             <div className="mb-2 flex items-center justify-between gap-2">
                                                 <h3
-                                                    className="text-[1.1rem] dark:text-[#F5F0E6]"
+                                                    className="text-[1.1rem] dark:text-cream"
                                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                                 >
                                                     {hotel.name}
                                                 </h3>
                                                 <div className="flex items-center gap-1 text-[0.85rem]">
                                                     <span
-                                                        className="rounded bg-[#F5F0E6] px-2 py-0.5 text-[#8B6914] dark:bg-gray-700 dark:text-[#D4AF37]"
+                                                        className="rounded bg-cream px-2 py-0.5 text-bronze dark:bg-gray-700 dark:text-gold"
                                                         style={{ fontFamily: 'Playfair Display, serif' }}
                                                     >
                                                         {hotel.rating.toFixed(1)}
@@ -645,17 +646,17 @@ const Hotels: React.FC = () => {
                                                     <span className="text-[#FACC15] dark:text-yellow-400">★</span>
                                                 </div>
                                             </div>
-                                            <p className="mb-1 text-[0.85rem] text-[#6B5B4F] dark:text-gray-300">
+                                            <p className="mb-1 text-[0.85rem] text-taupe dark:text-gray-300">
                                                 {hotel.address}
                                             </p>
-                                            <p className="mb-3 line-clamp-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                                            <p className="mb-3 line-clamp-3 text-[0.9rem] text-taupe dark:text-gray-300">
                                                 {hotel.description}
                                             </p>
                                             <div className="mb-3 flex flex-wrap gap-2">
                                                 {hotel.amenities.slice(0, 4).map((a, idx) => (
                                                     <span
                                                         key={`${a}-${idx}`}
-                                                        className="rounded-full bg-[#F5F0E6] px-3 py-1 text-[0.75rem] text-[#6B5B4F] dark:bg-gray-700 dark:text-gray-300"
+                                                        className="rounded-full bg-cream px-3 py-1 text-[0.75rem] text-taupe dark:bg-gray-700 dark:text-gray-300"
                                                     >
                                                         {a}
                                                     </span>
@@ -664,14 +665,14 @@ const Hotels: React.FC = () => {
                                             <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                                                 <Link
                                                     to={`/hotel/${hotel._id || hotel.id}`}
-                                                    className="inline-flex flex-1 justify-center rounded border border-[#D4C4A8] bg-[#F5F0E6] px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition dark:bg-gray-700 dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-white"
+                                                    className="inline-flex flex-1 justify-center rounded border border-wheat bg-cream px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-bronze hover:bg-bronze hover:text-white transition dark:bg-gray-700 dark:border-gray-600 dark:text-gold dark:hover:bg-gold dark:hover:text-white"
                                                 >
                                                     View Details
                                                 </Link>
                                                 <button
                                                     type="button"
                                                     onClick={() => openModal(hotel)}
-                                                    className="inline-flex flex-1 justify-center rounded border-2 border-[#8B6914] bg-[#8B6914] px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-[#8B6914] transition dark:bg-[#D4AF37] dark:text-[#2C2416] dark:border-[#D4AF37] dark:hover:bg-transparent dark:hover:text-[#D4AF37]"
+                                                    className="inline-flex flex-1 justify-center rounded border-2 border-bronze bg-bronze px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-bronze transition dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
                                                 >
                                                     View Rooms
                                                 </button>
@@ -686,18 +687,18 @@ const Hotels: React.FC = () => {
                                     type="button"
                                     onClick={goToPreviousPage}
                                     disabled={currentPage === 1}
-                                    className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#8B6914] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-[#8B6914] hover:text-white transition dark:bg-gray-700 dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-white"
+                                    className="rounded border border-wheat bg-cream px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-bronze disabled:cursor-not-allowed disabled:opacity-60 hover:bg-bronze hover:text-white transition dark:bg-gray-700 dark:border-gray-600 dark:text-gold dark:hover:bg-gold dark:hover:text-white"
                                 >
                                     Previous
                                 </button>
-                                <span className="text-[0.85rem] text-[#6B5B4F] dark:text-gray-300">
+                                <span className="text-[0.85rem] text-taupe dark:text-gray-300">
                                     Page {currentPage} of {totalPages() || 1}
                                 </span>
                                 <button
                                     type="button"
                                     onClick={goToNextPage}
                                     disabled={currentPage === totalPages() || totalPages() === 0}
-                                    className="rounded border border-[#D4C4A8] bg-[#F5F0E6] px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#8B6914] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-[#8B6914] hover:text-white transition dark:bg-gray-700 dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-white"
+                                    className="rounded border border-wheat bg-cream px-4 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-bronze disabled:cursor-not-allowed disabled:opacity-60 hover:bg-bronze hover:text-white transition dark:bg-gray-700 dark:border-gray-600 dark:text-gold dark:hover:bg-gold dark:hover:text-white"
                                 >
                                     Next
                                 </button>
@@ -717,9 +718,9 @@ const Hotels: React.FC = () => {
                         className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-800"
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between border-b border-[#E8DCC8] px-6 py-4 dark:border-gray-600">
+                        <div className="flex items-center justify-between border-b border-sand px-6 py-4 dark:border-gray-600">
                             <h2
-                                className="text-lg md:text-xl dark:text-[#F5F0E6]"
+                                className="text-lg md:text-xl dark:text-cream"
                                 style={{ fontFamily: 'Playfair Display, serif' }}
                             >
                                 {selectedHotel.name} - Room Options
@@ -727,14 +728,14 @@ const Hotels: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={closeModal}
-                                className="text-2xl leading-none text-[#6B5B4F] hover:text-[#8B6914] dark:text-gray-300 dark:hover:text-[#D4AF37]"
+                                className="text-2xl leading-none text-taupe hover:text-bronze dark:text-gray-300 dark:hover:text-gold"
                             >
                                 ×
                             </button>
                         </div>
-                        <div className="px-6 py-5 text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
+                        <div className="px-6 py-5 text-[0.9rem] text-ink dark:text-cream">
                             {loadingRooms ? (
-                                <div className="py-6 text-center text-[#6B5B4F] dark:text-gray-300">
+                                <div className="py-6 text-center text-taupe dark:text-gray-300">
                                     Loading room options...
                                 </div>
                             ) : (
@@ -746,11 +747,11 @@ const Hotels: React.FC = () => {
                                             return (
                                                 <div
                                                     key={room._id || room.id}
-                                                    className="flex flex-col gap-4 rounded-xl border border-[#E8DCC8] bg-[#FDF8F3] p-4 md:flex-row dark:bg-gray-700 dark:border-gray-600"
+                                                    className="flex flex-col gap-4 rounded-xl border border-sand bg-ivory p-4 md:flex-row dark:bg-gray-700 dark:border-gray-600"
                                                 >
                                                     <div className="flex-1 space-y-1">
                                                         <h4
-                                                            className="text-[1rem] font-semibold dark:text-[#F5F0E6]"
+                                                            className="text-[1rem] font-semibold dark:text-cream"
                                                             style={{ fontFamily: 'Playfair Display, serif' }}
                                                         >
                                                             {typeObj?.name || 'Room Type'}
@@ -772,7 +773,7 @@ const Hotels: React.FC = () => {
 
                                                         <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                                             <div className="flex flex-col gap-1 text-[0.85rem]">
-                                                                <label className="font-semibold dark:text-[#F5F0E6]">
+                                                                <label className="font-semibold dark:text-cream">
                                                                     Check-in Date:
                                                                 </label>
                                                                 <input
@@ -785,11 +786,11 @@ const Hotels: React.FC = () => {
                                                                         }))
                                                                     }
                                                                     min={new Date().toISOString().split('T')[0]}
-                                                                    className="rounded border border-[#D4C4A8] px-2 py-1.5 text-[0.85rem] text-[#2C2416] focus:border-[#8B6914] focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] focus:dark:border-[#D4AF37]"
+                                                                    className="rounded border border-wheat px-2 py-1.5 text-[0.85rem] text-ink focus:border-bronze focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream focus:dark:border-gold"
                                                                 />
                                                             </div>
                                                             <div className="flex flex-col gap-1 text-[0.85rem]">
-                                                                <label className="font-semibold dark:text-[#F5F0E6]">
+                                                                <label className="font-semibold dark:text-cream">
                                                                     Check-out Date:
                                                                 </label>
                                                                 <input
@@ -805,12 +806,12 @@ const Hotels: React.FC = () => {
                                                                         bookingDates.checkInDate ||
                                                                         new Date().toISOString().split('T')[0]
                                                                     }
-                                                                    className="rounded border border-[#D4C4A8] px-2 py-1.5 text-[0.85rem] text-[#2C2416] focus:border-[#8B6914] focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-[#F5F0E6] focus:dark:border-[#D4AF37]"
+                                                                    className="rounded border border-wheat px-2 py-1.5 text-[0.85rem] text-ink focus:border-bronze focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream focus:dark:border-gold"
                                                                 />
                                                             </div>
                                                         </div>
 
-                                                        <p className="mt-3 flex items-center gap-2 rounded bg-[#F5F0E6] p-2 text-[0.8rem] text-[#6B5B4F] dark:bg-gray-700 dark:text-gray-300">
+                                                        <p className="mt-3 flex items-center gap-2 rounded bg-cream p-2 text-[0.8rem] text-taupe dark:bg-gray-700 dark:text-gray-300">
                                                             <span aria-hidden="true">🔒</span> Secure payment by PayHere: Visa, Mastercard, Amex, eZ Cash, mCash &amp; more.
                                                         </p>
                                                     </div>
@@ -820,7 +821,7 @@ const Hotels: React.FC = () => {
                                                             type="button"
                                                             disabled={isProcessing}
                                                             onClick={() => initiateBooking(room)}
-                                                            className="w-full rounded border-2 border-[#8B6914] bg-[#8B6914] px-4 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-[#8B6914] transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#D4AF37] dark:text-[#2C2416] dark:border-[#D4AF37] dark:hover:bg-transparent dark:hover:text-[#D4AF37]"
+                                                            className="w-full rounded border-2 border-bronze bg-bronze px-4 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-bronze transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
                                                         >
                                                             {isProcessing ? 'Processing...' : 'Book Now'}
                                                         </button>
@@ -829,7 +830,7 @@ const Hotels: React.FC = () => {
                                             );
                                         })
                                     ) : (
-                                        <p className="py-4 text-sm text-[#6B5B4F]">
+                                        <p className="py-4 text-sm text-taupe">
                                             No rooms available for this hotel at the moment.
                                         </p>
                                     )}
@@ -841,19 +842,19 @@ const Hotels: React.FC = () => {
             )}
 
             {/* COLLECTIONS */}
-            <section className="bg-[#FDF8F3] py-14 dark:bg-gray-900 dark:text-[#F5F0E6]">
+            <section className="bg-ivory py-14 dark:bg-gray-900 dark:text-cream">
                 <div className="mx-auto max-w-[1400px] px-6">
                     <div className="mb-8 max-w-xl">
-                        <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#8B6914] dark:text-[#D4AF37]">
+                        <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
                             Curated Collections
                         </p>
                         <h2
-                            className="mb-2 text-2xl md:text-[2rem] dark:text-[#F5F0E6]"
+                            className="mb-2 text-2xl md:text-[2rem] dark:text-cream"
                             style={{ fontFamily: 'Playfair Display, serif' }}
                         >
                             Stay For Every Occasion
                         </h2>
-                        <p className="text-[0.95rem] text-[#6B5B4F] dark:text-gray-300">
+                        <p className="text-[0.95rem] text-taupe dark:text-gray-300">
                             Browse thoughtfully curated hotel groups, from romantic getaways to family
                             retreats and business-ready stays.
                         </p>
@@ -864,19 +865,19 @@ const Hotels: React.FC = () => {
                             <div className="h-40 bg-[url('https://images.pexels.com/photos/3584930/pexels-photo-3584930.jpeg?auto=compress&cs=tinysrgb&w=1200')] bg-cover bg-center" />
                             <div className="px-5 py-4">
                                 <h3
-                                    className="mb-1 text-lg dark:text-[#F5F0E6]"
+                                    className="mb-1 text-lg dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Romantic Escapes
                                 </h3>
-                                <p className="mb-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="mb-3 text-[0.9rem] text-taupe dark:text-gray-300">
                                     Secluded suites, candlelit dining, and stunning views for anniversaries,
                                     honeymoons and special celebrations.
                                 </p>
                                 <button
                                     onClick={() => document.getElementById('hotel-results')?.scrollIntoView({ behavior: 'smooth' })}
                                     type="button"
-                                    className="text-[0.85rem] font-semibold text-[#8B6914] hover:underline dark:text-[#D4AF37] dark:hover:text-[#D4AF37]"
+                                    className="text-[0.85rem] font-semibold text-bronze hover:underline dark:text-gold dark:hover:text-gold"
                                 >
                                     Browse Hotels →
                                 </button>
@@ -887,19 +888,19 @@ const Hotels: React.FC = () => {
                             <div className="h-40 bg-[url('https://images.pexels.com/photos/3895106/pexels-photo-3895106.jpeg?auto=compress&cs=tinysrgb&w=1200')] bg-cover bg-center" />
                             <div className="px-5 py-4">
                                 <h3
-                                    className="mb-1 text-lg dark:text-[#F5F0E6]"
+                                    className="mb-1 text-lg dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Family-Friendly Stays
                                 </h3>
-                                <p className="mb-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="mb-3 text-[0.9rem] text-taupe dark:text-gray-300">
                                     Spacious rooms, kids&apos; amenities, and convenient locations designed
                                     for memorable family holidays.
                                 </p>
                                 <button
                                     onClick={() => document.getElementById('hotel-results')?.scrollIntoView({ behavior: 'smooth' })}
                                     type="button"
-                                    className="text-[0.85rem] font-semibold text-[#8B6914] hover:underline dark:text-[#D4AF37] dark:hover:text-[#D4AF37]"
+                                    className="text-[0.85rem] font-semibold text-bronze hover:underline dark:text-gold dark:hover:text-gold"
                                 >
                                     Browse Hotels →
                                 </button>
@@ -910,19 +911,19 @@ const Hotels: React.FC = () => {
                             <div className="h-40 bg-[url('https://images.pexels.com/photos/1181400/pexels-photo-1181400.jpeg?auto=compress&cs=tinysrgb&w=1200')] bg-cover bg-center" />
                             <div className="px-5 py-4">
                                 <h3
-                                    className="mb-1 text-lg dark:text-[#F5F0E6]"
+                                    className="mb-1 text-lg dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Business &amp; City Hotels
                                 </h3>
-                                <p className="mb-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="mb-3 text-[0.9rem] text-taupe dark:text-gray-300">
                                     Central locations with meeting facilities, workspaces, and seamless
                                     connectivity for professionals on the move.
                                 </p>
                                 <button
                                     onClick={() => document.getElementById('hotel-results')?.scrollIntoView({ behavior: 'smooth' })}
                                     type="button"
-                                    className="text-[0.85rem] font-semibold text-[#8B6914] hover:underline dark:text-[#D4AF37] dark:hover:text-[#D4AF37]"
+                                    className="text-[0.85rem] font-semibold text-bronze hover:underline dark:text-gold dark:hover:text-gold"
                                 >
                                     Browse Hotels →
                                 </button>
@@ -933,67 +934,67 @@ const Hotels: React.FC = () => {
             </section>
 
             {/* WHY BOOK */}
-            <section className="bg-[#F5F0E6] py-14 dark:bg-gray-800 dark:text-[#F5F0E6]">
+            <section className="bg-cream py-14 dark:bg-gray-800 dark:text-cream">
                 <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-6 md:flex-row md:items-start">
                     <div className="flex-1">
-                        <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-[#8B6914] dark:text-[#D4AF37]">
+                        <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
                             Why Book With Us
                         </p>
                         <h2
-                            className="mb-2 text-2xl md:text-[2rem] dark:text-[#F5F0E6]"
+                            className="mb-2 text-2xl md:text-[2rem] dark:text-cream"
                             style={{ fontFamily: 'Playfair Display, serif' }}
                         >
                             Designed Around Your Journey
                         </h2>
-                        <p className="mb-5 max-w-xl text-[0.95rem] text-[#6B5B4F] dark:text-gray-300">
+                        <p className="mb-5 max-w-xl text-[0.95rem] text-taupe dark:text-gray-300">
                             From flexible search filters to transparent pricing, the booking experience is
                             crafted to make planning your stay effortless and enjoyable.
                         </p>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="rounded-xl bg-white px-4 py-3 shadow-[0_4px_20px_rgba(92,64,51,0.06)]">
                                 <h3
-                                    className="mb-1 text-[0.95rem] font-semibold dark:text-[#F5F0E6]"
+                                    className="mb-1 text-[0.95rem] font-semibold dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Handpicked Properties
                                 </h3>
-                                <p className="text-[0.88rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="text-[0.88rem] text-taupe dark:text-gray-300">
                                     Only verified hotels that meet strict quality, comfort, and service
                                     standards are showcased.
                                 </p>
                             </div>
                             <div className="rounded-xl bg-white px-4 py-3 shadow-[0_4px_20px_rgba(92,64,51,0.06)]">
                                 <h3
-                                    className="mb-1 text-[0.95rem] font-semibold dark:text-[#F5F0E6]"
+                                    className="mb-1 text-[0.95rem] font-semibold dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Smart Recommendations
                                 </h3>
-                                <p className="text-[0.88rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="text-[0.88rem] text-taupe dark:text-gray-300">
                                     Filters, ratings, and curated collections help you quickly find stays that
                                     match your priorities.
                                 </p>
                             </div>
                             <div className="rounded-xl bg-white px-4 py-3 shadow-[0_4px_20px_rgba(92,64,51,0.06)]">
                                 <h3
-                                    className="mb-1 text-[0.95rem] font-semibold dark:text-[#F5F0E6]"
+                                    className="mb-1 text-[0.95rem] font-semibold dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Transparent Rates
                                 </h3>
-                                <p className="text-[0.88rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="text-[0.88rem] text-taupe dark:text-gray-300">
                                     Clear nightly pricing, highlighted inclusions, and no hidden surprises at
                                     checkout.
                                 </p>
                             </div>
                             <div className="rounded-xl bg-white px-4 py-3 shadow-[0_4px_20px_rgba(92,64,51,0.06)]">
                                 <h3
-                                    className="mb-1 text-[0.95rem] font-semibold dark:text-[#F5F0E6]"
+                                    className="mb-1 text-[0.95rem] font-semibold dark:text-cream"
                                     style={{ fontFamily: 'Playfair Display, serif' }}
                                 >
                                     Future-Ready
                                 </h3>
-                                <p className="text-[0.88rem] text-[#6B5B4F] dark:text-gray-300">
+                                <p className="text-[0.88rem] text-taupe dark:text-gray-300">
                                     Designed to connect with your backend for real-time availability, offers,
                                     and user profiles.
                                 </p>
@@ -1009,14 +1010,14 @@ const Hotels: React.FC = () => {
                             >
                                 Need Help Choosing?
                             </h3>
-                            <p className="mb-3 text-[0.9rem] text-[#6B5B4F]">
+                            <p className="mb-3 text-[0.9rem] text-taupe">
                                 Tell us what kind of stay you're planning and our team will recommend the right
                                 hotel and room for you.
                             </p>
                             <button
                                 onClick={() => { window.location.href = '/contact'; }}
                                 type="button"
-                                className="w-full rounded border-2 border-[#8B6914] bg-[#8B6914] px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-[#8B6914] transition"
+                                className="w-full rounded border-2 border-bronze bg-bronze px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-bronze transition"
                             >
                                 Ask Our Team
                             </button>

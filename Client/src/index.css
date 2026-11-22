@@ -1,8 +1,41 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Playfair Display", serif;
-  --font-body: Lato, sans-serif;
+  /* Typography (fonts are loaded in index.html) */
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body: Lato, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Brand palette — use these (bg-ivory, text-bronze, border-stone…) instead of raw hex */
+  /* Light surfaces */
+  --color-ivory: #FDF8F3;
+  --color-pearl: #FDFBF7;
+  --color-linen: #F9F7F2;
+  --color-cream: #F5F0E6;
+  --color-parchment: #F3E8D1;
+  /* Borders & dividers */
+  --color-stone: #E6E2D3;
+  --color-sand: #E8DCC8;
+  --color-wheat: #D4C4A8;
+  /* Accents */
+  --color-gold: #D4AF37;
+  --color-bronze: #8B6914;
+  --color-bronze-deep: #705510;
+  /* Text */
+  --color-clay: #8D6E63;
+  --color-taupe: #6B5B4F;
+  --color-umber: #5D4037;
+  --color-cocoa: #5C4033;
+  --color-ink: #2C2416;
+  /* Dark-mode surfaces */
+  --color-graphite: #2A2A2A;
+  --color-charcoal: #1E1E1E;
+  --color-night: #121212;
+
+  /* Status */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
 }
 
 @variant dark (&:where(.dark, .dark *));
@@ -10,9 +43,7 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -20,7 +51,7 @@ body {
 
 /* Global Typography */
 @layer utilities {
-  /* Fonts defined in tailwind.config.js */
+  /* Fonts are defined in @theme above */
 
   .text-display {
     @apply font-display font-semibold;
@@ -94,5 +125,14 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+/* Respect users who ask for less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

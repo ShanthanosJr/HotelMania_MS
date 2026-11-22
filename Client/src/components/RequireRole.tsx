@@ -49,7 +49,7 @@ const RequireRole: React.FC<RequireRoleProps> = ({ roles, children }) => {
 
     if (state.status === 'checking') {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-[#FDF8F3] text-sm text-[#6B5B4F] dark:bg-[#121212] dark:text-gray-300">
+            <div className="flex min-h-screen items-center justify-center bg-ivory text-sm text-taupe dark:bg-night dark:text-gray-300">
                 Checking access…
             </div>
         );
