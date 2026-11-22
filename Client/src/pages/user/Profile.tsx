@@ -454,14 +454,14 @@ const Profile: React.FC = () => {
                 </div>
             </section>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6">
                 <div className="rounded-xl bg-white p-6 shadow-[0_2px_12px_rgba(92,64,51,0.08)]">
                     <h3 className="mb-4 text-lg font-medium dark:text-[#FDF8F3]" style={{ fontFamily: 'Playfair Display, serif' }}>
                         Welcome Back, {profile.name?.split(' ')[0] || 'Guest'}
                     </h3>
                     <p className="text-[0.9rem] text-[#6B5B4F] leading-relaxed dark:text-gray-300">
                         We are delighted to have you with us. Use this dashboard to manage your reservations,
-                        update your personal preferences, and ensure your next stay at Grand Vista is nothing
+                        update your personal preferences, and ensure your next stay at HotelMania is nothing
                         short of perfection.
                     </p>
                     <button
@@ -472,20 +472,6 @@ const Profile: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="relative overflow-hidden rounded-xl bg-[#2C2416] p-6 text-[#F5F0E6] shadow-[0_2px_12px_rgba(92,64,51,0.08)] dark:bg-gray-900 dark:text-[#FDF8F3]">
-                    <div className="relative z-10">
-                        <h3 className="mb-2 text-lg font-medium dark:text-[#FDF8F3]" style={{ fontFamily: 'Playfair Display, serif' }}>
-                            Seasonal Offer
-                        </h3>
-                        <p className="text-[0.9rem] opacity-90 mb-4 dark:text-gray-300">
-                            Enjoy 15% off spa treatments during your next weekend stay. Exclusive for members.
-                        </p>
-                        <button className="rounded-full bg-[#F5F0E6] px-4 py-2 text-[0.75rem] font-bold uppercase tracking-wider text-[#2C2416] hover:bg-white transition dark:bg-gray-700 dark:text-[#FDF8F3] dark:hover:bg-gray-600">
-                            View Details
-                        </button>
-                    </div>
-                    <div className="absolute top-0 right-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-[#8B6914] opacity-20 blur-2xl"></div>
-                </div>
             </div>
         </motion.div>
     );

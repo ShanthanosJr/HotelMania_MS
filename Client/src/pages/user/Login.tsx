@@ -108,7 +108,7 @@ const Login: React.FC = () => {
                             >
                                 Welcome back to your
                                 <br />
-                                Grand Vista dashboard
+                                HotelMania account
                             </h1>
                             <p className="max-w-md text-[0.95rem] text-[#F5F0E6] dark:text-gray-300">
                                 Enter your credentials to continue to your personalized

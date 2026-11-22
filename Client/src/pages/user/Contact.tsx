@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
+import { SITE, mapEmbedUrl } from '../../config/site';
 import alexandraImg from '../../assets/alexandra_reed.png';
 import danielImg from '../../assets/daniel_hart.png';
 import mayaImg from '../../assets/maya_chen.png';
@@ -319,7 +320,7 @@ const Contact: React.FC = () => {
                                 Email Us
                             </p>
                             <p className="text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
-                                concierge@hotelmania.com
+                                <a href={`mailto:${SITE.email}`} className="hover:underline">{SITE.email}</a>
                             </p>
                         </div>
                     </div>
@@ -331,7 +332,9 @@ const Contact: React.FC = () => {
                             <p className="text-[0.8rem] uppercase tracking-[0.14em] text-[#8B6914] dark:text-[#D4AF37]">
                                 Call
                             </p>
-                            <p className="text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">+1 (212) 555-0199</p>
+                            <p className="text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
+                                <a href={`tel:${SITE.phone.replace(/\s+/g, '')}`} className="hover:underline">{SITE.phone}</a>
+                            </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -343,7 +346,7 @@ const Contact: React.FC = () => {
                                 Visit
                             </p>
                             <p className="text-[0.9rem] text-[#2C2416] dark:text-[#F5F0E6]">
-                                Grand Vista Hotel, Manhattan
+                                {SITE.address}
                             </p>
                         </div>
                     </div>
@@ -431,24 +434,22 @@ const Contact: React.FC = () => {
                             className="mb-2 text-xl md:text-2xl dark:text-[#F5F0E6]"
                             style={{ fontFamily: 'Playfair Display, serif' }}
                         >
-                            Visit Grand Vista
+                            Visit {SITE.name}
                         </h2>
                         <p className="text-[0.95rem] text-[#2C2416] font-semibold dark:text-[#F5F0E6]">
-                            Grand Vista Hotel
+                            {SITE.name}
                         </p>
                         <p className="text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
-                            123 Luxury Avenue
-                            <br />
-                            Manhattan, New York, NY 10001
+                            {SITE.address}
                         </p>
                         <p className="mt-3 text-[0.9rem] text-[#6B5B4F] dark:text-gray-300">
-                            Nestled between galleries, fine dining, and iconic skyline
-                            views, Grand Vista brings the city to your doorstep.
+                            Steps from the Galle Face promenade, with easy access to Colombo's
+                            business district, dining and the ocean front.
                         </p>
                         <div className="mt-4 h-64 overflow-hidden rounded-xl border border-[#D4C4A8] dark:border-gray-600">
                             <iframe
-                                title="Grand Vista Location"
-                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.9663095343008!2d-74.00425878428698!3d40.74076684379132!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259bf5c1654f3%3A0xc80f9cfce5383d5d!2sGoogle!5e0!3m2!1sen!2sus!4v1586000412513!5m2!1sen!2sus"
+                                title={`${SITE.name} location`}
+                                src={mapEmbedUrl(SITE.address)}
                                 width="100%"
                                 height="100%"
                                 style={{ border: 0 }}

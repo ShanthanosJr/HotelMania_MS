@@ -8,7 +8,7 @@ const upload = require('../middleware/upload');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
 
-const ROOM_TYPE_FIELDS = ['name', 'hotel', 'basePrice', 'maxOccupancy', 'description', 'amenities'];
+const ROOM_TYPE_FIELDS = ['name', 'hotel', 'basePrice', 'maxOccupancy', 'description', 'amenities', 'size', 'bedType', 'view'];
 
 // @desc    Get all room types
 // @route   GET /api/room-types

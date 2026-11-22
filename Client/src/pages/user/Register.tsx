@@ -224,7 +224,7 @@ const Register: React.FC = () => {
                             >
                                 A single profile for
                                 <br />
-                                every Grand Vista stay
+                                every HotelMania stay
                             </h1>
                             <p className="max-w-md text-[0.95rem] text-[#F5F0E6] dark:text-gray-300">
                                 Save your preferences, manage bookings, and enjoy a seamless

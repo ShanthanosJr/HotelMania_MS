@@ -2,6 +2,24 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../../utils/api';
+import { SITE } from '../../config/site';
+
+type FeaturedRoom = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  image: string;
+  amenities: string[];
+  maxOccupancy?: number;
+};
+
+type Testimonial = { id: string; text: string; name: string; location: string; rating: number };
+
+const FALLBACK_ROOM_IMAGE = 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80';
+const todayIso = () => new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
 
 type RatingProps = { value: number };
 
@@ -50,34 +68,52 @@ const Home: React.FC = () => {
     'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80',
   ];
 
-  const roomCards = [
-    {
-      title: 'Deluxe Suite',
-      description:
-        'Spacious suite with stunning city views, featuring a king-size bed, marble bathroom, and private balcony.',
-      price: 350,
-      badge: 'Popular',
-      image:
-        'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
-    },
-    {
-      title: 'Executive Room',
-      description:
-        'Elegant room designed for business travelers with a dedicated work space and premium amenities.',
-      price: 280,
-      image:
-        'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&q=80',
-    },
-    {
-      title: 'Family Suite',
-      description:
-        'Perfect for families with interconnected rooms, children’s amenities, and a cozy living area.',
-      price: 450,
-      badge: 'Best Value',
-      image:
-        'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
-    },
-  ];
+  const navigate = useNavigate();
+  const [roomCards, setRoomCards] = useState<FeaturedRoom[]>([]);
+  const [roomsLoaded, setRoomsLoaded] = useState(false);
+  const [search, setSearch] = useState({ checkIn: '', checkOut: '', guests: '2', roomType: '' });
+  const [searchError, setSearchError] = useState('');
+
+  useEffect(() => {
+    api.get('/api/room-types')
+      .then(res => (res.ok ? res.json() : { data: [] }))
+      .then(data => {
+        const types = Array.isArray(data.data) ? data.data : [];
+        setRoomCards(types.map((t: { _id: string; name: string; description?: string; basePrice?: number; photos?: string[]; amenities?: string[]; maxOccupancy?: number }) => ({
+          id: t._id,
+          title: t.name,
+          description: t.description || '',
+          price: t.basePrice || 0,
+          image: t.photos && t.photos.length ? t.photos[0] : FALLBACK_ROOM_IMAGE,
+          amenities: (t.amenities || []).slice(0, 3),
+          maxOccupancy: t.maxOccupancy,
+        })));
+      })
+      .catch(() => setRoomCards([]))
+      .finally(() => setRoomsLoaded(true));
+  }, []);
+
+  const handleSearch = () => {
+    setSearchError('');
+    if ((search.checkIn && !search.checkOut) || (!search.checkIn && search.checkOut)) {
+      setSearchError('Please choose both check-in and check-out dates.');
+      return;
+    }
+    if (search.checkIn && search.checkOut && search.checkOut <= search.checkIn) {
+      setSearchError('Check-out must be after check-in.');
+      return;
+    }
+    const params = new URLSearchParams();
+    if (search.checkIn) params.set('checkIn', search.checkIn);
+    if (search.checkOut) params.set('checkOut', search.checkOut);
+    params.set('guests', search.guests);
+    if (search.roomType) {
+      if (search.checkIn) params.set('book', '1');
+      navigate(`/room/${search.roomType}?${params.toString()}`);
+    } else {
+      navigate(`/rooms?${params.toString()}`);
+    }
+  };
 
   const galleryImages = [
     'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=1200&q=80',
@@ -86,54 +122,28 @@ const Home: React.FC = () => {
     'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80',
     'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80',
   ];
-  const testimonials = [
-    {
-      text: 'An absolutely magnificent experience. The attention to detail, the impeccable service, and the stunning ambiance made our anniversary celebration truly unforgettable.',
-      name: 'Sarah & Michael Johnson',
-      location: 'New York, USA',
-      rating: 5,
-    },
-    {
-      text: 'From check-in to check-out, everything was flawless. The staff anticipated our needs before we even asked.',
-      name: 'Alicia Fernandez',
-      location: 'Madrid, Spain',
-      rating: 4,
-    },
-    {
-      text: 'The best hotel stay we have ever had – luxurious, warm, and incredibly comfortable.',
-      name: 'Kenji Tanaka',
-      location: 'Tokyo, Japan',
-      rating: 5,
-    },
-    {
-      text: 'A truly exceptional experience. The hotel exceeded our expectations in every way.',
-      name: 'Sophia Chen',
-      location: 'Shanghai, China',
-      rating: 5,
-    },
-    {
-      text: 'A wonderful stay with a friendly and helpful staff. The room was clean and comfortable.',
-      name: 'David Lee',
-      location: 'Sydney, Australia',
-      rating: 4,
-    },
-    {
-      text: 'A fantastic place to unwind and recharge. The hotel is beautifully decorated and the staff is always friendly and helpful.',
-      name: 'Emily White',
-      location: 'London, UK',
-      rating: 5,
-    },
-    {
-      text: 'A perfect getaway with family and friends. The hotel is located in a prime location and the staff went above and beyond to make our stay memorable.',
-      name: 'Mark and Lisa',
-      location: 'Paris, France',
-      rating: 4,
-    },
-  ];
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+
+  useEffect(() => {
+    api.get('/api/reviews/public')
+      .then(res => (res.ok ? res.json() : { data: [] }))
+      .then(data => {
+        const list = Array.isArray(data.data) ? data.data : [];
+        setTestimonials(list.map((r: { id: string; comment: string; name: string; hotel?: string; roomType?: string; rating: number }) => ({
+          id: r.id,
+          text: r.comment,
+          name: r.name,
+          location: [r.roomType, r.hotel].filter(Boolean).join(' · '),
+          rating: r.rating,
+        })));
+      })
+      .catch(() => setTestimonials([]));
+  }, []);
 
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
   useEffect(() => {
+    if (testimonials.length < 2) return;
     const interval = setInterval(() => {
       setCurrentTestimonial(prev => (prev + 1) % testimonials.length);
     }, 7000);
@@ -206,7 +216,7 @@ const Home: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             Discover a sanctuary of refined luxury where every detail is crafted to
-            perfection. Immerse yourself in an unforgettable stay at Grand Vista Hotel.
+            perfection. Immerse yourself in an unforgettable stay at {SITE.name}.
           </motion.p>
           <motion.div
             className="flex flex-wrap justify-center gap-4"
@@ -214,11 +224,11 @@ const Home: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.7 }}
           >
-            <button className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-[#8B6914] dark:bg-[#D4AF37] border-2 border-[#8B6914] dark:border-[#D4AF37] rounded text-white hover:bg-white hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+            <button onClick={() => navigate('/rooms')} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-[#8B6914] dark:bg-[#D4AF37] border-2 border-[#8B6914] dark:border-[#D4AF37] rounded text-white hover:bg-white hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
               Explore Rooms
             </button>
-            <button className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-transparent dark:bg-transparent border-2 border-white dark:border-[#D4AF37] rounded text-white dark:text-[#D4AF37] hover:bg-white hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
-              Virtual Tour
+            <button onClick={() => document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' })} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-transparent dark:bg-transparent border-2 border-white dark:border-[#D4AF37] rounded text-white dark:text-[#D4AF37] hover:bg-white hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+              View Gallery
             </button>
           </motion.div>
         </motion.div>
@@ -258,57 +268,80 @@ const Home: React.FC = () => {
             className="bg-white dark:bg-[#1E1E1E] rounded-xl shadow-2xl px-6 py-6 md:px-8 md:py-7 flex flex-wrap gap-4 items-end justify-between"
             variants={stagger}
           >
-            {[
-              { label: 'Check In', type: 'date' },
-              { label: 'Check Out', type: 'date' },
-            ].map(field => (
-              <motion.div
-                key={field.label}
-                className="flex-1 min-w-[150px] max-w-[230px]"
-                variants={fadeInUp}
-              >
-                <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] mb-2">
-                  {field.label}
-                </label>
-                <input
-                  type={field.type}
-                  className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
-                />
-              </motion.div>
-            ))}
+            <motion.div className="flex-1 min-w-[150px] md:max-w-[230px]" variants={fadeInUp}>
+              <label htmlFor="home-checkin" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
+                Check In
+              </label>
+              <input
+                id="home-checkin"
+                type="date"
+                min={todayIso()}
+                value={search.checkIn}
+                onChange={e => setSearch(prev => ({ ...prev, checkIn: e.target.value, checkOut: prev.checkOut && prev.checkOut <= e.target.value ? '' : prev.checkOut }))}
+                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+              />
+            </motion.div>
+            <motion.div className="flex-1 min-w-[150px] md:max-w-[230px]" variants={fadeInUp}>
+              <label htmlFor="home-checkout" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
+                Check Out
+              </label>
+              <input
+                id="home-checkout"
+                type="date"
+                min={search.checkIn || todayIso()}
+                value={search.checkOut}
+                onChange={e => setSearch(prev => ({ ...prev, checkOut: e.target.value }))}
+                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+              />
+            </motion.div>
             <motion.div
-              className="flex-1 min-w-[150px] max-w-[230px]"
+              className="flex-1 min-w-[150px] md:max-w-[230px]"
               variants={fadeInUp}
             >
               <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
                 Guests
               </label>
-              <select className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition">
+              <select
+                aria-label="Guests"
+                value={search.guests}
+                onChange={e => setSearch(prev => ({ ...prev, guests: e.target.value }))}
+                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+              >
                 {[1, 2, 3, 4, 5].map(n => (
-                  <option key={n}>{n} Guest{n > 1 && 's'}</option>
+                  <option key={n} value={String(n)}>{n} Guest{n > 1 && 's'}</option>
                 ))}
               </select>
             </motion.div>
             <motion.div
-              className="flex-1 min-w-[150px] max-w-[230px]"
+              className="flex-1 min-w-[150px] md:max-w-[230px]"
               variants={fadeInUp}
             >
               <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-[#6B5B4F] dark:text-gray-300 mb-2">
                 Room Type
               </label>
-              <select className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition">
-                <option>All Rooms</option>
-                <option>Deluxe Suite</option>
-                <option>Executive Room</option>
-                <option>Family Suite</option>
+              <select
+                aria-label="Room type"
+                value={search.roomType}
+                onChange={e => setSearch(prev => ({ ...prev, roomType: e.target.value }))}
+                className="w-full px-3 py-3 rounded bg-[#F5F0E6] dark:bg-[#2A2A2A] border border-[#D4C4A8] dark:border-[#444] text-sm text-[#2C2416] dark:text-white focus:outline-none focus:border-[#8B6914] dark:focus:border-[#D4AF37] focus:bg-white dark:focus:bg-[#333] transition"
+              >
+                <option value="">All Rooms</option>
+                {roomCards.map(r => (
+                  <option key={r.id} value={r.id}>{r.title}</option>
+                ))}
               </select>
             </motion.div>
             <motion.button
-              className="px-6 py-3 bg-[#8B6914] dark:bg-[#D4AF37] text-white dark:text-black text-[0.75rem] font-semibold tracking-[0.18em] uppercase rounded border-none shadow-md hover:bg-[#5C4033] dark:hover:bg-[#A67C52] transition"
+              type="button"
+              onClick={handleSearch}
+              className="w-full md:w-auto px-6 py-3 bg-[#8B6914] dark:bg-[#D4AF37] text-white dark:text-black text-[0.75rem] font-semibold tracking-[0.18em] uppercase rounded border-none shadow-md hover:bg-[#5C4033] dark:hover:bg-[#A67C52] transition"
               variants={fadeInUp}
             >
               Check Availability
             </motion.button>
+            {searchError && (
+              <p role="alert" className="w-full text-sm text-red-700 dark:text-red-400">{searchError}</p>
+            )}
           </motion.div>
         </motion.div>
       </motion.section>
@@ -375,16 +408,14 @@ const Home: React.FC = () => {
               className="text-section-title text-[#2C2416] dark:text-[#F5F0E6]"
               variants={fadeInUp}
             >
-              A Legacy of Luxury Since 1920
+              Sri Lankan Hospitality, Refined
             </motion.h2>
             <motion.p
               className="text-body mb-4 text-[#6B5B4F] dark:text-gray-300"
               variants={fadeInUp}
             >
-              Nestled in the heart of the city, Grand Vista Hotel has been a beacon of
-              elegance and sophistication for over a century. Our commitment to exceptional
-              service and attention to detail has made us the preferred destination for
-              discerning travelers from around the world.
+              From the Colombo coastline to the hills of Kandy, {SITE.name} hotels pair warm
+              Sri Lankan hospitality with thoughtfully designed rooms and attentive service.
             </motion.p>
             <motion.p
               className="text-body mb-6 text-[#6B5B4F] dark:text-gray-300"
@@ -413,6 +444,7 @@ const Home: React.FC = () => {
               )}
             </motion.div>
             <motion.button
+              onClick={() => navigate('/about')}
               className="inline-flex items-center gap-2 px-6 py-3 border-2 border-[#8B6914] dark:border-[#D4AF37] text-[#8B6914] dark:text-[#D4AF37] text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-[#8B6914] hover:text-white dark:hover:bg-[#D4AF37] dark:hover:text-black transition"
               variants={fadeInUp}
             >
@@ -465,13 +497,16 @@ const Home: React.FC = () => {
               Exquisite Rooms &amp; Suites
             </motion.h2>
           </motion.div>
+          {roomsLoaded && roomCards.length === 0 && (
+            <p className="text-center text-sm text-[#6B5B4F] dark:text-gray-300">Rooms will appear here once they are added.</p>
+          )}
           <motion.div
             className="grid md:grid-cols-3 gap-6"
             variants={stagger}
           >
-            {roomCards.map((room) => (
+            {roomCards.slice(0, 3).map((room) => (
               <motion.article
-                key={room.title}
+                key={room.id}
                 className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-2 hover:shadow-xl transition"
                 variants={fadeInUp}
               >
@@ -481,11 +516,6 @@ const Home: React.FC = () => {
                     alt={room.title}
                     className="w-full h-full object-cover hover:scale-110 transition-transform duration-700"
                   />
-                  {room.badge && (
-                    <span className="absolute top-4 left-4 px-3 py-1 text-[0.7rem] uppercase tracking-[0.14em] bg-[#8B6914] text-white rounded">
-                      {room.badge}
-                    </span>
-                  )}
                 </div>
                 <div className="px-6 py-6">
                   <h3
@@ -497,7 +527,7 @@ const Home: React.FC = () => {
                     {room.description}
                   </p>
                   <div className="flex flex-wrap gap-3 mb-4 text-[0.78rem] text-[#6B5B4F]">
-                    {['Smart TV', 'Free WiFi', 'Mini Bar'].map(label => (
+                    {room.amenities.map(label => (
                       <span
                         key={label}
                         className="inline-flex items-center gap-1"
@@ -514,8 +544,11 @@ const Home: React.FC = () => {
                       </span>
                       <span className="text-xs text-[#6B5B4F] ml-1">/ night</span>
                     </div>
-                    <button className="px-4 py-2 bg-[#E8DCC8] text-[#8B6914] text-[0.75rem] font-semibold uppercase tracking-[0.14em] rounded hover:bg-[#8B6914] hover:text-white transition">
-                      Book Now
+                    <button
+                      onClick={() => navigate(`/room/${room.id}`)}
+                      className="px-4 py-2 bg-[#E8DCC8] text-[#8B6914] text-[0.75rem] font-semibold uppercase tracking-[0.14em] rounded hover:bg-[#8B6914] hover:text-white transition"
+                    >
+                      View &amp; Book
                     </button>
                   </div>
                 </div>
@@ -759,6 +792,7 @@ const Home: React.FC = () => {
       </motion.section>
 
       {/* TESTIMONIALS */}
+      {testimonials.length > 0 && (
       <motion.section
         className="py-24 relative overflow-hidden bg-[#F5F0E6] dark:bg-[#1E1E1E]"
         initial="hidden"
@@ -801,7 +835,7 @@ const Home: React.FC = () => {
           >
             {testimonials.map((t, index) => (
               <div
-                key={t.name}
+                key={t.id}
                 className={`absolute inset-0 transition-all duration-700 ${index === currentTestimonial
                   ? 'opacity-100 translate-y-0'
                   : 'opacity-0 translate-y-4 pointer-events-none'
@@ -898,6 +932,7 @@ const Home: React.FC = () => {
           </motion.div>
         </motion.div>
       </motion.section>
+      )}
 
 
       {/* CTA */}
@@ -927,17 +962,17 @@ const Home: React.FC = () => {
             className="text-body text-[#2C2416] dark:text-gray-300 mb-8"
             variants={fadeInUp}
           >
-            Book your stay today and discover why Grand Vista Hotel has been the preferred
-            choice for travelers seeking exceptional hospitality for over a century.
+            Book directly with us for the best available rate, instant confirmation and
+            secure payment.
           </motion.p>
           <motion.div
             className="flex flex-wrap justify-center gap-4"
             variants={fadeInUp}
           >
-            <button className="px-7 py-3 bg-[#8B6914] dark:bg-[#D4AF37] text-white dark:text-black text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-[#8B6914] dark:border-[#D4AF37] hover:bg-transparent hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+            <button onClick={() => navigate('/rooms')} className="px-7 py-3 bg-[#8B6914] dark:bg-[#D4AF37] text-white dark:text-black text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-[#8B6914] dark:border-[#D4AF37] hover:bg-transparent hover:text-[#8B6914] dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
               Book Your Stay
             </button>
-            <button className="px-7 py-3 bg-transparent dark:bg-transparent text-[#8B6914] dark:text-[#D4AF37] text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-[#8B6914] dark:border-[#D4AF37] hover:bg-[#8B6914] hover:text-white dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
+            <button onClick={() => navigate('/contact')} className="px-7 py-3 bg-transparent dark:bg-transparent text-[#8B6914] dark:text-[#D4AF37] text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-[#8B6914] dark:border-[#D4AF37] hover:bg-[#8B6914] hover:text-white dark:hover:bg-[#D4AF37] dark:hover:text-black transition">
               Contact Us
             </button>
           </motion.div>
