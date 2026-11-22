@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { api } from '../utils/api';
 import { BsSun, BsMoonStars } from 'react-icons/bs';
 
 type User = {
@@ -48,6 +49,8 @@ const Navbar: React.FC = () => {
     }, []);
 
     const handleLogout = () => {
+        // Revoke the session server-side (fire and forget)
+        api.post('/api/auth/logout', {}).catch(() => undefined);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');

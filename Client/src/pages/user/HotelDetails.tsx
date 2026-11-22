@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { api } from '../../utils/api';
+import { toPaymentDetails } from '../../utils/payment';
 
 type Hotel = {
     _id?: string;
@@ -83,12 +84,11 @@ const HotelDetails: React.FC = () => {
             try {
                 setLoading(true);
 
-                const hotelRes = await api.get('/api/hotels');
-                if (!hotelRes.ok) throw new Error('Failed to fetch hotels');
+                const hotelRes = await api.get(`/api/hotels/${id}`);
+                if (hotelRes.status === 404 || hotelRes.status === 400) throw new Error('Hotel not found');
+                if (!hotelRes.ok) throw new Error('Failed to fetch hotel');
                 const hotelData = await hotelRes.json();
-                const foundHotel: Hotel | undefined = hotelData.data.find(
-                    (h: Hotel) => h._id === id || h.id === id,
-                );
+                const foundHotel: Hotel | undefined = hotelData.data;
                 if (!foundHotel) {
                     throw new Error('Hotel not found');
                 }
@@ -243,12 +243,10 @@ const HotelDetails: React.FC = () => {
 
             const txnData = {
                 booking: bookingId,
-                amount: totalPrice,
                 type: paymentMethod,
-                transactionId: `TXN-${Date.now()}`,
                 paymentDetails:
                     (paymentMethod === 'credit_card' || paymentMethod === 'debit_card')
-                        ? cardDetails
+                        ? toPaymentDetails(cardDetails)
                         : undefined,
             };
 

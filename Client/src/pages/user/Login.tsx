@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../utils/api';
+import { homeForRole } from '../../utils/auth';
 
 const loginVideo =
     'https://www.pexels.com/download/video/17550507/';
@@ -69,11 +70,7 @@ const Login: React.FC = () => {
             if (response.ok) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                if (data.user.role === 'admin') {
-                    navigate('/admin/dashboard');
-                } else {
-                    navigate('/');
-                }
+                navigate(homeForRole(data.user.role));
             } else {
                 setErrors({ server: data.message || 'Login failed' });
             }

@@ -1,9 +1,14 @@
 const express = require('express');
 const RoomType = require('../models/RoomType');
 const Hotel = require('../models/Hotel');
+const Room = require('../models/Room');
 const { protect, admin } = require('../middleware/auth');
+const { pick } = require('../middleware/sanitize');
 const upload = require('../middleware/upload');
 const router = express.Router();
+router.param('id', require('../middleware/sanitize').validateId);
+
+const ROOM_TYPE_FIELDS = ['name', 'hotel', 'basePrice', 'maxOccupancy', 'description', 'amenities'];
 
 // @desc    Get all room types
 // @route   GET /api/room-types
@@ -41,7 +46,7 @@ router.get('/:id', async (req, res) => {
 // @access  Private/Admin
 router.post('/', protect, admin, upload.array('photos', 5), async (req, res) => {
   try {
-    const roomTypeData = req.body;
+    const roomTypeData = pick(req.body, ROOM_TYPE_FIELDS);
 
     // Verify hotel exists
     const hotel = await Hotel.findById(roomTypeData.hotel);
@@ -68,11 +73,6 @@ router.post('/', protect, admin, upload.array('photos', 5), async (req, res) => 
 
     const roomType = await RoomType.create(roomTypeData);
 
-    // Add room type to hotel's roomTypes array
-    await Hotel.findByIdAndUpdate(roomTypeData.hotel, {
-      $addToSet: { roomTypes: roomType._id }
-    });
-
     const populatedRoomType = await RoomType.findById(roomType._id).populate('hotel');
     res.status(201).json({ success: true, data: populatedRoomType });
   } catch (error) {
@@ -90,7 +90,7 @@ router.post('/', protect, admin, upload.array('photos', 5), async (req, res) => 
 // @access  Private/Admin
 router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) => {
   try {
-    let updateData = req.body;
+    const updateData = pick(req.body, ROOM_TYPE_FIELDS);
 
     // Handle amenities parsing
     if (typeof updateData.amenities === 'string') {
@@ -112,11 +112,6 @@ router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) =
     if (req.files && req.files.length > 0) {
       const newPhotos = req.files.map(file => `/uploads/${file.filename}`);
       updateData.photos = [...(existingRoomType.photos || []), ...newPhotos];
-    } else {
-      // If no new files, we might strictly delete 'photos' from updateData to prevent overwriting with string/undefined
-      // unless we want to allow rewriting properities. 
-      // Safer to just delete if not intended to change.
-      delete updateData.photos;
     }
 
     const roomType = await RoomType.findByIdAndUpdate(req.params.id, updateData, {
@@ -141,16 +136,18 @@ router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) =
 // @access  Private/Admin
 router.delete('/:id', protect, admin, async (req, res) => {
   try {
-    const roomType = await RoomType.findByIdAndDelete(req.params.id);
+    const roomType = await RoomType.findById(req.params.id);
 
     if (!roomType) {
       return res.status(404).json({ success: false, message: 'Room type not found' });
     }
 
-    // Remove room type from hotel's roomTypes array
-    await Hotel.findByIdAndUpdate(roomType.hotel, {
-      $pull: { roomTypes: roomType._id }
-    });
+    const rooms = await Room.countDocuments({ type: roomType._id });
+    if (rooms) {
+      return res.status(400).json({ success: false, message: `${rooms} room(s) still use this room type. Reassign or remove them first.` });
+    }
+
+    await roomType.deleteOne();
 
     res.status(200).json({ success: true, message: 'Room type deleted' });
   } catch (error) {

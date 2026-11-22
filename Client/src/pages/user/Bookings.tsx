@@ -154,6 +154,24 @@ const Bookings: React.FC = () => {
         }
     };
 
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+    const handleCancelBooking = async (bookingId: string) => {
+        if (!window.confirm('Cancel this booking? This cannot be undone.')) return;
+        setCancellingId(bookingId);
+        try {
+            const res = await api.request(`/api/bookings/${bookingId}/cancel`, { method: 'PATCH' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Could not cancel booking');
+            alert(data.message || 'Booking cancelled.');
+            await fetchMyBookings();
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : 'Could not cancel booking');
+        } finally {
+            setCancellingId(null);
+        }
+    };
+
     useEffect(() => {
         fetchMyBookings();
         if (isAuthenticated()) {
@@ -359,6 +377,17 @@ const Bookings: React.FC = () => {
                                                             className="flex items-center gap-2 px-4 py-2 border border-[#E6E2D3] rounded text-xs font-bold uppercase text-[#8B6914] hover:bg-[#8B6914] hover:text-white transition-colors dark:border-gray-600 dark:text-[#D4AF37] dark:hover:bg-[#D4AF37] dark:hover:text-[#2C2416]"
                                                         >
                                                             <BsGear /> Service Request
+                                                        </button>
+                                                    )}
+                                                    {activeTab === 'upcoming' &&
+                                                        (booking.status === 'pending' || booking.status === 'confirmed') &&
+                                                        new Date(booking.checkInDate || '').getTime() > Date.now() && (
+                                                        <button
+                                                            onClick={() => booking._id && handleCancelBooking(booking._id)}
+                                                            disabled={cancellingId === booking._id}
+                                                            className="flex items-center gap-2 px-4 py-2 border border-red-200 rounded text-xs font-bold uppercase text-red-700 hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-700"
+                                                        >
+                                                            <BsXCircle /> {cancellingId === booking._id ? 'Cancelling…' : 'Cancel Booking'}
                                                         </button>
                                                     )}
                                                 </div>

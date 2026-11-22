@@ -25,6 +25,11 @@ const roomSchema = new mongoose.Schema({
     },
     default: 'available',
   },
+  // Bumped inside booking transactions so concurrent bookings of the same room conflict
+  bookingVersion: {
+    type: Number,
+    default: 0,
+  },
   currentBooking: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Booking',

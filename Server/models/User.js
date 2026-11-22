@@ -44,6 +44,11 @@ const userSchema = new mongoose.Schema({
     type: String, // Base64 string
     default: '',
   },
+  // Bumped on password change / logout; tokens carrying an older version are rejected
+  tokenVersion: {
+    type: Number,
+    default: 0,
+  },
   savedCards: [{
     cardNumber: String, // Masked
     cardType: String,
@@ -66,6 +71,11 @@ userSchema.pre('save', async function () {
 
   if (!this.isModified('password')) {
     return;
+  }
+
+  // Invalidate existing sessions when the password changes (not on first creation)
+  if (!this.isNew) {
+    this.tokenVersion = (this.tokenVersion || 0) + 1;
   }
 
   try {

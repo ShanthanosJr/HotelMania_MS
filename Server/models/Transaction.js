@@ -29,19 +29,16 @@ const transactionSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+  // Never store full card numbers or CVVs (PCI-DSS). Only non-sensitive display data.
   paymentDetails: {
-    cardNumber: {
-      type: String,
-      required: false,
-    },
-    expiryDate: {
-      type: String,
-      required: false,
-    },
-    cvv: {
-      type: String,
-      required: false,
-    }
+    last4: String,
+    cardHolder: String,
+    expiryDate: String,
+  },
+  status: {
+    type: String,
+    enum: ['succeeded', 'failed', 'refunded'],
+    default: 'succeeded',
   },
 }, {
   timestamps: true,

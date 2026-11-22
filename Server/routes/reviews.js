@@ -2,40 +2,51 @@ const express = require('express');
 const Review = require('../models/Review');
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
-const { protect, admin } = require('../middleware/auth');
+const { protect, isStaff } = require('../middleware/auth');
+const { pick } = require('../middleware/sanitize');
 const router = express.Router();
+router.param('id', require('../middleware/sanitize').validateId);
+
+const populateReview = (query) =>
+  query
+    .populate('user', 'name email')
+    .populate({
+      path: 'room',
+      select: 'roomNumber type hotel',
+      populate: [{ path: 'type', select: 'name' }, { path: 'hotel', select: 'name address' }],
+    });
 
 // Get all reviews
 router.get('/', protect, async (req, res) => {
   try {
-    const reviews = await Review.find({})
-      .populate('user', 'name email')
-      .populate('room', 'roomNumber type hotel')
-      .populate('room.hotel', 'name address');
+    // Staff see every review; guests only see their own
+    const filter = isStaff(req.user) ? {} : { user: req.user._id };
+    const reviews = await populateReview(Review.find(filter).sort({ createdAt: -1 }));
     
     res.status(200).json({ success: true, data: reviews });
   } catch (error) {
     console.error('Error fetching reviews:', error);
-    res.status(500).json({ message: error.message || 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Get review by ID
 router.get('/:id', protect, async (req, res) => {
   try {
-    const review = await Review.findById(req.params.id)
-      .populate('user', 'name email')
-      .populate('room', 'roomNumber type hotel')
-      .populate('room.hotel', 'name address');
+    const review = await populateReview(Review.findById(req.params.id));
     
     if (!review) {
       return res.status(404).json({ message: 'Review not found' });
+    }
+
+    if (!isStaff(req.user) && !(review.user && review.user._id.equals(req.user._id))) {
+      return res.status(403).json({ message: 'Access denied' });
     }
     
     res.status(200).json({ success: true, data: review });
   } catch (error) {
     console.error('Error fetching review:', error);
-    res.status(500).json({ message: error.message || 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -57,7 +68,7 @@ router.post('/', protect, async (req, res) => {
     
     // Determine the user for the review
     let reviewUser = req.user._id;
-    if (req.user.role === 'admin' && user) {
+    if (req.user.role === 'admin' && user && typeof user === 'string') {
       // Admin can specify the user
       reviewUser = user;
     }
@@ -95,10 +106,7 @@ router.post('/', protect, async (req, res) => {
     });
     
     // Populate the review for the response
-    const populatedReview = await Review.findById(review._id)
-      .populate('user', 'name email')
-      .populate('room', 'roomNumber type hotel')
-      .populate('room.hotel', 'name address');
+    const populatedReview = await populateReview(Review.findById(review._id));
     
     res.status(201).json({
       success: true,
@@ -113,7 +121,7 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: messages.join(', ') });
     }
     
-    res.status(500).json({ message: error.message || 'Server error during review creation' });
+    res.status(500).json({ message: 'Server error during review creation' });
   }
 });
 
@@ -131,13 +139,12 @@ router.put('/:id', protect, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
     
-    const updatedReview = await Review.findByIdAndUpdate(
+    // Only the content of a review can change, never its author or room
+    const updatedReview = await populateReview(Review.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      pick(req.body, ['rating', 'comment']),
       { new: true, runValidators: true }
-    ).populate('user', 'name email')
-      .populate('room', 'roomNumber type hotel')
-      .populate('room.hotel', 'name address');
+    ));
     
     res.status(200).json({
       success: true,
@@ -152,7 +159,7 @@ router.put('/:id', protect, async (req, res) => {
       return res.status(400).json({ message: messages.join(', ') });
     }
     
-    res.status(500).json({ message: error.message || 'Server error during review update' });
+    res.status(500).json({ message: 'Server error during review update' });
   }
 });
 
@@ -178,7 +185,7 @@ router.delete('/:id', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting review:', error);
-    res.status(500).json({ message: error.message || 'Server error during review deletion' });
+    res.status(500).json({ message: 'Server error during review deletion' });
   }
 });
 
