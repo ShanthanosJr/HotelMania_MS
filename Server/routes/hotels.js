@@ -5,6 +5,7 @@ const RoomType = require('../models/RoomType');
 const { protect, admin } = require('../middleware/auth');
 const { pick } = require('../middleware/sanitize');
 const upload = require('../middleware/upload');
+const { resolvePhotos } = require('../utils/photos');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
 
@@ -70,12 +71,7 @@ router.post('/', protect, admin, upload.array('photos', 5), async (req, res) => 
       }
     }
 
-    // Process uploaded files
-    if (req.files && req.files.length > 0) {
-      hotelData.photos = req.files.map(file => `/uploads/${file.filename}`);
-    } else {
-      hotelData.photos = [];
-    }
+    hotelData.photos = resolvePhotos([], req.body, req.files) || [];
 
     const hotel = await Hotel.create(hotelData);
     res.status(201).json({ success: true, data: hotel });
@@ -119,18 +115,9 @@ router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) =
       }
     }
 
-    // Handle photos: append new ones to existing
-    if (req.files && req.files.length > 0) {
-      const newPhotos = req.files.map(file => `/uploads/${file.filename}`);
-      // If we want to replace, we would just use newPhotos.
-      // But typically "update" might mean add to gallery or replace main.
-      // Let's assume append for now, or if the user sends an explicit list of 'kept' photos we'd use that.
-      // Since the requirement is basic upload, appending is safer than wiping.
-
-      // However, if the user wants to DELETE photos, we need a mechanism.
-      // For now, let's just append.
-      updateData.photos = [...(hotel.photos || []), ...newPhotos];
-    }
+    // Photos: keep the ones still listed, add new links and uploads
+    const photos = resolvePhotos(hotel.photos || [], req.body, req.files);
+    if (photos) updateData.photos = photos;
 
     hotel = await Hotel.findByIdAndUpdate(req.params.id, updateData, {
       new: true,

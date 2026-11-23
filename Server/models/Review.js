@@ -25,6 +25,11 @@ const reviewSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  // Staff can hide a review from the public website without deleting it
+  hidden: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
 });

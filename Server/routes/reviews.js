@@ -18,7 +18,7 @@ const populateReview = (query) =>
 
 // Public, anonymised reviews for the website (no auth). Must be declared before '/:id'.
 router.get('/public', async (req, res) => {
-  const reviews = await Review.find({ rating: { $gte: 4 } })
+  const reviews = await Review.find({ rating: { $gte: 4 }, hidden: { $ne: true } })
     .sort({ createdAt: -1 })
     .limit(10)
     .populate('user', 'name')
@@ -170,9 +170,11 @@ router.put('/:id', protect, async (req, res) => {
     }
     
     // Only the content of a review can change, never its author or room
+    // Only admins can hide or show a review on the website
+    const fields = req.user.role === 'admin' ? ['rating', 'comment', 'hidden'] : ['rating', 'comment'];
     const updatedReview = await populateReview(Review.findByIdAndUpdate(
       req.params.id,
-      pick(req.body, ['rating', 'comment']),
+      pick(req.body, fields),
       { new: true, runValidators: true }
     ));
     

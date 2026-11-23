@@ -1,1141 +1,209 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { api } from '../../utils/api';
-import { toError } from '../../utils/errors';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BsArrowRepeat, BsPersonPlus, BsPencil, BsTrash } from 'react-icons/bs';
 import AdminLayout from '../../components/AdminLayout';
-import {
-  BsArrowLeft,
-  BsPlusCircle,
-  BsSearch,
-  BsGrid,
-  BsList,
-  BsFilter,
-  BsPeople,
-  BsPersonBadge,
-  BsEnvelope,
-  BsTelephone,
-  BsTrash,
-  BsPencil,
-  BsX,
-  BsCamera,
-  BsCheckCircle,
-  BsExclamationCircle
-} from 'react-icons/bs';
-import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { toast, confirmDialog } from '../../components/ui';
+import PageHeader from '../../components/admin/PageHeader';
+import DataTable, { type Column } from '../../components/admin/DataTable';
+import FilterTabs from '../../components/admin/FilterTabs';
+import { Badge, Button, Input, Modal, Select, confirmDialog, statusTone, toast } from '../../components/ui';
+import type { BadgeTone } from '../../components/ui';
+import { apiJson, errorText, photoSrc } from '../../utils/adminApi';
+import { getStoredUser } from '../../utils/auth';
+import { formatDate, formatMoney, hotelOf, statusLabel, type BookingRecord } from '../../utils/booking';
+import { usePricing } from '../../hooks/usePublicData';
 
-const isAuthenticated = () => {
-  const token = localStorage.getItem('token');
-  return token !== null && token !== undefined && token !== '';
+type Role = 'guest' | 'admin' | 'receptionist' | 'housekeeping';
+interface User { _id: string; userId?: string; name: string; email: string; phone?: string; role: Role; profilePhoto?: string; createdAt?: string }
+type Filter = 'all' | 'guests' | 'staff';
+
+const ROLE_TONE: Record<Role, BadgeTone> = { admin: 'brand', receptionist: 'info', housekeeping: 'warning', guest: 'neutral' };
+const ROLE_HELP: Record<Role, string> = {
+    guest: 'Books stays on the website',
+    receptionist: 'Front desk, calendar, bookings, enquiries',
+    housekeeping: 'Housekeeping board and service requests',
+    admin: 'Everything, including rates, users and money',
 };
-
-type Role = 'admin' | 'receptionist' | 'housekeeping' | 'guest' | string;
-
-interface User {
-  _id: string;
-  userId?: string;
-  name: string;
-  email: string;
-  phone?: string;
-  role: Role;
-  profilePhoto?: string;
-  createdAt: string;
-}
-
-interface UserFormState {
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-  role: Role;
-  profilePhoto?: string;
-  userId?: string;
-}
-
-interface UserErrors {
-  name?: string;
-  email?: string;
-  password?: string;
-  phone?: string;
-  role?: string;
-  server?: string;
-}
+const blank = { name: '', email: '', phone: '', role: 'guest' as Role, password: '' };
 
 const ManageUsers: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [userForm, setUserForm] = useState<UserFormState>({
-    name: '',
-    email: '',
-    password: '',
-    phone: '',
-    role: 'guest',
-    profilePhoto: '',
-    userId: '',
-  });
-  const [editingId, setEditingId] = useState<string | null>(null);
+    const me = getStoredUser();
+    const { currency } = usePricing();
+    const [users, setUsers] = useState<User[]>([]);
+    const [bookings, setBookings] = useState<BookingRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<Filter>('all');
+    const [editing, setEditing] = useState<User | 'new' | null>(null);
+    const [form, setForm] = useState(blank);
+    const [saving, setSaving] = useState(false);
+    const [profile, setProfile] = useState<User | null>(null);
 
-  const [loading, setLoading] = useState(false);
-  const [opLoading, setOpLoading] = useState(false); // Operation loading (submit)
-  const [error, setError] = useState<string | null>(null);
-  const [formErrors, setFormErrors] = useState<UserErrors>({});
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] =
-    useState<'all' | 'admin' | 'receptionist' | 'housekeeping' | 'guest'>('all');
-
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
-
-  const [showModal, setShowModal] = useState(false);
-
-  const chartColors = ['#8D6E63', '#5D4037', '#D4AF37', '#81C784'];
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/api/users');
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          setError('Authentication failed. Please log in as an admin user.');
-          return;
+    const load = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [u, b] = await Promise.all([apiJson<User[]>('GET', '/api/users'), apiJson<BookingRecord[]>('GET', '/api/bookings').catch(() => [])]);
+            setUsers(u);
+            setBookings(b);
+        } catch (err) {
+            toast.error(errorText(err, 'Could not load users'));
+        } finally {
+            setLoading(false);
         }
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch users');
-      }
-      const data = await response.json();
-      if (data.success && Array.isArray(data.data)) {
-        setUsers(data.data);
-      }
-    } catch (caught: unknown) {
-      const err = toError(caught);
-      if (!String(err.message).includes('Authentication failed')) {
-        setError(`Failed to fetch users: ${err.message}`);
-      }
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, []);
+    useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (isAuthenticated()) {
-      fetchUsers();
-    } else {
-      setError(
-        'You must be logged in as an admin to access this page. Please log in first.',
-      );
-      setLoading(false);
-    }
-  }, []);
-
-  // Validation Logic (copied/adapted from Register.tsx)
-  const validateField = (fieldName: keyof UserFormState, value: string) => {
-    let error = '';
-
-    switch (fieldName) {
-      case 'name':
-        if (!value.trim()) {
-          error = 'Name is required';
-        } else if (!/^[a-zA-Z\s]+$/.test(value.trim())) {
-          error = 'Name can only contain letters and spaces';
-        } else if (value.trim().length < 2) {
-          error = 'Name must be at least 2 characters';
+    // Stay history per guest
+    const stats = useMemo(() => {
+        const m = new Map<string, { stays: number; spent: number; last?: string; list: BookingRecord[] }>();
+        for (const b of bookings) {
+            const id = b.user?._id;
+            if (!id) continue;
+            const s = m.get(id) || { stays: 0, spent: 0, list: [] };
+            s.list.push(b);
+            if (b.status === 'checked_out' || b.status === 'checked_in') s.stays += 1;
+            if (b.paymentStatus === 'paid') s.spent += b.totalPrice;
+            if (b.status !== 'cancelled' && (!s.last || b.checkInDate > s.last)) s.last = b.checkInDate;
+            m.set(id, s);
         }
-        break;
-      case 'email':
-        if (value.trim() && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value.trim())) {
-          error = 'Enter a valid email address';
-        } else if (!value.trim()) {
-          error = 'Email is required';
-        }
-        break;
-      case 'phone':
-        if (value.trim() && !/^\+94\d{9}$|^0\d{9}$/.test(value.trim())) {
-          error = 'Phone must be in format +94xxxxxxxxx or 0xxxxxxxxx';
-        }
-        break;
-      case 'password':
-        // Only validate password if it's provided (for edit) or strictly required (for new)
-        if (!editingId) {
-          if (!value) error = 'Password is required';
-          else if (value.length < 6) error = 'Password must be at least 6 characters';
-        } else if (value && value.length < 6) {
-          error = 'Password must be at least 6 characters';
-        }
-        break;
-    }
+        return m;
+    }, [bookings]);
 
-    setFormErrors(prev => ({
-      ...prev,
-      [fieldName]: error || undefined
-    }));
+    const rows = users.filter(u => filter === 'all' || (filter === 'guests' ? u.role === 'guest' : u.role !== 'guest'));
+    const set = (k: keyof typeof blank) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-    return error;
-  };
-
-  const handleInputChange: React.ChangeEventHandler<
-    HTMLInputElement | HTMLSelectElement
-  > = e => {
-    const { name, value } = e.target;
-    setUserForm(prev => ({ ...prev, [name]: value }));
-    validateField(name as keyof UserFormState, value);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUserForm(prev => ({ ...prev, profilePhoto: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const validate = () => {
-    const newErrors: UserErrors = {};
-
-    // Name validation
-    if (!userForm.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (!/^[a-zA-Z\s]+$/.test(userForm.name.trim())) {
-      newErrors.name = 'Name can only contain letters and spaces';
-    } else if (userForm.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
-
-    // Email validation
-    if (!userForm.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(userForm.email.trim())) {
-      newErrors.email = 'Enter a valid email address';
-    }
-
-    // Phone validation
-    if (userForm.phone.trim() && !/^\+94\d{9}$|^0\d{9}$/.test(userForm.phone.trim())) {
-      newErrors.phone = 'Phone must be in format +94xxxxxxxxx or 0xxxxxxxxx';
-    }
-
-    // Password validation
-    if (!editingId && !userForm.password) {
-      newErrors.password = 'Password is required needed for new users';
-    } else if (userForm.password && userForm.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    setFormErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
-    e.preventDefault();
-
-    if (!validate()) return;
-
-    try {
-      setOpLoading(true);
-      setFormErrors({});
-      let response;
-      if (editingId) {
-        const { password, ...updateData } = userForm;
-        const dataToSend = password ? userForm : updateData;
-        response = await api.put(`/api/users/${editingId}`, dataToSend);
-      } else {
-        response = await api.post('/api/users', userForm);
-      }
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          setError('Authentication failed. Please log in as an admin user.');
-          toast.error('Authentication failed. Please log in as an admin user.');
-          return;
-        }
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Operation failed');
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        if (editingId) {
-          setUsers(prev =>
-            prev.map(u => (u._id === editingId ? result.data : u)),
-          );
-          toast.success('User updated successfully!');
-        } else {
-          setUsers(prev => [...prev, result.data]);
-          toast.success('User created successfully!');
-        }
-        setEditingId(null);
-        resetForm();
-        setShowModal(false);
-      }
-    } catch (caught: unknown) {
-      const err = toError(caught);
-      if (!String(err.message).includes('Authentication failed')) {
-        setFormErrors(prev => ({ ...prev, server: err.message || 'Operation failed' }));
-        // Also show alert for visibility
-        // alert(`Operation failed: ${err.message}`);
-      }
-      console.error(err);
-    } finally {
-      setOpLoading(false);
-    }
-  };
-
-  const handleEdit = (user: User) => {
-    setUserForm({
-      name: user.name,
-      email: user.email,
-      password: '',
-      phone: user.phone || '',
-      role: user.role || 'guest',
-      profilePhoto: user.profilePhoto || '',
-      userId: user.userId || '',
-    });
-    setEditingId(user._id);
-    setFormErrors({});
-    setShowModal(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!(await confirmDialog({ title: 'Delete this user?', message: 'Their account and sign-in will be removed. This cannot be undone.', confirmLabel: 'Delete user', tone: 'danger' }))) return;
-    try {
-      const response = await api.delete(`/api/users/${id}`);
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          setError('Authentication failed. Please log in as an admin user.');
-          return;
-        }
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Delete operation failed');
-      }
-      const result = await response.json();
-      if (result.success) {
-        setUsers(prev => prev.filter(u => u._id !== id));
-        toast.success('User deleted successfully!');
-      }
-    } catch (caught: unknown) {
-      const err = toError(caught);
-      if (!String(err.message).includes('Authentication failed')) {
-        setError(`Failed to delete user: ${err.message}`);
-        toast.error(`Failed to delete user: ${err.message || 'Please check console for details.'}`);
-      }
-      console.error(err);
-    }
-  };
-
-  const resetForm = () => {
-    setUserForm({
-      name: '',
-      email: '',
-      password: '',
-      phone: '',
-      role: 'guest',
-      profilePhoto: '',
-      userId: `USR-${Math.floor(100000 + Math.random() * 900000)}`,
-    });
-    setEditingId(null);
-    setFormErrors({});
-  };
-
-  const resetFilters = () => {
-    setSearchTerm('');
-    setRoleFilter('all');
-  };
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, roleFilter]);
-
-  const filteredUsers = useMemo(
-    () =>
-      users.filter(u => {
-        const label = `${u.name} ${u.email} ${u.phone || ''}`;
-        const matchesSearch = label
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-        const matchesRole =
-          roleFilter === 'all' ? true : u.role === roleFilter;
-        return matchesSearch && matchesRole;
-      }),
-    [users, searchTerm, roleFilter],
-  );
-
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const paginatedUsers = useMemo(
-    () =>
-      filteredUsers.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage,
-      ),
-    [filteredUsers, currentPage],
-  );
-
-  const metrics = useMemo(() => {
-    const total = users.length;
-    const roleCounts: Record<string, number> = {};
-    users.forEach(u => {
-      roleCounts[u.role] = (roleCounts[u.role] || 0) + 1;
-    });
-    const roleData = Object.entries(roleCounts).map(([name, value]) => ({
-      name,
-      value,
-    }));
-
-    const byMonth: Record<string, number> = {};
-    users.forEach(u => {
-      const d = new Date(u.createdAt);
-      const key = `${d.getFullYear()}-${(d.getMonth() + 1)
-        .toString()
-        .padStart(2, '0')}`;
-      byMonth[key] = (byMonth[key] || 0) + 1;
-    });
-    const monthData = Object.entries(byMonth)
-      .sort()
-      .map(([name, value]) => ({ name, value }));
-
-    return { total, roleData, monthData };
-  }, [users]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-linen flex items-center justify-center text-umber font-serif text-xl">
-        Loading users...
-      </div>
-    );
-  }
-
-  return (
-    <AdminLayout>
-      {/* HERO */}
-      <div className="relative bg-gradient-to-r from-[#4E342E] to-clay text-linen px-8 py-10 shadow-lg mb-8 overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-inner">
-                <BsPeople className="text-3xl text-stone" />
-              </div>
-              <h1 className="text-4xl font-serif font-bold tracking-tight">
-                User Management
-              </h1>
-            </div>
-            <p className="text-stone text-lg font-light max-w-xl">
-              Manage staff and guest accounts, roles, and contact information for the Hotelmania platform.
-            </p>
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 rounded-full transition-all duration-300 font-semibold"
-            >
-              <BsArrowLeft /> Back
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                resetForm();
-                setShowModal(true);
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-stone text-umber hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1"
-            >
-              <BsPlusCircle /> Add User
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 pb-12">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl">
-            <p>{error}</p>
-            <button
-              type="button"
-              onClick={() => setError(null)}
-              className="mt-2 text-red-500 hover:text-red-700 text-sm font-semibold"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* KPI CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
-            <div className="p-4 rounded-full bg-pearl text-clay">
-              <BsPeople size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
-                Total Users
-              </p>
-              <h3 className="text-2xl font-serif font-bold text-umber">
-                {metrics.total}
-              </h3>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
-            <div className="p-4 rounded-full bg-blue-50 text-blue-600">
-              <BsPersonBadge size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
-                Admins
-              </p>
-              <h3 className="text-2xl font-serif font-bold text-umber">
-                {users.filter(u => u.role === 'admin').length}
-              </h3>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone flex items-center gap-4">
-            <div className="p-4 rounded-full bg-amber-50 text-amber-600">
-              <BsEnvelope size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">
-                Guests
-              </p>
-              <h3 className="text-2xl font-serif font-bold text-umber">
-                {users.filter(u => u.role === 'guest').length}
-              </h3>
-            </div>
-          </div>
-        </div>
-
-        {/* TOOLBAR */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex bg-linen p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'grid'
-                ? 'bg-umber text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-umber'
-                }`}
-            >
-              <BsGrid /> Cards
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'table'
-                ? 'bg-umber text-white shadow-md'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-umber'
-                }`}
-            >
-              <BsList /> Table
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-            <div className="relative group w-full md:w-72">
-              <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-clay transition-colors" />
-              <input
-                type="text"
-                placeholder="Search by name, email or phone..."
-                className="pl-10 pr-4 py-2.5 w-full bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none transition-all"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-umber border border-stone rounded-full hover:bg-linen"
-            >
-              <BsFilter /> Reset Filters
-            </button>
-          </div>
-        </div>
-
-        {/* FILTER STRIP */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-wrap gap-4 items-center">
-          <select
-            className="px-3 py-2 rounded-xl bg-linen border border-stone text-sm"
-            value={roleFilter}
-            onChange={e =>
-              setRoleFilter(e.target.value as typeof roleFilter)
+    const save = async () => {
+        if (!form.name.trim() || !form.email.trim()) return toast.warning('Name and email are required.');
+        if (editing === 'new' && form.password.length < 8) return toast.warning('Use a password of at least 8 characters.');
+        if (editing !== 'new' && form.password && form.password.length < 8) return toast.warning('A new password needs at least 8 characters.');
+        setSaving(true);
+        try {
+            const payload: Record<string, string> = { name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), role: form.role };
+            if (form.password) payload.password = form.password;
+            if (editing === 'new') {
+                const created = await apiJson<User>('POST', '/api/users', payload);
+                setUsers(list => [created, ...list]);
+                toast.success(`${created.name} can now sign in`);
+            } else if (editing) {
+                const updated = await apiJson<User>('PUT', `/api/users/${editing._id}`, payload);
+                setUsers(list => list.map(u => (u._id === updated._id ? updated : u)));
+                toast.success(form.password ? 'Saved. Their other sessions were signed out.' : 'Saved');
             }
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Admins</option>
-            <option value="receptionist">Receptionists</option>
-            <option value="housekeeping">Housekeeping</option>
-            <option value="guest">Guests</option>
-          </select>
-        </div>
+            setEditing(null);
+        } catch (err) {
+            toast.error(errorText(err, 'Could not save'));
+        } finally {
+            setSaving(false);
+        }
+    };
 
-        {/* CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
-            <h3 className="text-lg font-serif font-bold text-umber mb-4">
-              Users by Role
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={metrics.roleData}
-                    dataKey="value"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={5}
-                  >
-                    {metrics.roleData.map((entry, idx) => (
-                      <Cell
-                        key={entry.name}
-                        fill={chartColors[idx % chartColors.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#F9F7F2',
-                      borderRadius: '12px',
-                      border: 'none',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+    const remove = async (u: User) => {
+        if (!(await confirmDialog({ title: `Delete ${u.name}?`, message: 'They will no longer be able to sign in. Their past bookings stay on record.', confirmLabel: 'Delete', tone: 'danger' }))) return;
+        try {
+            await apiJson('DELETE', `/api/users/${u._id}`);
+            setUsers(list => list.filter(x => x._id !== u._id));
+            setProfile(null);
+            toast.success('User deleted');
+        } catch (err) { toast.error(errorText(err)); }
+    };
+
+    const startEdit = (u: User) => { setForm({ name: u.name, email: u.email, phone: u.phone || '', role: u.role, password: '' }); setEditing(u); };
+
+    const columns: Column<User>[] = [
+        {
+            key: 'name', header: 'Name', sortable: true,
+            render: u => (
+                <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-parchment font-semibold text-bronze dark:bg-gold/15 dark:text-gold">
+                        {u.profilePhoto ? <img src={photoSrc(u.profilePhoto)} alt="" className="h-full w-full object-cover" /> : u.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                        <p className="font-semibold">{u.name}{u._id === me?.id && <span className="ml-2 text-xs font-normal text-taupe">(you)</span>}</p>
+                        <p className="truncate text-xs text-taupe dark:text-gray-400">{u.email}</p>
+                    </div>
+                </div>
+            ),
+        },
+        { key: 'role', header: 'Role', sortable: true, render: u => <Badge tone={ROLE_TONE[u.role]}>{u.role}</Badge> },
+        { key: 'phone', header: 'Phone', hideBelow: 'lg', render: u => u.phone || '—' },
+        { key: 'stays', header: 'Stays', sortable: true, align: 'right', value: u => stats.get(u._id)?.stays || 0, hideBelow: 'md' },
+        { key: 'spent', header: 'Paid', sortable: true, align: 'right', value: u => stats.get(u._id)?.spent || 0, render: u => <span className="tabular-nums">{formatMoney(stats.get(u._id)?.spent || 0, currency)}</span>, hideBelow: 'md' },
+        { key: 'createdAt', header: 'Joined', sortable: true, render: u => (u.createdAt ? formatDate(u.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'), hideBelow: 'lg' },
+    ];
+
+    const p = profile ? stats.get(profile._id) : undefined;
+
+    return (
+        <AdminLayout>
+            <div className="mx-auto max-w-7xl p-6 md:p-10">
+                <PageHeader title="Users" subtitle="Guests and staff accounts. Click someone to see their stays."
+                    actions={<>
+                        <Button variant="secondary" size="sm" leftIcon={<BsArrowRepeat />} onClick={load} loading={loading}>Refresh</Button>
+                        <Button size="sm" leftIcon={<BsPersonPlus />} onClick={() => { setForm(blank); setEditing('new'); }}>Add user</Button>
+                    </>} />
+                <FilterTabs label="User filter" value={filter} onChange={setFilter} tabs={[
+                    { key: 'all', label: 'All', count: users.length },
+                    { key: 'guests', label: 'Guests', count: users.filter(u => u.role === 'guest').length },
+                    { key: 'staff', label: 'Staff', count: users.filter(u => u.role !== 'guest').length },
+                ]} />
+                <DataTable columns={columns} rows={rows} rowKey={u => u._id} loading={loading} onRowClick={setProfile}
+                    searchText={u => `${u.name} ${u.email} ${u.phone || ''} ${u.userId || ''} ${u.role}`} searchPlaceholder="Name, email, phone"
+                    exportName={`users-${filter}`} initialSort={{ key: 'createdAt', dir: 'desc' }} />
             </div>
-          </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone lg:col-span-2">
-            <h3 className="text-lg font-serif font-bold text-umber mb-4">
-              New Users by Month
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={metrics.monthData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="#E6E2D3"
-                  />
-                  <XAxis
-                    dataKey="name"
-                    stroke="#5D4037"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="#5D4037"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#F9F7F2',
-                      borderRadius: '12px',
-                      border: 'none',
-                    }}
-                  />
-                  <Bar
-                    dataKey="value"
-                    fill="#8D6E63"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* MAIN VIEW */}
-        {filteredUsers.length === 0 ? (
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone text-center text-sm text-gray-500">
-            No users found.
-          </div>
-        ) : viewMode === 'grid' ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paginatedUsers.map(user => (
-                <div
-                  key={user._id}
-                  className="bg-white rounded-2xl shadow-sm border border-stone p-5 flex flex-col gap-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-lg font-serif font-bold text-umber">
-                        {user.name}
-                      </h4>
-                      <span className="inline-flex items-center rounded-full bg-linen px-3 py-1 text-xs font-semibold text-umber mt-1">
-                        {user.role.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 text-right">
-                      {user.userId ? (
-                        <p className="font-mono text-bronze">{user.userId}</p>
-                      ) : null}
-                      Joined {new Date(user.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-
-                  {/* Photo & Detailed Info */}
-                  <div className="flex gap-4 items-center">
-                    <div className="h-12 w-12 rounded-full overflow-hidden border border-stone bg-linen flex items-center justify-center shrink-0">
-                      {user.profilePhoto ? (
-                        <img src={user.profilePhoto} alt={user.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-xl text-clay">{user.name.charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <BsEnvelope className="text-gray-400" />
-                        <span className="truncate">{user.email}</span>
-                      </div>
-                      {user.phone && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <BsTelephone className="text-gray-400" />
-                          <span>{user.phone}</span>
+            <Modal open={!!profile} onClose={() => setProfile(null)} size="lg" title={profile?.name} description={profile ? `${profile.email}${profile.phone ? ` · ${profile.phone}` : ''}` : undefined}
+                footer={profile && <div className="flex w-full justify-between gap-2">
+                    {profile._id !== me?.id ? <Button size="sm" variant="ghost" leftIcon={<BsTrash />} onClick={() => remove(profile)}>Delete</Button> : <span />}
+                    <Button size="sm" leftIcon={<BsPencil />} onClick={() => { const u = profile; setProfile(null); startEdit(u); }}>Edit</Button>
+                </div>}>
+                {profile && (
+                    <div className="space-y-5 text-sm">
+                        <div className="flex flex-wrap gap-2"><Badge tone={ROLE_TONE[profile.role]}>{profile.role}</Badge>{profile.userId && <Badge>{profile.userId}</Badge>}</div>
+                        <dl className="grid grid-cols-3 gap-4">
+                            <div><dt className="text-xs uppercase tracking-[0.14em] text-taupe">Stays</dt><dd className="mt-1 font-display text-2xl">{p?.stays || 0}</dd></div>
+                            <div><dt className="text-xs uppercase tracking-[0.14em] text-taupe">Paid</dt><dd className="mt-1 font-display text-2xl">{formatMoney(p?.spent || 0, currency)}</dd></div>
+                            <div><dt className="text-xs uppercase tracking-[0.14em] text-taupe">Last stay</dt><dd className="mt-1 font-display text-2xl">{p?.last ? formatDate(p.last, { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</dd></div>
+                        </dl>
+                        <div>
+                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-taupe">Bookings</h3>
+                            {!p?.list.length ? <p className="text-taupe">No bookings yet.</p> : (
+                                <ul className="divide-y divide-stone rounded-xl border border-stone dark:divide-graphite dark:border-graphite">
+                                    {[...p.list].sort((a, b) => b.checkInDate.localeCompare(a.checkInDate)).map(b => (
+                                        <li key={b._id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                                            <div>
+                                                <p className="font-semibold">{formatDate(b.checkInDate, { day: 'numeric', month: 'short', year: 'numeric' })} → {formatDate(b.checkOutDate, { day: 'numeric', month: 'short' })}</p>
+                                                <p className="text-xs text-taupe">{b.confirmationCode} · {b.room?.type?.name} · {hotelOf(b)?.name}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge tone={statusTone(b.status)}>{statusLabel(b.status)}</Badge>
+                                                <span className="tabular-nums">{formatMoney(b.totalPrice, b.pricing?.currency || currency)}</span>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
-                      )}
                     </div>
-                  </div>
+                )}
+            </Modal>
 
-                  <div className="flex justify-end gap-2 pt-2 border-t border-dashed border-stone mt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(user)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                      <BsPencil />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(user._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <BsTrash />
-                    </button>
-                  </div>
+            <Modal open={!!editing} onClose={() => setEditing(null)} title={editing === 'new' ? 'Add user' : `Edit ${editing && typeof editing === 'object' ? editing.name : ''}`}
+                description={editing === 'new' ? 'Staff accounts can only be created here.' : undefined}
+                footer={<><Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button onClick={save} loading={saving}>Save</Button></>}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Input label="Full name" required value={form.name} onChange={set('name')} autoComplete="off" />
+                    <Input label="Email" required type="email" value={form.email} onChange={set('email')} autoComplete="off" />
+                    <Input label="Phone" value={form.phone} onChange={set('phone')} />
+                    <Select label="Role" value={form.role} onChange={set('role')} hint={ROLE_HELP[form.role]}
+                        disabled={editing !== 'new' && editing?._id === me?.id}>
+                        <option value="guest">Guest</option>
+                        <option value="receptionist">Receptionist</option>
+                        <option value="housekeeping">Housekeeping</option>
+                        <option value="admin">Admin</option>
+                    </Select>
+                    <Input label={editing === 'new' ? 'Password' : 'New password'} type="password" autoComplete="new-password" value={form.password} onChange={set('password')}
+                        containerClassName="sm:col-span-2" hint={editing === 'new' ? 'At least 8 characters. Share it privately; they can change it in their profile.' : 'Leave empty to keep the current password'} />
                 </div>
-              ))}
-            </div>
-
-            {/* PAGINATION (GRID) */}
-            <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-stone shadow-sm">
-              <p className="text-sm text-umber">
-                Showing{' '}
-                <span className="font-semibold">
-                  {filteredUsers.length === 0
-                    ? 0
-                    : (currentPage - 1) * itemsPerPage + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-semibold">
-                  {Math.min(
-                    currentPage * itemsPerPage,
-                    filteredUsers.length,
-                  )}
-                </span>{' '}
-                of{' '}
-                <span className="font-semibold">{filteredUsers.length}</span>{' '}
-                users
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentPage(p => Math.max(p - 1, 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Prev
-                </button>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    page => (
-                      <button
-                        key={page}
-                        type="button"
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${currentPage === page
-                          ? 'bg-umber text-white shadow-md'
-                          : 'bg-white border border-stone text-umber hover:bg-linen'
-                          }`}
-                      >
-                        {page}
-                      </button>
-                    ),
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentPage(p => Math.min(p + 1, totalPages))
-                  }
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead className="bg-linen text-umber font-serif">
-                    <tr>
-                      <th className="p-4 font-bold border-b border-stone">
-                        User
-                      </th>
-                      <th className="p-4 font-bold border-b border-stone">
-                        Email
-                      </th>
-                      <th className="p-4 font-bold border-b border-stone">
-                        Role
-                      </th>
-                      <th className="p-4 font-bold border-b border-stone">
-                        Phone
-                      </th>
-                      <th className="p-4 font-bold border-b border-stone">
-                        Created
-                      </th>
-                      <th className="p-4 font-bold border-b border-stone text-center">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone">
-                    {paginatedUsers.map(user => (
-                      <tr
-                        key={user._id}
-                        className="hover:bg-pearl transition-colors"
-                      >
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full overflow-hidden bg-linen border border-stone flex items-center justify-center shrink-0">
-                              {user.profilePhoto ? (
-                                <img src={user.profilePhoto} alt={user.name} className="h-full w-full object-cover" />
-                              ) : (
-                                <span className="text-sm font-bold text-clay">{user.name.charAt(0).toUpperCase()}</span>
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-semibold">{user.name}</p>
-                              <p className="text-xs text-bronze font-mono">{user.userId}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">{user.email}</td>
-                        <td className="p-4">
-                          <span className="inline-flex items-center rounded-full bg-linen px-3 py-1 text-xs font-semibold text-umber">
-                            {user.role.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="p-4">{user.phone || '-'}</td>
-                        <td className="p-4">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(user)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            >
-                              <BsPencil />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(user._id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            >
-                              <BsTrash />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* PAGINATION (TABLE) */}
-            <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-stone shadow-sm">
-              <p className="text-sm text-umber">
-                Showing{' '}
-                <span className="font-semibold">
-                  {filteredUsers.length === 0
-                    ? 0
-                    : (currentPage - 1) * itemsPerPage + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-semibold">
-                  {Math.min(
-                    currentPage * itemsPerPage,
-                    filteredUsers.length,
-                  )}
-                </span>{' '}
-                of{' '}
-                <span className="font-semibold">{filteredUsers.length}</span>{' '}
-                users
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentPage(p => Math.max(p - 1, 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Prev
-                </button>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    page => (
-                      <button
-                        key={page}
-                        type="button"
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${currentPage === page
-                          ? 'bg-umber text-white shadow-md'
-                          : 'bg-white border border-stone text-umber hover:bg-linen'
-                          }`}
-                      >
-                        {page}
-                      </button>
-                    ),
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentPage(p => Math.min(p + 1, totalPages))
-                  }
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="px-3 py-2 rounded-lg border border-stone text-sm text-umber hover:bg-linen disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-umber/60 backdrop-blur-sm transition-all duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/20 transform transition-all scale-100 animate-in fade-in zoom-in duration-300">
-            <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center relative overflow-hidden">
-              {/* Decorative circle */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-8 -mt-8 pointer-events-none" />
-              <div className="relative z-10">
-                <h2 className="text-2xl font-serif font-bold">
-                  {editingId ? 'Edit User Profile' : 'Create New User'}
-                </h2>
-                <p className="text-white/80 text-sm mt-1">
-                  {editingId
-                    ? 'Update user details and permissions.'
-                    : 'Add a new member to the Hotelmania system.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="relative z-10 p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors backdrop-blur-sm"
-              >
-                <BsX size={24} />
-              </button>
-            </div>
-
-            <form
-              onSubmit={handleSubmit}
-              className="p-8 space-y-8 overflow-y-auto max-h-[80vh]"
-            >
-              {formErrors.server && (
-                <div className="p-3 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 text-sm">
-                  <BsExclamationCircle /> {formErrors.server}
-                </div>
-              )}
-
-              {/* Top Section: Photo & User ID */}
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-                {/* Photo Upload - Circular with Overlay */}
-                <div className="flex flex-col items-center">
-                  <div className="relative h-32 w-32 rounded-full border-4 border-pearl shadow-lg bg-linen overflow-hidden group">
-                    {userForm.profilePhoto ? (
-                      <img src={userForm.profilePhoto} alt="Preview" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-stone">
-                        <BsPeople className="text-5xl text-umber opacity-50" />
-                      </div>
-                    )}
-
-                    {/* Upload Overlay */}
-                    <label className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-sm">
-                      <BsCamera className="text-white text-2xl mb-1" />
-                      <span className="text-white text-[10px] font-bold uppercase tracking-widest">Upload</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                    </label>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-widest font-bold">Profile Photo</p>
-                </div>
-
-
-                {/* User ID Field - Input ReadOnly */}
-                <div className="flex-1 w-full">
-                  <label className="block text-xs font-bold text-clay uppercase tracking-wider mb-2">
-                    User ID
-                  </label>
-                  <div className="w-full relative">
-                    <input
-                      type="text"
-                      value={userForm.userId || ''}
-                      readOnly
-                      className="w-full p-4 pl-12 bg-linen border border-stone rounded-xl font-mono font-medium text-umber outline-none"
-                    />
-                    <BsPersonBadge className="absolute left-4 top-1/2 -translate-y-1/2 text-clay text-lg" />
-                    {editingId && <BsCheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />}
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-1.5">
-                    System generated unique identifier. Cannot be changed.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-umber uppercase tracking-wider mb-2">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={userForm.name}
-                    onChange={handleInputChange}
-                    placeholder="e.g. John Doe"
-                    className={`w-full p-3 bg-white border ${formErrors.name ? 'border-red-300 bg-red-50' : 'border-stone'} rounded-xl focus:ring-2 focus:ring-clay focus:border-clay outline-none transition-all placeholder:text-gray-300`}
-
-                  />
-                  {formErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.name}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-umber uppercase tracking-wider mb-2">
-                    Email Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={userForm.email}
-                    onChange={handleInputChange}
-                    placeholder="e.g. john@example.com"
-                    className={`w-full p-3 bg-white border ${formErrors.email ? 'border-red-300 bg-red-50' : 'border-stone'} rounded-xl focus:ring-2 focus:ring-clay focus:border-clay outline-none transition-all placeholder:text-gray-300`}
-
-                  />
-                  {formErrors.email && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.email}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-umber uppercase tracking-wider mb-2">
-                    Password {editingId ? '(Optional)' : <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={userForm.password}
-                    onChange={handleInputChange}
-                    placeholder={editingId ? 'Leave blank to keep current' : 'Min 6 characters'}
-                    className={`w-full p-3 bg-white border ${formErrors.password ? 'border-red-300 bg-red-50' : 'border-stone'} rounded-xl focus:ring-2 focus:ring-clay focus:border-clay outline-none transition-all placeholder:text-gray-300`}
-
-                  />
-                  {formErrors.password && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.password}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-umber uppercase tracking-wider mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={userForm.phone}
-                    onChange={handleInputChange}
-                    placeholder="e.g. 0771234567"
-                    className={`w-full p-3 bg-white border ${formErrors.phone ? 'border-red-300 bg-red-50' : 'border-stone'} rounded-xl focus:ring-2 focus:ring-clay focus:border-clay outline-none transition-all placeholder:text-gray-300`}
-                  />
-                  {formErrors.phone && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.phone}</p>}
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-umber uppercase tracking-wider mb-2">
-                    Access Role <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {['guest', 'receptionist', 'housekeeping', 'admin'].map((role) => (
-                      <label key={role} className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all ${userForm.role === role ? 'border-clay bg-pearl' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
-                        <input
-                          type="radio"
-                          name="role"
-                          value={role}
-                          checked={userForm.role === role}
-                          onChange={handleInputChange}
-                          className="absolute opacity-0"
-                        />
-                        <span className={`text-sm font-bold capitalize ${userForm.role === role ? 'text-clay' : 'text-gray-500'}`}>{role}</span>
-                        {userForm.role === role && <BsCheckCircle className="absolute top-2 right-2 text-clay text-xs" />}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-4 pt-6 border-t border-dashed border-stone">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-6 py-3 border-2 border-transparent text-gray-500 font-bold rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={opLoading}
-                  className="px-8 py-3 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center gap-2"
-                >
-                  {opLoading ? (
-                    <>Processing...</>
-                  ) : (
-                    <>{editingId ? 'Update User' : 'Create Account'}</>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div >
-      )}
-    </AdminLayout >
-  );
+            </Modal>
+        </AdminLayout>
+    );
 };
 
 export default ManageUsers;

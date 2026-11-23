@@ -5,6 +5,7 @@ const Room = require('../models/Room');
 const { protect, admin } = require('../middleware/auth');
 const { pick } = require('../middleware/sanitize');
 const upload = require('../middleware/upload');
+const { resolvePhotos } = require('../utils/photos');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
 
@@ -64,12 +65,7 @@ router.post('/', protect, admin, upload.array('photos', 5), async (req, res) => 
       }
     }
 
-    // Process uploaded files
-    if (req.files && req.files.length > 0) {
-      roomTypeData.photos = req.files.map(file => `/uploads/${file.filename}`);
-    } else {
-      roomTypeData.photos = [];
-    }
+    roomTypeData.photos = resolvePhotos([], req.body, req.files) || [];
 
     const roomType = await RoomType.create(roomTypeData);
 
@@ -108,11 +104,9 @@ router.put('/:id', protect, admin, upload.array('photos', 5), async (req, res) =
       return res.status(404).json({ success: false, message: 'Room type not found' });
     }
 
-    // Handle photos
-    if (req.files && req.files.length > 0) {
-      const newPhotos = req.files.map(file => `/uploads/${file.filename}`);
-      updateData.photos = [...(existingRoomType.photos || []), ...newPhotos];
-    }
+    // Photos: keep the ones still listed, add new links and uploads
+    const photos = resolvePhotos(existingRoomType.photos || [], req.body, req.files);
+    if (photos) updateData.photos = photos;
 
     const roomType = await RoomType.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
