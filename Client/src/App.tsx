@@ -1,9 +1,9 @@
 
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import RequireRole from './components/RequireRole';
-import { Toaster } from './components/ui';
+import { Spinner, Toaster } from './components/ui';
 import { SITE } from './config/site';
 import { ADMIN_ROUTE_ROLES } from './utils/auth';
 import Home from './pages/user/Home';
@@ -21,14 +21,20 @@ import Register from './pages/user/Register';
 import Profile from './pages/user/Profile';
 import Policies from './pages/user/Policies';
 import NotFound from './pages/user/NotFound';
+import Offers from './pages/user/Offers';
+import Dining from './pages/user/Dining';
+import Spa from './pages/user/Spa';
+import Gallery from './pages/user/Gallery';
+import Faq from './pages/user/Faq';
 
-import Dashboard from './pages/admin/Dashboard';
-import ManageBookings from './pages/admin/ManageBookings';
-import ManageHotels from './pages/admin/ManageHotels';
-import ManageRooms from './pages/admin/ManageRooms';
-import ManageTransactions from './pages/admin/ManageTransactions';
-import ManageFeedbacks from './pages/admin/ManageFeedbacks';
-import ManageUsers from './pages/admin/ManageUsers';
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const ManageBookings = lazy(() => import('./pages/admin/ManageBookings'));
+const ManageHotels = lazy(() => import('./pages/admin/ManageHotels'));
+const ManageRooms = lazy(() => import('./pages/admin/ManageRooms'));
+const ManageTransactions = lazy(() => import('./pages/admin/ManageTransactions'));
+const ManageFeedbacks = lazy(() => import('./pages/admin/ManageFeedbacks'));
+const ManageUsers = lazy(() => import('./pages/admin/ManageUsers'));
+const ManageEnquiries = lazy(() => import('./pages/admin/ManageEnquiries'));
 
 // Browser-tab titles per route (detail pages keep the default until they load their own)
 const PAGE_TITLES: Record<string, string> = {
@@ -43,6 +49,12 @@ const PAGE_TITLES: Record<string, string> = {
   '/register': 'Create Account',
   '/profile': 'My Profile',
   '/policies': 'Policies',
+  '/offers': 'Offers & Packages',
+  '/dining': 'Dining',
+  '/spa': 'Spa & Wellness',
+  '/gallery': 'Gallery',
+  '/faq': 'FAQ',
+  '/admin/enquiries': 'Enquiries · Admin',
   '/admin': 'Dashboard · Admin',
   '/admin/dashboard': 'Dashboard · Admin',
   '/admin/bookings': 'Bookings · Admin',
@@ -53,11 +65,34 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/users': 'Users · Admin',
 };
 
+// Search-result descriptions per public page (others keep the site default from index.html)
+const DEFAULT_DESCRIPTION = 'Book your stay at HotelMania: ocean-view rooms in Colombo, Sri Lankan dining, an Ayurvedic spa and our best rates when you book direct.';
+const PAGE_DESCRIPTIONS: Record<string, string> = {
+  '/rooms': 'Rooms and suites at HotelMania, Colombo. Check live availability and the full price for your dates.',
+  '/hotels': 'Our hotels in Sri Lanka, from the seafront in Colombo to the hills.',
+  '/dining': 'The Verandah, Salt & Spice seafood grill and Skyline rooftop bar: Sri Lankan flavours by the ocean.',
+  '/spa': 'Ayurvedic treatments, steam and a garden pool at the HotelMania spa in Colombo.',
+  '/offers': 'Packages and seasonal offers at HotelMania, Colombo: long stays, honeymoons and early-booking savings.',
+  '/gallery': 'Photos of HotelMania: rooms, dining, spa and the pool terrace.',
+  '/faq': 'Answers about booking, payments, check-in times, airport transfers and more.',
+  '/contact': 'Contact HotelMania reservations by phone, email or our enquiry form.',
+  '/about': 'The story of HotelMania and the team behind it.',
+};
+
+const setMeta = (selector: string, attr: string, value: string) => {
+  const el = document.head.querySelector<HTMLMetaElement>(selector);
+  if (el) el.setAttribute(attr, value);
+};
+
 function RouteEffects() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
     const title = PAGE_TITLES[pathname];
     document.title = !title ? SITE.name : pathname === '/' ? title : `${title} | ${SITE.name}`;
+    const description = PAGE_DESCRIPTIONS[pathname] || DEFAULT_DESCRIPTION;
+    setMeta('meta[name="description"]', 'content', description);
+    setMeta('meta[property="og:description"]', 'content', description);
+    setMeta('meta[property="og:title"]', 'content', document.title);
     // New page starts at the top, unless it links to an anchor (e.g. /policies#privacy)
     if (!hash) window.scrollTo(0, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,6 +107,8 @@ function App() {
         <RouteEffects />
         <Toaster />
         <div className="bg-ivory text-ink dark:bg-night dark:text-cream">
+          {/* Staff pages load on demand so guests never download them */}
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Spinner size="lg" /></div>}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
@@ -88,6 +125,11 @@ function App() {
             <Route path="/profile" element={<RequireRole roles={['guest', 'admin', 'receptionist', 'housekeeping']}><Profile /></RequireRole>} />
 
             <Route path="/policies" element={<Policies />} />
+            <Route path="/offers" element={<Offers />} />
+            <Route path="/dining" element={<Dining />} />
+            <Route path="/spa" element={<Spa />} />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/faq" element={<Faq />} />
 
             <Route path="/admin" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin']}><Dashboard /></RequireRole>} />
             <Route path="/admin/dashboard" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/dashboard']}><Dashboard /></RequireRole>} />
@@ -97,9 +139,11 @@ function App() {
             <Route path="/admin/transactions" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/transactions']}><ManageTransactions /></RequireRole>} />
             <Route path="/admin/feedbacks" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/feedbacks']}><ManageFeedbacks /></RequireRole>} />
             <Route path="/admin/users" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/users']}><ManageUsers /></RequireRole>} />
+            <Route path="/admin/enquiries" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/enquiries']}><ManageEnquiries /></RequireRole>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </div>
       </BrowserRouter>
     </ThemeProvider>

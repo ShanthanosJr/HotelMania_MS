@@ -4,6 +4,11 @@ const { HttpError, parseStay, availability } = require('../utils/bookingService'
 const { pricingConfig } = require('../utils/pricing');
 const router = express.Router();
 
+/** GET /api/availability/config: currency, service charge and tax, so "from" prices match checkout. */
+router.get('/config', (req, res) => {
+  res.status(200).json({ success: true, data: pricingConfig() });
+});
+
 /**
  * GET /api/availability?checkIn=YYYY-MM-DD&checkOut=YYYY-MM-DD&guests=2[&hotel=<id>][&roomType=<id>]
  * Public. Lists room types with how many rooms are free for the whole stay and the full price.

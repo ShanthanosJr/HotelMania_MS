@@ -1,997 +1,267 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../../utils/api';
-import { SITE } from '../../config/site';
-import { bookUrl } from '../../utils/booking';
+import BookingBar from '../../components/site/BookingBar';
+import Reveal from '../../components/site/Reveal';
+import SectionHeading from '../../components/site/SectionHeading';
+import RoomTypeCard from '../../components/site/RoomTypeCard';
+import Lightbox from '../../components/site/Lightbox';
+import { Skeleton } from '../../components/ui';
+import { SITE, directionsUrl, mapEmbedUrl } from '../../config/site';
+import { DAY_TIMELINE, FACTS, GALLERY, IMAGES, OFFERS, PILLARS } from '../../config/content';
+import { useHotels, usePricing, useReviews, useRoomTypes } from '../../hooks/usePublicData';
 
-type FeaturedRoom = {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  image: string;
-  amenities: string[];
-  maxOccupancy?: number;
-};
+const ARROW = <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-1">→</span>;
+const textLink = 'group inline-flex items-center gap-2 text-[0.75rem] font-semibold uppercase tracking-[0.2em] text-bronze hover:text-bronze-deep dark:text-gold dark:hover:text-gold/80';
 
-type Testimonial = { id: string; text: string; name: string; location: string; rating: number };
-
-const FALLBACK_ROOM_IMAGE = 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80';
-const todayIso = () => new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD
-
-type RatingProps = { value: number };
-
-const StarRating: React.FC<RatingProps> = ({ value }) => (
-  <div className="flex justify-center gap-1 mt-3">
-    {Array.from({ length: 5 }).map((_, i) => (
-      <svg
-        key={i}
-        className={`w-5 h-5 ${i < value ? 'text-sand' : 'text-wheat'
-          }`}
-        viewBox="0 0 24 24"
-        fill="currentColor"
-      >
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z" />
-      </svg>
-    ))}
-  </div>
+const Stars: React.FC<{ value: number }> = ({ value }) => (
+    <span className="flex gap-0.5 text-gold" aria-label={`${value} out of 5 stars`}>
+        {Array.from({ length: 5 }).map((_, i) => <span key={i} aria-hidden="true" className={i < value ? '' : 'opacity-25'}>★</span>)}
+    </span>
 );
 
 const Home: React.FC = () => {
-  const testimonialsVideoRef = useRef<HTMLVideoElement | null>(null);
+    const rooms = useRoomTypes();
+    const hotels = useHotels();
+    const reviews = useReviews();
+    const { currency } = usePricing();
+    const [photo, setPhoto] = useState<number | null>(null);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          const video = entry.target as HTMLVideoElement;
-          if (entry.isIntersecting) {
-            video.play().catch(() => { });
-          } else {
-            video.pause();
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -100px 0px' }
-    );
-    if (testimonialsVideoRef.current) {
-      observer.observe(testimonialsVideoRef.current);
-    }
-    return () => observer.disconnect();
-  }, []);
+    // Cheapest first gives a fair "from" picture; show up to three
+    const featured = useMemo(() => [...rooms.data].sort((a, b) => a.basePrice - b.basePrice).slice(0, 3), [rooms.data]);
+    const avgRating = useMemo(() => {
+        const rated = hotels.data.filter(h => typeof h.rating === 'number' && h.rating > 0);
+        return rated.length ? (rated.reduce((s, h) => s + (h.rating || 0), 0) / rated.length).toFixed(1) : null;
+    }, [hotels.data]);
+    const facts = FACTS
+        .map(f => (f.label === 'Average guest rating' ? { ...f, value: avgRating ? `${avgRating} / 5` : '' } : f))
+        .filter(f => f.value)
+        .slice(0, 3);
+    const galleryStrip = GALLERY.slice(0, 5);
 
-  const aboutImages = [
-    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-    'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-    'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80',
-  ];
+    return (
+        <div className="min-h-screen bg-ivory font-body text-ink dark:bg-night dark:text-cream">
+            <Navbar />
 
-  const navigate = useNavigate();
-  const [roomCards, setRoomCards] = useState<FeaturedRoom[]>([]);
-  const [roomsLoaded, setRoomsLoaded] = useState(false);
-  const [search, setSearch] = useState({ checkIn: '', checkOut: '', guests: '2', roomType: '' });
-  const [searchError, setSearchError] = useState('');
-
-  useEffect(() => {
-    api.get('/api/room-types')
-      .then(res => (res.ok ? res.json() : { data: [] }))
-      .then(data => {
-        const types = Array.isArray(data.data) ? data.data : [];
-        setRoomCards(types.map((t: { _id: string; name: string; description?: string; basePrice?: number; photos?: string[]; amenities?: string[]; maxOccupancy?: number }) => ({
-          id: t._id,
-          title: t.name,
-          description: t.description || '',
-          price: t.basePrice || 0,
-          image: t.photos && t.photos.length ? t.photos[0] : FALLBACK_ROOM_IMAGE,
-          amenities: (t.amenities || []).slice(0, 3),
-          maxOccupancy: t.maxOccupancy,
-        })));
-      })
-      .catch(() => setRoomCards([]))
-      .finally(() => setRoomsLoaded(true));
-  }, []);
-
-  const handleSearch = () => {
-    setSearchError('');
-    if ((search.checkIn && !search.checkOut) || (!search.checkIn && search.checkOut)) {
-      setSearchError('Please choose both check-in and check-out dates.');
-      return;
-    }
-    if (search.checkIn && search.checkOut && search.checkOut <= search.checkIn) {
-      setSearchError('Check-out must be after check-in.');
-      return;
-    }
-    // Straight into the booking flow with live availability for these dates
-    navigate(bookUrl({
-      checkIn: search.checkIn,
-      checkOut: search.checkOut,
-      guests: search.guests,
-      // Skip straight to guest details only once dates are chosen
-      type: search.checkIn && search.roomType ? search.roomType : undefined,
-    }));
-  };
-
-  const galleryImages = [
-    'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=1200&q=80',
-    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
-    'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&q=80',
-    'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80',
-    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80',
-  ];
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-
-  useEffect(() => {
-    api.get('/api/reviews/public')
-      .then(res => (res.ok ? res.json() : { data: [] }))
-      .then(data => {
-        const list = Array.isArray(data.data) ? data.data : [];
-        setTestimonials(list.map((r: { id: string; comment: string; name: string; hotel?: string; roomType?: string; rating: number }) => ({
-          id: r.id,
-          text: r.comment,
-          name: r.name,
-          location: [r.roomType, r.hotel].filter(Boolean).join(' · '),
-          rating: r.rating,
-        })));
-      })
-      .catch(() => setTestimonials([]));
-  }, []);
-
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-
-  useEffect(() => {
-    if (testimonials.length < 2) return;
-    const interval = setInterval(() => {
-      setCurrentTestimonial(prev => (prev + 1) % testimonials.length);
-    }, 7000);
-    return () => clearInterval(interval);
-  }, [testimonials.length]);
-
-  const fadeInUp = {
-    hidden: { opacity: 0, y: 60 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
-  };
-
-  const stagger = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2
-      }
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-ivory dark:bg-night text-ink dark:text-cream font-body transition-colors duration-300">
-      {/* HEADER */}
-      <Navbar />
-
-      {/* HERO */}
-      <motion.section
-        id="home"
-        className="relative h-screen min-h-[700px] flex items-center justify-center overflow-hidden"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-      >
-        <div className="absolute inset-0 overflow-hidden">
-          <img
-            src="https://images.pexels.com/photos/11434425/pexels-photo-11434425.jpeg"
-            alt="Luxury hotel exterior"
-            className="w-full h-full object-cover scale-105 animate-[heroZoom_20s_ease-in-out_infinite_alternate]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[rgba(44,36,22,0.4)] via-[rgba(44,36,22,0.5)] to-[rgba(44,36,22,0.6)]" />
-        </div>
-        <motion.div
-          className="relative z-10 max-w-3xl text-center text-white px-6"
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          <motion.p
-            className="text-subtitle !text-sand dark:text-[#A8A29E] mb-5"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            Welcome to Luxury
-          </motion.p>
-          <motion.h1
-            className="text-display text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight drop-shadow-xl text-white dark:text-cream"
-            style={{ fontFamily: 'Playfair Display, serif' }}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            Experience Timeless Elegance &amp; Comfort
-          </motion.h1>
-          <motion.p
-            className="text-sm md:text-base text-cream dark:text-gray-300 max-w-xl mx-auto mb-8"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-          >
-            Discover a sanctuary of refined luxury where every detail is crafted to
-            perfection. Immerse yourself in an unforgettable stay at {SITE.name}.
-          </motion.p>
-          <motion.div
-            className="flex flex-wrap justify-center gap-4"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.7 }}
-          >
-            <button onClick={() => navigate('/rooms')} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-bronze dark:bg-gold border-2 border-bronze dark:border-gold rounded text-white hover:bg-white hover:text-bronze dark:hover:bg-gold dark:hover:text-black transition">
-              Explore Rooms
-            </button>
-            <button onClick={() => document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' })} className="px-7 py-3 text-xs font-semibold tracking-[0.2em] uppercase bg-transparent dark:bg-transparent border-2 border-white dark:border-gold rounded text-white dark:text-gold hover:bg-white hover:text-bronze dark:hover:bg-gold dark:hover:text-black transition">
-              View Gallery
-            </button>
-          </motion.div>
-        </motion.div>
-        <motion.div
-          className="absolute bottom-20 left-1/2 flex flex-col items-center text-white animate-[bounce_2s_infinite]"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-        >
-          <span className="text-[0.7rem] tracking-[0.2em] uppercase">
-            Scroll Down
-          </span>
-          <svg
-            className="w-6 h-6 mt-2"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-          >
-            <path d="M12 5v14M5 12l7 7 7-7" strokeWidth={2} strokeLinecap="round" />
-          </svg>
-        </motion.div>
-      </motion.section>
-
-      {/* BOOKING BAR */}
-      <motion.section
-        className="-mt-14 pb-16 relative z-20"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={fadeInUp}
-      >
-        <motion.div
-          className="max-w-[1400px] mx-auto px-6"
-          variants={fadeInUp}
-        >
-          <motion.div
-            className="bg-white dark:bg-charcoal rounded-xl shadow-2xl px-6 py-6 md:px-8 md:py-7 flex flex-wrap gap-4 items-end justify-between"
-            variants={stagger}
-          >
-            <motion.div className="flex-1 min-w-[150px] md:max-w-[230px]" variants={fadeInUp}>
-              <label htmlFor="home-checkin" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
-                Check In
-              </label>
-              <input
-                id="home-checkin"
-                type="date"
-                min={todayIso()}
-                value={search.checkIn}
-                onChange={e => setSearch(prev => ({ ...prev, checkIn: e.target.value, checkOut: prev.checkOut && prev.checkOut <= e.target.value ? '' : prev.checkOut }))}
-                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
-              />
-            </motion.div>
-            <motion.div className="flex-1 min-w-[150px] md:max-w-[230px]" variants={fadeInUp}>
-              <label htmlFor="home-checkout" className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
-                Check Out
-              </label>
-              <input
-                id="home-checkout"
-                type="date"
-                min={search.checkIn || todayIso()}
-                value={search.checkOut}
-                onChange={e => setSearch(prev => ({ ...prev, checkOut: e.target.value }))}
-                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
-              />
-            </motion.div>
-            <motion.div
-              className="flex-1 min-w-[150px] md:max-w-[230px]"
-              variants={fadeInUp}
-            >
-              <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
-                Guests
-              </label>
-              <select
-                aria-label="Guests"
-                value={search.guests}
-                onChange={e => setSearch(prev => ({ ...prev, guests: e.target.value }))}
-                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
-              >
-                {[1, 2, 3, 4, 5].map(n => (
-                  <option key={n} value={String(n)}>{n} Guest{n > 1 && 's'}</option>
-                ))}
-              </select>
-            </motion.div>
-            <motion.div
-              className="flex-1 min-w-[150px] md:max-w-[230px]"
-              variants={fadeInUp}
-            >
-              <label className="block text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-taupe dark:text-gray-300 mb-2">
-                Room Type
-              </label>
-              <select
-                aria-label="Room type"
-                value={search.roomType}
-                onChange={e => setSearch(prev => ({ ...prev, roomType: e.target.value }))}
-                className="w-full px-3 py-3 rounded bg-cream dark:bg-graphite border border-wheat dark:border-[#444] text-sm text-ink dark:text-white focus:outline-none focus:border-bronze dark:focus:border-gold focus:bg-white dark:focus:bg-[#333] transition"
-              >
-                <option value="">All Rooms</option>
-                {roomCards.map(r => (
-                  <option key={r.id} value={r.id}>{r.title}</option>
-                ))}
-              </select>
-            </motion.div>
-            <motion.button
-              type="button"
-              onClick={handleSearch}
-              className="w-full md:w-auto px-6 py-3 bg-bronze dark:bg-gold text-white dark:text-black text-[0.75rem] font-semibold tracking-[0.18em] uppercase rounded border-none shadow-md hover:bg-cocoa dark:hover:bg-[#A67C52] transition"
-              variants={fadeInUp}
-            >
-              Check Availability
-            </motion.button>
-            {searchError && (
-              <p role="alert" className="w-full text-sm text-red-700 dark:text-red-400">{searchError}</p>
-            )}
-          </motion.div>
-        </motion.div>
-      </motion.section>
-
-      {/* ABOUT */}
-      <motion.section
-        id="about"
-        className="py-24 bg-ivory dark:bg-night"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={stagger}
-      >
-        <motion.div
-          className="max-w-[1400px] mx-auto px-6 grid md:grid-cols-2 gap-14 items-center"
-          variants={fadeInUp}
-        >
-          <motion.div
-            className="grid grid-cols-2 gap-4 relative"
-            variants={stagger}
-          >
-            <motion.div
-              className="col-span-2 rounded-lg overflow-hidden shadow-xl"
-              variants={fadeInUp}
-            >
-              <img
-                src={aboutImages[0]}
-                alt="Luxury hotel lobby"
-                className="w-full h-64 object-cover hover:scale-105 transition-transform duration-700"
-              />
-            </motion.div>
-            <motion.div
-              className="rounded-lg overflow-hidden shadow-xl"
-              variants={fadeInUp}
-            >
-              <img
-                src={aboutImages[1]}
-                alt="Hotel exterior"
-                className="w-full h-48 object-cover hover:scale-105 transition-transform duration-700"
-              />
-            </motion.div>
-            <motion.div
-              className="rounded-lg overflow-hidden shadow-xl"
-              variants={fadeInUp}
-            >
-              <img
-                src={aboutImages[2]}
-                alt="Hotel pool"
-                className="w-full h-48 object-cover hover:scale-105 transition-transform duration-700"
-              />
-            </motion.div>
-          </motion.div>
-          <motion.div
-            className="md:pl-6"
-            variants={stagger}
-          >
-            <motion.p
-              className="text-subtitle text-ink dark:text-cream"
-              variants={fadeInUp}
-            >
-              About Our Hotel
-            </motion.p>
-            <motion.h2
-              className="text-section-title text-ink dark:text-cream"
-              variants={fadeInUp}
-            >
-              Sri Lankan Hospitality, Refined
-            </motion.h2>
-            <motion.p
-              className="text-body mb-4 text-taupe dark:text-gray-300"
-              variants={fadeInUp}
-            >
-              From the Colombo coastline to the hills of Kandy, {SITE.name} hotels pair warm
-              Sri Lankan hospitality with thoughtfully designed rooms and attentive service.
-            </motion.p>
-            <motion.p
-              className="text-body mb-6 text-taupe dark:text-gray-300"
-              variants={fadeInUp}
-            >
-              Every corner of our establishment tells a story of timeless beauty, where
-              modern amenities blend seamlessly with classic charm.
-            </motion.p>
-            <motion.div
-              className="grid grid-cols-2 gap-4 mb-6"
-              variants={stagger}
-            >
-              {['24/7 Security', 'Concierge Service', '5-Star Rating', 'Premium Wellness'].map(
-                feature => (
-                  <motion.div
-                    key={feature}
-                    className="flex items-center gap-3"
-                    variants={fadeInUp}
-                  >
-                    <div className="w-11 h-11 rounded-full bg-sand flex items-center justify-center">
-                      <span className="w-2 h-2 rounded-full bg-bronze" />
-                    </div>
-                    <span className="text-sm font-medium text-ink dark:text-gray-300">{feature}</span>
-                  </motion.div>
-                )
-              )}
-            </motion.div>
-            <motion.button
-              onClick={() => navigate('/about')}
-              className="inline-flex items-center gap-2 px-6 py-3 border-2 border-bronze dark:border-gold text-bronze dark:text-gold text-[0.8rem] font-semibold uppercase tracking-[0.16em] rounded hover:bg-bronze hover:text-white dark:hover:bg-gold dark:hover:text-black transition"
-              variants={fadeInUp}
-            >
-              Learn More
-              <svg
-                className="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path
-                  d="M5 12h14M12 5l7 7-7 7"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </motion.button>
-          </motion.div>
-        </motion.div>
-      </motion.section>
-
-      {/* ROOMS */}
-      <motion.section
-        id="rooms"
-        className="py-24 bg-cream dark:bg-charcoal"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={stagger}
-      >
-        <motion.div
-          className="max-w-[1400px] mx-auto px-6"
-          variants={fadeInUp}
-        >
-          <motion.div
-            className="text-center max-w-xl mx-auto mb-12"
-            variants={fadeInUp}
-          >
-            <motion.p
-              className="text-subtitle"
-              variants={fadeInUp}
-            >
-              Our Accommodations
-            </motion.p>
-            <motion.h2
-              className="text-section-title"
-              variants={fadeInUp}
-            >
-              Exquisite Rooms &amp; Suites
-            </motion.h2>
-          </motion.div>
-          {roomsLoaded && roomCards.length === 0 && (
-            <p className="text-center text-sm text-taupe dark:text-gray-300">Rooms will appear here once they are added.</p>
-          )}
-          <motion.div
-            className="grid md:grid-cols-3 gap-6"
-            variants={stagger}
-          >
-            {roomCards.slice(0, 3).map((room) => (
-              <motion.article
-                key={room.id}
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-2 hover:shadow-xl transition"
-                variants={fadeInUp}
-              >
-                <div className="relative h-64 overflow-hidden">
-                  <img
-                    src={room.image}
-                    alt={room.title}
-                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-700"
-                  />
-                </div>
-                <div className="px-6 py-6">
-                  <h3
-                    className="text-display text-xl mb-2"
-                  >
-                    {room.title}
-                  </h3>
-                  <p className="text-sm text-taupe dark:text-gray-300 mb-4 leading-6">
-                    {room.description}
-                  </p>
-                  <div className="flex flex-wrap gap-3 mb-4 text-[0.78rem] text-taupe">
-                    {room.amenities.map(label => (
-                      <span
-                        key={label}
-                        className="inline-flex items-center gap-1"
-                      >
-                        <span className="w-3 h-3 rounded-full bg-bronze" />
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-sand">
-                    <div>
-                      <span className="text-xl font-semibold text-bronze">
-                        ${room.price}
-                      </span>
-                      <span className="text-xs text-taupe ml-1">/ night</span>
-                    </div>
-                    <button
-                      onClick={() => navigate(`/room/${room.id}`)}
-                      className="px-4 py-2 bg-sand text-bronze text-[0.75rem] font-semibold uppercase tracking-[0.14em] rounded hover:bg-bronze hover:text-white transition"
-                    >
-                      View &amp; Book
-                    </button>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-          </motion.div>
-        </motion.div>
-      </motion.section>
-
-      {/* AMENITIES SECTION */}
-      <motion.section
-        id="amenities"
-        className="py-24 bg-ivory dark:bg-night"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={stagger}
-      >
-        <motion.div
-          className="max-w-[1400px] mx-auto px-6"
-          variants={fadeInUp}
-        >
-          <motion.div
-            className="text-center max-w-xl mx-auto mb-12"
-            variants={fadeInUp}
-          >
-            <motion.p
-              className="text-subtitle"
-              variants={fadeInUp}
-            >
-              What We Offer
-            </motion.p>
-            <motion.h2
-              className="text-section-title"
-              variants={fadeInUp}
-            >
-              World-Class Amenities
-            </motion.h2>
-          </motion.div>
-
-          <motion.div
-            className="grid md:grid-cols-4 gap-6"
-            variants={stagger}
-          >
-            {[
-              {
-                title: 'Spa & Wellness',
-                desc: 'Rejuvenate your body and mind at our award‑winning spa.',
-                icon: (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-7 h-7"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16 2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Fine Dining',
-                desc: 'Signature restaurants with curated menus and world‑class chefs.',
-                icon: (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-7 h-7"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      d="M6 3v7a2 2 0 0 1-2 2M10 3v7a2 2 0 0 1-2 2m0 9V12M14 4h4a1 1 0 0 1 1 1v7h-5V4zM16 21v-7"
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Infinity Pool',
-                desc: 'Rooftop infinity pool with panoramic skyline and sunset views.',
-                icon: (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-7 h-7"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      d="M3 18c1 0 1.5-.5 2.5-.5S7 18 8 18s1.5-.5 2.5-.5S12 18 13 18s1.5-.5 2.5-.5S17 18 18 18s1.5-.5 2.5-.5"
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M4 10a4 4 0 0 1 7-2 4 4 0 0 1 7 2v4H4v-4z"
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Fitness Center',
-                desc: 'State‑of‑the‑art gym, personal trainers, and wellness programs.',
-                icon: (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-7 h-7"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      d="M6 6v12M18 6v12M3 9h3M18 9h3M3 15h3M18 15h3"
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                    />
-                    <rect
-                      x="8"
-                      y="7"
-                      width="8"
-                      height="10"
-                      rx="2"
-                      strokeWidth={1.8}
-                    />
-                  </svg>
-                ),
-              },
-            ].map((amenity) => (
-              <motion.div
-                key={amenity.title}
-                className="group relative bg-white rounded-xl shadow-md px-7 py-8 text-center overflow-hidden hover:-translate-y-2 hover:shadow-xl transition"
-                variants={fadeInUp}
-              >
-                {/* soft glow behind icon */}
-                <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 h-24 w-24 rounded-full bg-[#B8D4E3]/40 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                {/* icon wrapper */}
-                <div className="relative mx-auto mb-5 flex items-center justify-center">
-                  <div className="relative">
-                    {/* outer ring that glows */}
-                    <div className="h-16 w-16 rounded-full bg-[#B8D4E3] flex items-center justify-center transition-all duration-300 group-hover:bg-bronze group-hover:shadow-[0_0_30px_rgba(139,105,20,0.75)]">
-                      <span className="text-cocoa group-hover:text-white transition-colors">
-                        {amenity.icon}
-                      </span>
-                    </div>
-                    {/* subtle inner highlight */}
-                    <div className="pointer-events-none absolute inset-1 rounded-full border border-white/40 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-
-                <h3
-                  className="text-display text-lg mb-2"
-                >
-                  {amenity.title}
-                </h3>
-                <p className="text-sm text-taupe leading-6">
-                  {amenity.desc}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </motion.div>
-      </motion.section>
-
-      {/* GALLERY */}
-      <motion.section
-        id="gallery"
-        className="py-24 bg-cream dark:bg-charcoal"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={stagger}
-      >
-        <motion.div
-          className="max-w-[1400px] mx-auto px-6"
-          variants={fadeInUp}
-        >
-          <motion.div
-            className="text-center max-w-xl mx-auto mb-12"
-            variants={fadeInUp}
-          >
-            <motion.p
-              className="text-subtitle"
-              variants={fadeInUp}
-            >
-              Photo Gallery
-            </motion.p>
-            <motion.h2
-              className="text-section-title"
-              variants={fadeInUp}
-            >
-              Explore Our Space
-            </motion.h2>
-          </motion.div>
-          <motion.div
-            className="grid md:grid-cols-4 gap-4 md:[&>*:first-child]:col-span-2 md:[&>*:first-child]:row-span-2"
-            variants={stagger}
-          >
-            {galleryImages.map((img, idx) => (
-              <motion.div
-                key={img}
-                className="relative rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-2xl transition"
-                variants={fadeInUp}
-              >
+            {/* HERO: headline is visible immediately (no entrance animation), photo drifts slowly */}
+            <section aria-label="Welcome" className="relative flex min-h-[100svh] flex-col justify-end overflow-hidden bg-ink">
                 <img
-                  src={img}
-                  alt={`Gallery ${idx + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    src={IMAGES.hero}
+                    alt="Hotel pool and terrace at dusk"
+                    fetchPriority="high"
+                    className="absolute inset-0 h-full w-full object-cover animate-[heroDrift_24s_ease-in-out_infinite_alternate]"
                 />
-                <div className="absolute inset-0 bg-[rgba(44,36,22,0)] group-hover:bg-[rgba(44,36,22,0.45)] transition" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                  <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-white"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <circle cx="11" cy="11" r="7" strokeWidth={2} />
-                      <path
-                        d="M21 21l-4.35-4.35M11 8v6M8 11h6"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </div>
+                <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/75" aria-hidden="true" />
+                <div id="main" className="relative mx-auto w-full max-w-[1400px] px-4 pb-8 pt-40 sm:px-6 md:pb-12">
+                    <p className="mb-5 text-[0.75rem] font-semibold uppercase tracking-[0.3em] text-gold">Galle Face · Colombo</p>
+                    <h1 className="max-w-4xl font-display text-[2.6rem] font-medium leading-[1.05] text-white sm:text-6xl lg:text-7xl">
+                        Wake up to the Indian Ocean, a short walk from old Colombo.
+                    </h1>
+                    <p className="mt-6 max-w-xl text-base leading-7 text-white/85 md:text-lg">
+                        Sea-facing rooms, Ayurvedic spa rituals and Sri Lankan cooking, with our best rate when you book here.
+                    </p>
+                    <div className="mt-10 md:mt-14">
+                        <BookingBar hotels={hotels.data} />
+                    </div>
                 </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </motion.div>
-      </motion.section>
+            </section>
 
-      {/* TESTIMONIALS */}
-      {testimonials.length > 0 && (
-      <motion.section
-        className="py-24 relative overflow-hidden bg-cream dark:bg-charcoal"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={fadeInUp}
-      >
-        <video
-          ref={testimonialsVideoRef}
-          className="absolute inset-0 w-full h-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-          poster={galleryImages[0]}
-        >
-          <source src="https://www.pexels.com/download/video/6467633/" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-gradient-to-br from-[rgba(139,105,20,0.85)] to-[rgba(92,64,51,0.9)]" />
-        <motion.div
-          className="relative max-w-[900px] mx-auto px-6 text-center text-white"
-          variants={stagger}
-        >
-          <motion.p
-            className="text-subtitle !text-sand mb-4"
-            variants={fadeInUp}
-          >
-            Guest Reviews
-          </motion.p>
-          <motion.h2
-            className="text-section-title"
-            variants={fadeInUp}
-          >
-            What Our Guests Say
-          </motion.h2>
+            {/* INTRO + FACTS */}
+            <section className="py-20 md:py-28" aria-labelledby="intro-title">
+                <div className="mx-auto grid max-w-[1400px] gap-12 px-4 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
+                    <Reveal>
+                        <p className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-bronze dark:text-gold">Welcome to {SITE.name}</p>
+                        <h2 id="intro-title" className="font-display text-3xl leading-[1.2] text-ink sm:text-4xl md:text-[2.9rem] dark:text-cream">
+                            A calm place by the sea, in the middle of a city that never stops.
+                        </h2>
+                    </Reveal>
+                    <Reveal delay={0.1} className="flex flex-col justify-end">
+                        <p className="text-[1.05rem] leading-8 text-taupe dark:text-gray-300">
+                            We are a small hotel with a big welcome. Teak floors and handloom linens in the rooms, hoppers and
+                            fresh tea in the morning, and a team who will happily plan your day, from temple visits in Pettah to sunset on Galle Face Green.
+                        </p>
+                        <Link to="/about" className={`${textLink} mt-6`}>Our story {ARROW}</Link>
+                    </Reveal>
+                </div>
+                <div className="mx-auto mt-16 grid max-w-[1400px] grid-cols-1 gap-px overflow-hidden px-4 sm:grid-cols-3 sm:px-6">
+                    {facts.map((f, i) => (
+                        <Reveal key={f.label} delay={i * 0.08} className="border-t border-wheat pt-6 sm:pr-8 dark:border-graphite">
+                            <p className="font-display text-5xl text-ink dark:text-cream">{f.value}</p>
+                            <p className="mt-2 text-sm uppercase tracking-[0.14em] text-taupe dark:text-gray-400">{f.label}</p>
+                        </Reveal>
+                    ))}
+                </div>
+            </section>
 
-          <motion.div
-            className="relative h-52 md:h-56 mb-10"
-            variants={fadeInUp}
-          >
-            {testimonials.map((t, index) => (
-              <div
-                key={t.id}
-                className={`absolute inset-0 transition-all duration-700 ${index === currentTestimonial
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 translate-y-4 pointer-events-none'
-                  }`}
-              >
-                <motion.p
-                  className="font-display text-xl md:text-2xl italic mb-6"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  “{t.text}”
-                </motion.p>
-                <motion.h3
-                  className="text-sm font-semibold"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.2 }}
-                >
-                  {t.name}
-                </motion.h3>
-                <motion.p
-                  className="text-xs text-sand"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.3 }}
-                >
-                  {t.location}
-                </motion.p>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.4 }}
-                >
-                  <StarRating value={t.rating} />
-                </motion.div>
-              </div>
-            ))}
-          </motion.div>
+            {/* ROOMS */}
+            <section className="bg-cream py-20 md:py-28 dark:bg-charcoal" aria-labelledby="rooms-title">
+                <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
+                    <SectionHeading
+                        id="rooms-title"
+                        eyebrow="Rooms & Suites"
+                        title="Rooms made for slow mornings"
+                        text="Every room has air conditioning, fast Wi-Fi, a rain shower and a proper desk. Most face the ocean."
+                        action={<Link to="/rooms" className={textLink}>View all rooms {ARROW}</Link>}
+                    />
+                    {rooms.loading ? (
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {[0, 1, 2].map(i => <Skeleton key={i} className="h-[440px] rounded-2xl" />)}
+                        </div>
+                    ) : featured.length === 0 ? (
+                        <p className="rounded-xl border border-dashed border-wheat p-10 text-center text-sm text-taupe dark:border-graphite dark:text-gray-400">
+                            Rooms will appear here once they are added. Call us on {SITE.phone} to book.
+                        </p>
+                    ) : (
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {featured.map((t, i) => (
+                                <Reveal key={t._id} delay={i * 0.08}>
+                                    <RoomTypeCard type={t} currency={currency} showHotel={hotels.data.length > 1} />
+                                </Reveal>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </section>
 
-          {/* dots */}
-          <motion.div
-            className="flex justify-center gap-2 mb-6"
-            variants={fadeInUp}
-          >
-            {testimonials.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentTestimonial(index)}
-                className={`h-2 w-6 rounded-full transition-all ${index === currentTestimonial ? 'bg-white' : 'bg-sand/50'
-                  }`}
-                aria-label={`Go to testimonial ${index + 1}`}
-              />
-            ))}
-          </motion.div>
+            {/* PILLARS */}
+            <section className="py-20 md:py-28" aria-label="Dining, spa and rooms">
+                <div className="mx-auto max-w-[1400px] space-y-20 px-4 sm:px-6 md:space-y-28">
+                    {PILLARS.map((p, i) => (
+                        <div key={p.key} className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-20 ${i % 2 ? 'lg:[&>*:first-child]:order-2' : ''}`}>
+                            <Reveal className="overflow-hidden rounded-2xl">
+                                <img src={p.image} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover transition-transform duration-[1.5s] hover:scale-105" />
+                            </Reveal>
+                            <Reveal delay={0.1}>
+                                <p className="mb-4 flex items-center gap-4 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-bronze dark:text-gold">
+                                    <span className="tabular-nums text-taupe/70 dark:text-gray-500">0{i + 1}</span>{p.eyebrow}
+                                </p>
+                                <h2 className="font-display text-3xl leading-tight text-ink sm:text-4xl md:text-5xl dark:text-cream">{p.title}</h2>
+                                <p className="mt-5 max-w-lg text-[1.02rem] leading-8 text-taupe dark:text-gray-300">{p.text}</p>
+                                <Link to={p.to} className={`${textLink} mt-8`}>{p.cta} {ARROW}</Link>
+                            </Reveal>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
-          {/* arrows */}
-          <motion.div
-            className="flex justify-center gap-4"
-            variants={fadeInUp}
-          >
-            <button
-              onClick={() =>
-                setCurrentTestimonial(
-                  (currentTestimonial - 1 + testimonials.length) % testimonials.length
-                )
-              }
-              className="w-10 h-10 rounded-full bg-white/10 border border-white/30 flex items-center justify-center hover:bg-white/20 transition"
-            >
-              <svg
-                className="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M15 19l-7-7 7-7" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <button
-              onClick={() =>
-                setCurrentTestimonial((currentTestimonial + 1) % testimonials.length)
-              }
-              className="w-10 h-10 rounded-full bg-white/10 border border-white/30 flex items-center justify-center hover:bg-white/20 transition"
-            >
-              <svg
-                className="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M9 5l7 7-7 7" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </motion.div>
-        </motion.div>
-      </motion.section>
-      )}
+            {/* OFFERS */}
+            <section className="bg-cream py-20 md:py-28 dark:bg-charcoal" aria-labelledby="offers-title">
+                <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
+                    <SectionHeading id="offers-title" eyebrow="Offers" title="More reasons to stay"
+                        action={<Link to="/offers" className={textLink}>All offers {ARROW}</Link>} />
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {OFFERS.map((o, i) => (
+                            <Reveal key={o.slug} delay={i * 0.08}>
+                                <Link to={`/offers#${o.slug}`} className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-ink">
+                                    <img src={o.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-90 transition-transform duration-[1.5s] group-hover:scale-105" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" aria-hidden="true" />
+                                    <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+                                        <span className="mb-3 inline-block rounded-full bg-gold px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-ink">{o.tag}</span>
+                                        <h3 className="font-display text-2xl leading-tight sm:text-3xl">{o.title}</h3>
+                                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/80">{o.text}</p>
+                                        <span className="mt-4 inline-flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-gold">View offer {ARROW}</span>
+                                    </div>
+                                </Link>
+                            </Reveal>
+                        ))}
+                    </div>
+                </div>
+            </section>
 
+            {/* A DAY AT THE HOTEL */}
+            <section className="relative overflow-hidden bg-ink py-20 text-cream md:py-28" aria-labelledby="day-title">
+                <img src={IMAGES.facade} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-15" />
+                <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6">
+                    <SectionHeading id="day-title" tone="dark" eyebrow="A day in Colombo" title="From sunrise yoga to a rooftop nightcap"
+                        text="Our concierge can arrange any of these for you. Just ask at the desk or send us a message before you arrive." />
+                    <ol className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+                        {DAY_TIMELINE.map((d, i) => (
+                            <Reveal as="li" key={d.time} delay={(i % 3) * 0.08} className="border-t border-white/15 pt-6">
+                                <p className="font-display text-4xl tabular-nums text-gold">{d.time}</p>
+                                <h3 className="mt-3 text-lg font-semibold text-white">{d.title}</h3>
+                                <p className="mt-2 text-sm leading-6 text-cream/70">{d.text}</p>
+                            </Reveal>
+                        ))}
+                    </ol>
+                </div>
+            </section>
 
-      {/* CTA */}
-      <motion.section
-        className="py-24 relative bg-fixed bg-cover bg-center"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1920&q=80)',
-        }}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={stagger}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-[#B8D4E3]/90 to-[#7EB5D6]/85" />
-        <motion.div
-          className="relative max-w-[800px] mx-auto px-6 text-center"
-          variants={fadeInUp}
-        >
-          <motion.h2
-            className="text-section-title text-ink dark:text-cream"
-            variants={fadeInUp}
-          >
-            Ready to Experience Luxury?
-          </motion.h2>
-          <motion.p
-            className="text-body text-ink dark:text-gray-300 mb-8"
-            variants={fadeInUp}
-          >
-            Book directly with us for the best available rate, instant confirmation and
-            secure payment.
-          </motion.p>
-          <motion.div
-            className="flex flex-wrap justify-center gap-4"
-            variants={fadeInUp}
-          >
-            <button onClick={() => navigate('/rooms')} className="px-7 py-3 bg-bronze dark:bg-gold text-white dark:text-black text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-bronze dark:border-gold hover:bg-transparent hover:text-bronze dark:hover:bg-gold dark:hover:text-black transition">
-              Book Your Stay
-            </button>
-            <button onClick={() => navigate('/contact')} className="px-7 py-3 bg-transparent dark:bg-transparent text-bronze dark:text-gold text-[0.8rem] font-semibold tracking-[0.18em] uppercase rounded border-2 border-bronze dark:border-gold hover:bg-bronze hover:text-white dark:hover:bg-gold dark:hover:text-black transition">
-              Contact Us
-            </button>
-          </motion.div>
-        </motion.div>
-      </motion.section>
+            {/* REVIEWS: only real, published guest reviews */}
+            {reviews.data.length > 0 && (
+                <section className="py-20 md:py-28" aria-labelledby="reviews-title">
+                    <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
+                        <SectionHeading id="reviews-title" eyebrow="Guest reviews" title="What our guests say" align="center" />
+                        <div className="grid gap-6 md:grid-cols-3">
+                            {reviews.data.slice(0, 3).map((r, i) => (
+                                <Reveal key={r.id} delay={i * 0.08} as="article" className="flex flex-col rounded-2xl border border-sand bg-white p-8 dark:border-graphite dark:bg-charcoal">
+                                    <Stars value={r.rating} />
+                                    <blockquote className="mt-5 flex-1 font-display text-lg leading-8 text-ink dark:text-cream">“{r.comment}”</blockquote>
+                                    <p className="mt-6 text-sm font-semibold text-ink dark:text-cream">{r.name}</p>
+                                    {(r.roomType || r.hotel) && <p className="text-xs text-taupe dark:text-gray-400">{[r.roomType, r.hotel].filter(Boolean).join(' · ')}</p>}
+                                </Reveal>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
 
-      {/* KEYFRAMES */}
-      <style>{`
-        @keyframes heroZoom {
-          0% { transform: scale(1.05); }
-          100% { transform: scale(1.2); }
-        }
-        @keyframes bounce {
-          0%,100% { transform: translateX(-50%) translateY(0); }
-          50% { transform: translateX(-50%) translateY(10px); }
-        }
-      `}</style>
-      <Footer />
-    </div>
-  );
+            {/* LOCATION */}
+            <section className={`${reviews.data.length > 0 ? 'bg-cream dark:bg-charcoal' : ''} py-20 md:py-28`} aria-labelledby="location-title">
+                <div className="mx-auto grid max-w-[1400px] gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
+                    <Reveal>
+                        <p className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-bronze dark:text-gold">Getting here</p>
+                        <h2 id="location-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl dark:text-cream">On the seafront, in the centre of the city</h2>
+                        <address className="mt-5 not-italic text-taupe dark:text-gray-300">{SITE.address}</address>
+                        <dl className="mt-8 space-y-5 text-sm">
+                            {[
+                                ['From the airport', 'About 45 minutes by car from Bandaranaike International Airport (CMB). We can send a driver.'],
+                                ['Fort railway station', '10 minutes by tuk-tuk.'],
+                                ['Galle Face Green', 'A two-minute walk.'],
+                            ].map(([k, v]) => (
+                                <div key={k} className="border-t border-wheat pt-4 dark:border-graphite">
+                                    <dt className="font-semibold text-ink dark:text-cream">{k}</dt>
+                                    <dd className="mt-1 leading-6 text-taupe dark:text-gray-400">{v}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                        <div className="mt-8 flex flex-wrap gap-6">
+                            <a href={directionsUrl(SITE.address)} target="_blank" rel="noreferrer" className={textLink}>Get directions {ARROW}</a>
+                            <Link to="/contact" className={textLink}>Contact us {ARROW}</Link>
+                        </div>
+                    </Reveal>
+                    <Reveal delay={0.1} className="overflow-hidden rounded-2xl border border-sand dark:border-graphite">
+                        <iframe title={`Map showing ${SITE.name}`} src={mapEmbedUrl(SITE.address)} loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+                            className="h-[360px] w-full border-0 md:h-full md:min-h-[440px] dark:[filter:invert(0.9)_hue-rotate(180deg)]" />
+                    </Reveal>
+                </div>
+            </section>
+
+            {/* GALLERY STRIP */}
+            <section className="pb-20 pt-4 md:pb-28" aria-labelledby="gallery-title">
+                <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
+                    <SectionHeading id="gallery-title" eyebrow="Gallery" title="A look around"
+                        action={<Link to="/gallery" className={textLink}>See all photos {ARROW}</Link>} />
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:grid-rows-2">
+                        {galleryStrip.map((g, i) => (
+                            <button
+                                key={g.src}
+                                type="button"
+                                onClick={() => setPhoto(i)}
+                                aria-label={`Open photo: ${g.alt}`}
+                                className={`group relative overflow-hidden rounded-xl bg-stone dark:bg-graphite cursor-zoom-in ${i === 0 ? 'col-span-2 row-span-2 aspect-square md:aspect-auto' : 'aspect-square'}`}
+                            >
+                                <img src={g.src} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <Lightbox images={galleryStrip} index={photo} onChange={setPhoto} />
+            </section>
+
+            <Footer />
+        </div>
+    );
 };
 
 export default Home;

@@ -21,6 +21,32 @@
     content="https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg?auto=compress&cs=tinysrgb&w=1200" />
   <meta name="twitter:card" content="summary_large_image" />
 
+  <!-- Structured data for search engines (keep in sync with src/config/site.ts) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Hotel",
+    "name": "HotelMania",
+    "description": "Ocean-view rooms in Colombo with Sri Lankan dining and an Ayurvedic spa.",
+    "telephone": "+94 11 243 7654",
+    "email": "info@grandplaza.lk",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "123 Galle Face",
+      "addressLocality": "Colombo 02",
+      "addressCountry": "LK"
+    },
+    "checkinTime": "14:00",
+    "checkoutTime": "11:00",
+    "image": "https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    "amenityFeature": [
+      { "@type": "LocationFeatureSpecification", "name": "Spa", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Swimming pool", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Free Wi-Fi", "value": true }
+    ]
+  }
+  </script>
+
   <!-- Brand fonts: Playfair Display (display) + Lato (body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

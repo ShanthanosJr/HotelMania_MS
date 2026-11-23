@@ -10,7 +10,7 @@ import {
     BsCalendarCheck, BsClockHistory, BsXCircle, BsFileText,
     BsGeoAlt, BsGear, BsStars
 } from 'react-icons/bs';
-import { toast, confirmDialog, Badge, statusTone } from '../../components/ui';
+import { toast, confirmDialog, Badge, statusTone, Modal, Button, Textarea } from '../../components/ui';
 import { Link } from 'react-router-dom';
 import { formatMoney, nightsBetween, statusLabel, type PriceQuote } from '../../utils/booking';
 
@@ -88,6 +88,43 @@ const Bookings: React.FC = () => {
     const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
     const [requestForm, setRequestForm] = useState<{ type: 'cleaning' | 'food' | 'repair'; notes: string }>({ type: 'cleaning', notes: '' });
     const [requestStatus, setRequestStatus] = useState<{ sending: boolean; error: string; done: boolean }>({ sending: false, error: '', done: false });
+
+    // Reviews: guests can review a stay once they have checked out (one review per room)
+    const [reviewedRooms, setReviewedRooms] = useState<Set<string>>(new Set());
+    const [reviewFor, setReviewFor] = useState<Booking | null>(null);
+    const [review, setReview] = useState({ rating: 5, comment: '' });
+    const [reviewSending, setReviewSending] = useState(false);
+    const [reviewError, setReviewError] = useState('');
+    const roomIdOf = (b: Booking) => (typeof b.room === 'object' ? b.room?._id : (b.room as unknown as string | undefined));
+
+    useEffect(() => {
+        if (!localStorage.getItem('token')) return;
+        api.get('/api/reviews')
+            .then(r => (r.ok ? r.json() : { data: [] }))
+            .then(d => setReviewedRooms(new Set((d.data || []).map((r: { room?: { _id?: string } | string }) => (typeof r.room === 'object' ? r.room?._id : r.room)).filter(Boolean))))
+            .catch(() => undefined);
+    }, []);
+
+    const submitReview = async () => {
+        const roomId = reviewFor && roomIdOf(reviewFor);
+        if (!roomId) return;
+        if (review.comment.trim().length < 20) { setReviewError('Please write at least 20 characters so other guests find it useful.'); return; }
+        setReviewSending(true);
+        setReviewError('');
+        try {
+            const res = await api.post('/api/reviews', { room: roomId, rating: review.rating, comment: review.comment.trim() });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Could not send your review');
+            setReviewedRooms(prev => new Set(prev).add(roomId));
+            setReviewFor(null);
+            setReview({ rating: 5, comment: '' });
+            toast.success('Thank you for your review!');
+        } catch (err) {
+            setReviewError(err instanceof Error ? err.message : 'Could not send your review');
+        } finally {
+            setReviewSending(false);
+        }
+    };
 
     const submitServiceRequest = async () => {
         const booking = bookings.find(b => b._id === selectedBookingId);
@@ -343,7 +380,7 @@ const Bookings: React.FC = () => {
                     whileInView="visible"
                     viewport={{ once: true }}
                     variants={fadeInUp}
-                    className="mx-auto max-w-5xl mb-8 flex justify-center gap-4"
+                    className="mx-auto max-w-5xl mb-8 flex flex-wrap justify-center gap-2 sm:gap-4"
                 >
                     {[
                         { id: 'upcoming', label: 'Upcoming', icon: BsCalendarCheck },
@@ -353,7 +390,7 @@ const Bookings: React.FC = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
+                            className={`flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === tab.id
                                     ? 'bg-bronze text-white shadow-lg transform scale-105 dark:bg-gold dark:text-ink'
                                     : 'bg-white text-taupe hover:bg-ivory dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                                 }`}
@@ -449,6 +486,18 @@ const Bookings: React.FC = () => {
                                                         >
                                                             <BsGear /> Service Request
                                                         </button>
+                                                    )}
+                                                    {booking.status === 'checked_out' && roomIdOf(booking) && (
+                                                        reviewedRooms.has(roomIdOf(booking)!) ? (
+                                                            <span className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">★ Reviewed</span>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => { setReviewFor(booking); setReviewError(''); }}
+                                                                className="flex items-center gap-2 px-4 py-2 rounded text-xs font-bold uppercase bg-gold text-ink hover:bg-gold/85 transition-colors cursor-pointer"
+                                                            >
+                                                                ★ Write a review
+                                                            </button>
+                                                        )
                                                     )}
                                                     {activeTab === 'upcoming' && booking.status === 'pending' && booking.paymentStatus === 'pending' && (
                                                         <button
@@ -551,6 +600,31 @@ const Bookings: React.FC = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <Modal
+                open={!!reviewFor}
+                onClose={() => setReviewFor(null)}
+                title="How was your stay?"
+                description={reviewFor ? `${typeof reviewFor.room === 'object' && typeof reviewFor.room?.type === 'object' ? reviewFor.room.type?.name || 'Your room' : 'Your room'} · ${reviewFor.confirmationCode || ''}` : undefined}
+                footer={<><Button variant="ghost" onClick={() => setReviewFor(null)}>Not now</Button><Button loading={reviewSending} onClick={submitReview}>Send review</Button></>}
+            >
+                <fieldset>
+                    <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-umber dark:text-gray-300">Your rating</legend>
+                    <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+                        {[1, 2, 3, 4, 5].map(n => (
+                            <button key={n} type="button" role="radio" aria-checked={review.rating === n} aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                                onClick={() => setReview(r => ({ ...r, rating: n }))}
+                                className={`text-3xl leading-none transition-transform hover:scale-110 cursor-pointer ${n <= review.rating ? 'text-gold' : 'text-wheat dark:text-graphite'}`}>
+                                ★
+                            </button>
+                        ))}
+                    </div>
+                </fieldset>
+                <Textarea containerClassName="mt-5" label="Your review" rows={5} maxLength={1000} value={review.comment}
+                    onChange={e => setReview(r => ({ ...r, comment: e.target.value }))}
+                    error={reviewError || undefined}
+                    hint="What did you enjoy? Anything we could do better? Reviews of 4 stars and up may appear on our website with your first name and last initial." />
+            </Modal>
 
             <Footer />
             <style>{`

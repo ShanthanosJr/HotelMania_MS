@@ -10,8 +10,20 @@ export const SITE = {
     checkInTime: '2:00 PM',
     checkOutTime: '11:00 AM',
     bookingHoldMinutes: 30,
+    /** WhatsApp number in international format. Leave empty to hide the WhatsApp links. */
+    whatsapp: '',
+    /** Social profiles. Empty ones are hidden. */
+    social: { instagram: '', facebook: '', tripadvisor: '' },
 } as const;
 
 /** Google Maps embed URL for an address (no API key needed). */
 export const mapEmbedUrl = (address: string) =>
     `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
+
+/** Opens directions in Google Maps. */
+export const directionsUrl = (address: string) =>
+    `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+
+export const telHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
+export const whatsappHref = (phone: string, text = '') =>
+    `https://wa.me/${phone.replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
