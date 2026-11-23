@@ -13,7 +13,11 @@ import {
     BsBoxArrowLeft,
     BsSun,
     BsMoon,
-    BsEnvelopeOpen
+    BsEnvelopeOpen,
+    BsPersonBadge,
+    BsCalendar3,
+    BsBrush,
+    BsTag
 } from 'react-icons/bs';
 import { useTheme } from '../context/ThemeContext';
 import { ADMIN_ROUTE_ROLES, getStoredUser } from '../utils/auth';
@@ -31,9 +35,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, toggleSidebar 
     const role = getStoredUser()?.role;
     const allModules = [
         { title: 'Dashboard', path: '/admin/dashboard', icon: <BsGrid size={20} /> },
+        { title: 'Front desk', path: '/admin/frontdesk', icon: <BsPersonBadge size={20} /> },
+        { title: 'Calendar', path: '/admin/calendar', icon: <BsCalendar3 size={20} /> },
+        { title: 'Bookings', path: '/admin/bookings', icon: <BsCalendarCheck size={20} /> },
+        { title: 'Housekeeping', path: '/admin/housekeeping', icon: <BsBrush size={20} /> },
+        { title: 'Rates & settings', path: '/admin/rates', icon: <BsTag size={20} /> },
         { title: 'Hotels', path: '/admin/hotels', icon: <BsBuilding size={20} /> },
         { title: 'Rooms', path: '/admin/rooms', icon: <BsDoorOpen size={20} /> },
-        { title: 'Bookings', path: '/admin/bookings', icon: <BsCalendarCheck size={20} /> },
         { title: 'Transactions', path: '/admin/transactions', icon: <BsCreditCard size={20} /> },
         { title: 'Enquiries', path: '/admin/enquiries', icon: <BsEnvelopeOpen size={20} /> },
         { title: 'Feedbacks', path: '/admin/feedbacks', icon: <BsChatSquareQuote size={20} /> },

@@ -90,6 +90,8 @@ const BookingCard: React.FC<{ type: RoomTypeSummary; currency: string }> = ({ ty
                     <p className="text-taupe dark:text-gray-400">This room is not available to book online right now.</p>
                 ) : !row.fitsGuests ? (
                     <p className="text-taupe dark:text-gray-400">This room sleeps up to {type.maxOccupancy}. Choose fewer guests or <Link to="/rooms" className="text-bronze underline dark:text-gold">a larger room</Link>.</p>
+                ) : row.restriction ? (
+                    <p className="text-taupe dark:text-gray-400">{row.restriction}. Try other dates or call us on <a href={telHref(SITE.phone)} className="text-bronze underline dark:text-gold">{SITE.phone}</a>.</p>
                 ) : row.available === 0 ? (
                     <p className="text-taupe dark:text-gray-400">Sold out for these dates. Try other dates or call us on <a href={telHref(SITE.phone)} className="text-bronze underline dark:text-gold">{SITE.phone}</a>.</p>
                 ) : q && (

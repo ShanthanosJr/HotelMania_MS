@@ -7,6 +7,7 @@ const { protect, admin, authorize } = require('../middleware/auth');
 const { pick } = require('../middleware/sanitize');
 const { populateBooking } = require('../utils/bookingService');
 const { sendBookingEmail } = require('../utils/mailer');
+const { audit } = require('../utils/audit');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
 
@@ -160,6 +161,7 @@ router.post('/', protect, authorize('admin', 'receptionist'), async (req, res) =
   }
 
   const populated = await populateTxn(Transaction.findById(transaction._id));
+  audit(req.user, 'payment.record', { entity: 'booking', entityId: booking._id, summary: `${booking.confirmationCode || ''} · ${transaction.type.replace('_', ' ')} ${transaction.amount}` });
   res.status(201).json({ success: true, data: populated });
 });
 

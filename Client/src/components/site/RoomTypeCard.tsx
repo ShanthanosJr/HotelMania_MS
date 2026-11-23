@@ -11,7 +11,7 @@ interface RoomTypeCardProps {
     /** Dates/guests the visitor already chose, carried into the booking flow. */
     stay?: { checkIn?: string; checkOut?: string; guests?: number };
     /** Availability line, e.g. "2 left for your dates". */
-    status?: { label: string; tone: 'ok' | 'low' | 'none'; reason?: 'sold-out' | 'too-small' };
+    status?: { label: string; tone: 'ok' | 'low' | 'none'; reason?: 'sold-out' | 'too-small' | 'restricted' };
     /** Total for the chosen stay. */
     total?: number;
     showHotel?: boolean;
@@ -79,7 +79,7 @@ const RoomTypeCard: React.FC<RoomTypeCardProps> = ({ type, currency, stay, statu
                         </Link>
                         {soldOut ? (
                             <span className="rounded-lg bg-stone px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-taupe dark:bg-graphite dark:text-gray-400">
-                                {status?.reason === 'too-small' ? 'Too small' : 'Sold out'}
+                                {status?.reason === 'too-small' ? 'Too small' : status?.reason === 'restricted' ? 'Unavailable' : 'Sold out'}
                             </span>
                         ) : (
                             <Link

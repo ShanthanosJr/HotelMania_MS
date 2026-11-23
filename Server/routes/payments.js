@@ -5,12 +5,12 @@ const { protect } = require('../middleware/auth');
 const payhere = require('../utils/payhere');
 const {
   HttpError,
-  HOLD_MINUTES,
   findOverlap,
   withRoomLock,
   populateBooking,
 } = require('../utils/bookingService');
 const { sendBookingEmail } = require('../utils/mailer');
+const { getSettings } = require('../utils/settings');
 const router = express.Router();
 
 const splitName = (name = '') => {
@@ -45,7 +45,7 @@ router.post('/payhere/checkout', protect, async (req, res) => {
         if (overlap) throw new HttpError(409, 'Sorry, this room is no longer available for these dates. Please make a new booking.');
         await Booking.updateOne(
           { _id: booking._id },
-          { holdExpiresAt: new Date(Date.now() + HOLD_MINUTES * 60 * 1000) },
+          { holdExpiresAt: new Date(Date.now() + (await getSettings()).holdMinutes * 60 * 1000) },
           { session }
         );
       });
