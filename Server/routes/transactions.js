@@ -17,7 +17,7 @@ const TYPES = ['credit_card', 'cash', 'debit_card', 'bank_transfer'];
 const populateTxn = (query) =>
   query.populate({
     path: 'booking',
-    select: 'user room checkInDate checkOutDate totalPrice status paymentStatus confirmationCode',
+    select: 'user room checkInDate checkOutDate totalPrice status paymentStatus confirmationCode guestDetails.name guestDetails.email',
     populate: [
       { path: 'user', select: 'name email' },
       { path: 'room', select: 'roomNumber type', populate: { path: 'type', select: 'name' } },

@@ -68,7 +68,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/bookings': 'Bookings · Admin',
   '/admin/hotels': 'Hotels · Admin',
   '/admin/rooms': 'Rooms · Admin',
-  '/admin/transactions': 'Transactions · Admin',
+  '/admin/transactions': 'Payments · Admin',
   '/admin/feedbacks': 'Feedback & Requests · Admin',
   '/admin/users': 'Users · Admin',
 };

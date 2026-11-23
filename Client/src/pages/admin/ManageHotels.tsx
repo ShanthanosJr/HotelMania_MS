@@ -1,885 +1,163 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { api } from '../../utils/api';
-import { toError } from '../../utils/errors';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BsArrowRepeat, BsPlusLg, BsPencil, BsTrash, BsBoxArrowUpRight } from 'react-icons/bs';
 import AdminLayout from '../../components/AdminLayout';
-import {
-    BsBuilding, BsStarFill, BsGeoAlt, BsTelephone,
-    BsSearch, BsGrid, BsList, BsPlusCircle, BsArrowLeft,
-    BsPencil, BsTrash, BsX, BsThreeDotsVertical, BsImages,
-    BsChevronLeft, BsChevronRight, BsWallet2, BsCalendarCheck, BsCurrencyDollar, BsTrophy, BsBarChart,
-    BsCloudUpload, BsInfoCircle, BsWifi, BsPhone
-} from 'react-icons/bs';
-import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, Legend, AreaChart, Area
-} from 'recharts';
-import { toast, confirmDialog } from '../../components/ui';
+import PageHeader from '../../components/admin/PageHeader';
+import DataTable, { type Column } from '../../components/admin/DataTable';
+import PhotoManager from '../../components/admin/PhotoManager';
+import { appendPhotos, emptyPhotos, type PhotoChanges } from '../../components/admin/photos';
+import { Button, Input, Modal, Textarea, confirmDialog, toast } from '../../components/ui';
+import { apiJson, errorText, photoSrc } from '../../utils/adminApi';
 
-// --- Types & Interfaces ---
 interface Hotel {
-    _id: string;
-    name: string;
-    address: string;
-    description: string;
-    rating: number;
-    amenities: string[];
-    photos: string[];
-    contactInfo: {
-        phone: string;
-        email: string;
-        website: string;
-    };
+    _id: string; name: string; address: string; description: string; rating?: number;
+    amenities?: string[]; photos?: string[]; contactInfo?: { phone?: string; email?: string; website?: string };
 }
 
-interface HotelFormState {
-    name: string;
-    address: string;
-    description: string;
-    rating: string;
-    amenities: string; // Comma separated for input
-    phone: string;
-    email: string;
-    website: string;
-    files: File[];
-}
-
-const isAuthenticated = () => {
-    const token = localStorage.getItem('token');
-    return token !== null && token !== undefined && token !== '';
-};
+const blank = { name: '', address: '', description: '', rating: '', amenities: '', phone: '', email: '', website: '' };
 
 const ManageHotels: React.FC = () => {
-    // --- Data State ---
     const [hotels, setHotels] = useState<Hotel[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [counts, setCounts] = useState<{ rooms: Record<string, number>; types: Record<string, number> }>({ rooms: {}, types: {} });
+    const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState<Hotel | 'new' | null>(null);
+    const [form, setForm] = useState(blank);
+    const [photos, setPhotos] = useState<PhotoChanges>(emptyPhotos());
+    const [saving, setSaving] = useState(false);
 
-    // --- UI State ---
-    const [viewMode, setViewMode] = useState<'overview' | 'grid' | 'table'>('overview');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [showModal, setShowModal] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'general' | 'details' | 'contact' | 'media'>('general');
-
-    // --- Pagination State ---
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(9);
-
-    // --- Form State ---
-    const [formData, setFormData] = useState<HotelFormState>({
-        name: '',
-        address: '',
-        description: '',
-        rating: '0',
-        amenities: '',
-        phone: '',
-        email: '',
-        website: '',
-        files: []
-    });
-
-
-
-    const chartColors = ['#8D6E63', '#5D4037', '#D4AF37', '#10B981', '#EF4444'];
-
-    // --- API Functions ---
-    const fetchHotels = async () => {
+    const load = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const res = await api.get('/api/hotels');
-            const data = await res.json();
-
-            // Handle different potential response structures
-            // If data.data exists (common pattern), use it. Otherwise use data directly if it's an array.
-            const hotelsList = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
-
-            setHotels(hotelsList);
-        } catch (caught: unknown) {
-      const err = toError(caught);
-            console.error("Fetch Error:", err);
-            setError('Failed to load hotels. Please try again.');
+            const [h, rooms, types] = await Promise.all([
+                apiJson<Hotel[]>('GET', '/api/hotels'),
+                apiJson<{ hotel?: { _id: string } | string }[]>('GET', '/api/rooms'),
+                apiJson<{ hotel?: { _id: string } | string }[]>('GET', '/api/room-types'),
+            ]);
+            const tally = (list: { hotel?: { _id: string } | string }[]) => list.reduce<Record<string, number>>((m, x) => {
+                const id = typeof x.hotel === 'string' ? x.hotel : x.hotel?._id;
+                if (id) m[id] = (m[id] || 0) + 1;
+                return m;
+            }, {});
+            setHotels(h);
+            setCounts({ rooms: tally(rooms), types: tally(types) });
+        } catch (err) {
+            toast.error(errorText(err, 'Could not load hotels'));
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
-        if (isAuthenticated()) fetchHotels();
-        else setError('Authentication required.');
     }, []);
+    useEffect(() => { load(); }, [load]);
 
-    // --- Derived Data (Search & Pagination) ---
-    const filteredHotels = useMemo(() => {
-        return hotels.filter(h =>
-            h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            h.address.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [hotels, searchTerm]);
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentHotels = filteredHotels.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredHotels.length / itemsPerPage);
-
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm]);
-
-    // --- Metrics ---
-    const metrics = useMemo(() => {
-        const total = hotels.length;
-        const avgRating = total > 0
-            ? (hotels.reduce((acc, h) => acc + (h.rating || 0), 0) / total).toFixed(1)
-            : '0';
-
-        // Distribution of ratings
-        const ratingDist = [0, 0, 0, 0, 0]; // 1 to 5 stars
-        hotels.forEach(hotel => {
-            const r = Math.round(hotel.rating || 0);
-            if (r >= 1 && r <= 5) ratingDist[r - 1]++;
+    const startNew = () => { setForm(blank); setPhotos(emptyPhotos()); setEditing('new'); };
+    const startEdit = (h: Hotel) => {
+        setForm({
+            name: h.name, address: h.address, description: h.description, rating: h.rating ? String(h.rating) : '',
+            amenities: (h.amenities || []).join(', '), phone: h.contactInfo?.phone || '', email: h.contactInfo?.email || '', website: h.contactInfo?.website || '',
         });
-
-        const ratingData = ratingDist.map((count, i) => ({
-            name: `${i + 1} Star`,
-            count
-        }));
-
-        // Generate chart data for revenue trends (simulated data)
-        const revenueMap: Record<string, number> = {};
-        hotels.forEach(_hotel => {
-            // For demo purposes, we'll create some random revenue data
-            const date = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-            revenueMap[date] = (revenueMap[date] || 0) + Math.floor(Math.random() * 1000);
-        });
-
-        const revenueData = Object.keys(revenueMap).map(key => ({ name: key, revenue: revenueMap[key] }));
-
-        // Generate bar chart data for hotel distribution by rating
-        const barChartData = ratingData.map(item => ({
-            name: item.name,
-            count: item.count
-        }));
-
-        // 'entry' refers to each data point in the ratingData array
-        // 'index' refers to the index of each entry in the array
-        // 'error' is a variable that holds error messages (defined in state)
-        return { total, avgRating, ratingData, revenueData, barChartData };
-    }, [hotels]);
-
-    // --- Handlers ---
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setPhotos(emptyPhotos(h.photos || []));
+        setEditing(h);
     };
+    const set = (k: keyof typeof blank) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setFormData(prev => ({
-                ...prev,
-                files: Array.from(e.target.files || [])
-            }));
-        }
-    };
-
-    const openModal = (hotel?: Hotel) => {
-        if (hotel) {
-            setEditingId(hotel._id);
-            setFormData({
-                name: hotel.name,
-                address: hotel.address,
-                description: hotel.description,
-                rating: hotel.rating.toString(),
-                amenities: hotel.amenities ? hotel.amenities.join(', ') : '',
-                phone: hotel.contactInfo?.phone || '',
-                email: hotel.contactInfo?.email || '',
-                website: hotel.contactInfo?.website || '',
-                files: []
-            });
-        } else {
-            setEditingId(null);
-            setFormData({
-                name: '', address: '', description: '', rating: '0', amenities: '',
-                phone: '', email: '', website: '', files: []
-            });
-        }
-        setActiveTab('general');
-        setShowModal(true);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const save = async () => {
+        if (!form.name.trim() || !form.address.trim() || !form.description.trim()) return toast.warning('Name, address and description are required.');
+        setSaving(true);
         try {
-            setLoading(true);
-
-            // Create FormData
-            const form = new FormData();
-            form.append('name', formData.name);
-            form.append('address', formData.address);
-            form.append('description', formData.description);
-            form.append('rating', formData.rating);
-
-            // Amenities - send as JSON string if complex, or just string. 
-            // The backend handles both. Sending as string since backend splits it.
-            // Actually implementation plan says backend splits.
-            form.append('amenities', formData.amenities);
-
-            // Contact Info - key structure
-            const contactInfo = {
-                phone: formData.phone,
-                email: formData.email,
-                website: formData.website
-            };
-            form.append('contactInfo', JSON.stringify(contactInfo));
-
-            // Append files
-            if (formData.files) {
-                formData.files.forEach(file => {
-                    form.append('photos', file);
-                });
+            const fd = new FormData();
+            fd.append('name', form.name.trim());
+            fd.append('address', form.address.trim());
+            fd.append('description', form.description.trim());
+            if (form.rating) fd.append('rating', form.rating);
+            fd.append('amenities', JSON.stringify(form.amenities.split(',').map(s => s.trim()).filter(Boolean)));
+            fd.append('contactInfo', JSON.stringify({ phone: form.phone.trim(), email: form.email.trim(), website: form.website.trim() }));
+            appendPhotos(fd, photos, editing !== 'new');
+            if (editing === 'new') {
+                const created = await apiJson<Hotel>('POST', '/api/hotels', fd);
+                setHotels(list => [...list, created]);
+                toast.success(`${created.name} added. Next, add its room types under Rooms.`);
+            } else if (editing) {
+                const updated = await apiJson<Hotel>('PUT', `/api/hotels/${editing._id}`, fd);
+                setHotels(list => list.map(h => (h._id === updated._id ? updated : h)));
+                toast.success('Hotel saved');
             }
-
-            let res;
-            if (editingId) {
-                res = await api.put(`/api/hotels/${editingId}`, form);
-            } else {
-                res = await api.post('/api/hotels', form);
-            }
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Operation failed');
-
-            setShowModal(false);
-            fetchHotels();
-        } catch (caught: unknown) {
-      const err = toError(caught);
-            toast.error(err.message || 'Operation failed');
+            setEditing(null);
+        } catch (err) {
+            toast.error(errorText(err, 'Could not save the hotel'));
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (await confirmDialog({ title: 'Delete this hotel?', message: 'Its details and photos will be removed. This cannot be undone.', confirmLabel: 'Delete hotel', tone: 'danger' })) {
-            try {
-                const res = await api.delete(`/api/hotels/${id}`);
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message || 'Failed to delete');
-                fetchHotels();
-            } catch (caught: unknown) {
-      const err = toError(caught);
-                toast.error(err.message || 'Failed to delete');
-            }
-        }
+    const remove = async (h: Hotel) => {
+        if (!(await confirmDialog({ title: `Delete ${h.name}?`, message: 'Only hotels without rooms or room types can be deleted.', confirmLabel: 'Delete', tone: 'danger' }))) return;
+        try {
+            await apiJson('DELETE', `/api/hotels/${h._id}`);
+            setHotels(list => list.filter(x => x._id !== h._id));
+            toast.success('Hotel deleted');
+        } catch (err) { toast.error(errorText(err)); }
     };
 
-    // --- Helper: Star Rating ---
-    const renderStars = (rating: number) => {
-        return (
-            <div className="flex text-yellow-400 text-sm">
-                {Array.from({ length: 5 }, (_, i) => (
-                    <BsStarFill key={i} className={i < Math.round(rating) ? 'opacity-100' : 'opacity-30'} />
-                ))}
-            </div>
-        );
-    };
+    const columns: Column<Hotel>[] = useMemo(() => [
+        {
+            key: 'name', header: 'Hotel', sortable: true,
+            render: h => (
+                <div className="flex items-center gap-3">
+                    <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-stone dark:bg-graphite">
+                        {h.photos?.[0] && <img src={photoSrc(h.photos[0])} alt="" className="h-full w-full object-cover" />}
+                    </div>
+                    <div className="min-w-0">
+                        <p className="font-semibold">{h.name}</p>
+                        <p className="truncate text-xs text-taupe dark:text-gray-400">{h.address}</p>
+                    </div>
+                </div>
+            ),
+        },
+        { key: 'rating', header: 'Rating', sortable: true, value: h => h.rating || 0, render: h => (h.rating ? `★ ${h.rating}` : '—'), hideBelow: 'md' },
+        { key: 'types', header: 'Room types', sortable: true, align: 'right', value: h => counts.types[h._id] || 0 },
+        { key: 'rooms', header: 'Rooms', sortable: true, align: 'right', value: h => counts.rooms[h._id] || 0 },
+        { key: 'photos', header: 'Photos', align: 'right', value: h => h.photos?.length || 0, hideBelow: 'md' },
+        {
+            key: 'actions', header: <span className="sr-only">Actions</span>, align: 'right',
+            render: h => (
+                <div className="flex justify-end gap-1">
+                    <Link to={`/hotel/${h._id}`} target="_blank" aria-label={`View ${h.name} on the website`} className="rounded-lg p-2 text-taupe hover:bg-linen hover:text-bronze dark:hover:bg-graphite"><BsBoxArrowUpRight /></Link>
+                    <button type="button" aria-label={`Edit ${h.name}`} onClick={e => { e.stopPropagation(); startEdit(h); }} className="rounded-lg p-2 text-taupe hover:bg-linen hover:text-bronze dark:hover:bg-graphite cursor-pointer"><BsPencil /></button>
+                    <button type="button" aria-label={`Delete ${h.name}`} onClick={e => { e.stopPropagation(); remove(h); }} className="rounded-lg p-2 text-taupe hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/30 cursor-pointer"><BsTrash /></button>
+                </div>
+            ),
+        },
+    ], [counts]);
 
     return (
         <AdminLayout>
-            {/* --- HERO HEADER --- */}
-            <div className="relative bg-gradient-to-r from-umber to-clay text-linen px-8 py-10 shadow-lg mb-8 overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-10 -mb-10 pointer-events-none"></div>
-                <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-inner">
-                                <BsBuilding className="text-3xl text-stone" />
-                            </div>
-                            <h1 className="text-4xl font-serif font-bold tracking-tight">Hotel Management</h1>
-                        </div>
-                        <p className="text-stone text-lg font-light max-w-xl">
-                            Configure hotel details, locations, and amenities.
-                        </p>
-                    </div>
-
-                    <div className="flex gap-4">
-                        <button onClick={() => window.history.back()} className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 rounded-full transition-all duration-300 font-semibold cursor-pointer">
-                            <BsArrowLeft /> Back
-                        </button>
-                        <button onClick={() => openModal()} className="flex items-center gap-2 px-6 py-3 bg-stone text-umber hover:bg-white hover:shadow-xl rounded-full transition-all duration-300 font-bold shadow-lg transform hover:-translate-y-1 cursor-pointer">
-                            <BsPlusCircle /> Add Hotel
-                        </button>
-                    </div>
-                </div>
+            <div className="mx-auto max-w-7xl p-6 md:p-10">
+                <PageHeader title="Hotels" subtitle="Properties shown on the website. Each hotel has room types, and each type has rooms."
+                    actions={<>
+                        <Button variant="secondary" size="sm" leftIcon={<BsArrowRepeat />} onClick={load} loading={loading}>Refresh</Button>
+                        <Button size="sm" leftIcon={<BsPlusLg />} onClick={startNew}>Add hotel</Button>
+                    </>} />
+                <DataTable columns={columns} rows={hotels} rowKey={h => h._id} loading={loading} onRowClick={startEdit}
+                    searchText={h => `${h.name} ${h.address}`} exportName="hotels" emptyTitle="No hotels yet" emptyText="Add your first hotel to start selling rooms." />
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 pb-12">
-
-                {/* --- ERROR MESSAGE --- */}
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl">
-                        <p>{error}</p>
-                        <button
-                            onClick={() => setError(null)}
-                            className="mt-2 text-red-500 hover:text-red-700 text-sm font-semibold"
-                        >
-                            Dismiss
-                        </button>
-                    </div>
-                )}
-
-                {/* --- KPI STATS CARDS --- */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                    {[
-                        { label: 'Total Hotels', value: metrics.total, icon: BsBuilding, color: 'text-blue-600', bg: 'bg-blue-50' },
-                        { label: 'Avg. Rating', value: `${metrics.avgRating}/5`, icon: BsStarFill, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-                        { label: 'Total Revenue', value: `$${Math.floor(Math.random() * 10000).toLocaleString()}`, icon: BsCurrencyDollar, color: 'text-clay', bg: 'bg-pearl' },
-                        { label: 'Top Rated', value: hotels.length > 0 ? Math.max(...hotels.map(h => h.rating)).toFixed(1) : '0', icon: BsTrophy, color: 'text-green-600', bg: 'bg-green-50' },
-                    ].map((stat, idx) => (
-                        <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-stone flex items-center gap-4">
-                            <div className={`p-4 rounded-full ${stat.bg} ${stat.color} bg-opacity-50`}>
-                                <stat.icon size={24} />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">{stat.label}</p>
-                                <h3 className="text-2xl font-serif font-bold text-umber">{stat.value}</h3>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* --- TOOLBAR --- */}
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone mb-8 flex flex-col lg:flex-row justify-between items-center gap-4">
-
-                    {/* View Switcher */}
-                    <div className="flex bg-linen p-1 rounded-xl">
-                        {[
-                            { id: 'overview', label: 'Overview', icon: BsThreeDotsVertical },
-                            { id: 'grid', label: 'Grid', icon: BsGrid },
-                            { id: 'table', label: 'Table', icon: BsList },
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setViewMode(tab.id as typeof viewMode)}
-                                className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 cursor-pointer ${viewMode === tab.id
-                                    ? 'bg-umber text-white shadow-md'
-                                    : 'text-gray-500 hover:text-umber hover:bg-gray-100'
-                                    }`}
-                            >
-                                <tab.icon /> {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="relative group w-full lg:w-96">
-                        <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-clay transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Search by name or address..."
-                            className="pl-10 pr-4 py-2.5 w-full bg-linen border border-stone rounded-xl focus:ring-2 focus:ring-clay focus:outline-none transition-all"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+            <Modal open={!!editing} onClose={() => setEditing(null)} size="lg" title={editing === 'new' ? 'Add hotel' : 'Edit hotel'}
+                footer={<><Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button><Button onClick={save} loading={saving}>Save</Button></>}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Input label="Name" required value={form.name} onChange={set('name')} />
+                    <Input label="Guest rating (0–5)" type="number" min={0} max={5} step="0.1" value={form.rating} onChange={set('rating')} hint="Shown on the website" />
+                    <Input label="Address" required value={form.address} onChange={set('address')} containerClassName="sm:col-span-2" />
+                    <Textarea label="Description" required rows={4} value={form.description} onChange={set('description')} containerClassName="sm:col-span-2" />
+                    <Input label="Amenities" value={form.amenities} onChange={set('amenities')} containerClassName="sm:col-span-2" hint="Separate with commas, e.g. Pool, Spa, Free Wi-Fi" />
+                    <Input label="Phone" value={form.phone} onChange={set('phone')} />
+                    <Input label="Email" type="email" value={form.email} onChange={set('email')} />
+                    <Input label="Website" type="url" value={form.website} onChange={set('website')} containerClassName="sm:col-span-2" />
+                    <div className="sm:col-span-2">
+                        <PhotoManager existing={editing && editing !== 'new' ? editing.photos || [] : []} value={photos} onChange={setPhotos} />
                     </div>
                 </div>
-
-                {/* --- MAIN CONTENT AREA --- */}
-                {loading ? (
-                    <div className="flex justify-center py-20 text-clay">
-                        <span className="animate-pulse font-serif text-xl">Loading hotels...</span>
-                    </div>
-                ) : (
-                    <>
-                        {/* VIEW: OVERVIEW */}
-                        {viewMode === 'overview' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
-                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
-                                        <BsWallet2 className="text-clay" /> Revenue Trends
-                                    </h3>
-                                    <div className="h-[350px]">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={metrics.revenueData}>
-                                                <defs>
-                                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#8D6E63" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#8D6E63" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E6E2D3" />
-                                                <XAxis dataKey="name" stroke="#5D4037" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis stroke="#5D4037" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
-                                                <Tooltip contentStyle={{ backgroundColor: '#F9F7F2', borderRadius: '12px', border: 'none' }} />
-                                                <Area type="monotone" dataKey="revenue" stroke="#8D6E63" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
-                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
-                                        <BsCalendarCheck className="text-clay" /> Rating Distribution
-                                    </h3>
-                                    <div className="h-[350px] flex items-center justify-center">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={metrics.ratingData} innerRadius={80} outerRadius={110} paddingAngle={5} dataKey="count">
-                                                    {metrics.ratingData.map((_, index) => (
-                                                        <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} stroke="none" />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip />
-                                                <Legend verticalAlign="bottom" height={36} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone">
-                                    <h3 className="text-xl font-serif font-bold text-umber mb-6 flex items-center gap-2">
-                                        <BsBarChart className="text-clay" /> Rating Bar Chart
-                                    </h3>
-                                    <div className="h-[350px] flex items-center justify-center">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={metrics.barChartData}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E6E2D3" />
-                                                <XAxis dataKey="name" stroke="#5D4037" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis stroke="#5D4037" fontSize={12} tickLine={false} axisLine={false} />
-                                                <Tooltip contentStyle={{ backgroundColor: '#F9F7F2', borderRadius: '12px', border: 'none' }} />
-                                                <Bar dataKey="count" fill="#8D6E63" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* VIEW: GRID */}
-                        {viewMode === 'grid' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-                                {currentHotels.map((hotel) => (
-                                    <div key={hotel._id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-stone overflow-hidden flex flex-col h-full">
-                                        <div className="relative h-48 bg-gray-200 overflow-hidden">
-                                            {hotel.photos && hotel.photos.length > 0 ? (
-                                                <img src={hotel.photos[0]} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                            ) : (
-                                                <div className="flex items-center justify-center h-full text-gray-400">
-                                                    <BsImages size={32} />
-                                                </div>
-                                            )}
-                                            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold shadow-sm flex items-center gap-1">
-                                                <BsStarFill className="text-yellow-400" /> {hotel.rating}
-                                            </div>
-                                        </div>
-
-                                        <div className="p-6 flex-1 flex flex-col">
-                                            <h4 className="text-xl font-bold text-umber mb-2 font-serif">{hotel.name}</h4>
-
-                                            <div className="flex items-start gap-2 text-sm text-gray-500 mb-4">
-                                                <BsGeoAlt className="mt-1 shrink-0" />
-                                                <span className="line-clamp-2">{hotel.address}</span>
-                                            </div>
-
-                                            <p className="text-sm text-gray-600 mb-4 line-clamp-3 flex-1">
-                                                {hotel.description}
-                                            </p>
-
-                                            <div className="flex flex-wrap gap-2 mb-6">
-                                                {hotel.amenities.slice(0, 3).map((amenity, i) => (
-                                                    <span key={i} className="px-2 py-1 bg-linen border border-stone rounded-md text-xs text-umber">
-                                                        {amenity}
-                                                    </span>
-                                                ))}
-                                                {hotel.amenities.length > 3 && (
-                                                    <span className="px-2 py-1 text-xs text-gray-400">+{hotel.amenities.length - 3} more</span>
-                                                )}
-                                            </div>
-
-                                            <div className="flex justify-between items-center pt-4 border-t border-dashed border-stone">
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => openModal(hotel)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Edit">
-                                                        <BsPencil />
-                                                    </button>
-                                                    <button onClick={() => handleDelete(hotel._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Delete">
-                                                        <BsTrash />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* VIEW: TABLE */}
-                        {viewMode === 'table' && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-stone overflow-hidden animate-fade-in">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="bg-linen text-umber font-serif">
-                                            <tr>
-                                                <th className="p-5 font-bold border-b border-stone">Hotel Name</th>
-                                                <th className="p-5 font-bold border-b border-stone">Location</th>
-                                                <th className="p-5 font-bold border-b border-stone">Rating</th>
-                                                <th className="p-5 font-bold border-b border-stone">Contact</th>
-                                                <th className="p-5 font-bold border-b border-stone text-center">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-stone">
-                                            {currentHotels.map((hotel) => (
-                                                <tr key={hotel._id} className="hover:bg-pearl transition-colors">
-                                                    <td className="p-5">
-                                                        <div className="font-bold text-umber">{hotel.name}</div>
-                                                    </td>
-                                                    <td className="p-5 text-sm text-gray-600 max-w-xs truncate">
-                                                        {hotel.address}
-                                                    </td>
-                                                    <td className="p-5">
-                                                        {renderStars(hotel.rating)}
-                                                    </td>
-                                                    <td className="p-5 text-sm">
-                                                        <div className="flex flex-col gap-1">
-                                                            {hotel.contactInfo?.phone && <span className="flex items-center gap-1"><BsTelephone size={10} /> {hotel.contactInfo.phone}</span>}
-                                                            {hotel.contactInfo?.email && <span className="text-gray-500">{hotel.contactInfo.email}</span>}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-5 text-center">
-                                                        <div className="flex justify-center gap-2">
-                                                            <button onClick={() => openModal(hotel)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer">
-                                                                <BsPencil />
-                                                            </button>
-                                                            <button onClick={() => handleDelete(hotel._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer">
-                                                                <BsTrash />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* PAGINATION */}
-                        {filteredHotels.length > 0 && (
-                            <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-white border border-stone rounded-2xl shadow-sm mt-8">
-                                <div className="text-sm text-umber mb-4 md:mb-0">
-                                    Showing <span className="font-bold">{indexOfFirstItem + 1}</span> to <span className="font-bold">{Math.min(indexOfLastItem, filteredHotels.length)}</span> of <span className="font-bold">{filteredHotels.length}</span> entries
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                        disabled={currentPage === 1}
-                                        className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 transition-colors"
-                                    >
-                                        <BsChevronLeft />
-                                    </button>
-                                    <div className="flex gap-1">
-                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
-                                            <button
-                                                key={num}
-                                                onClick={() => setCurrentPage(num)}
-                                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === num ? 'bg-umber text-white shadow-md' : 'bg-white border border-stone text-umber hover:bg-linen'
-                                                    }`}
-                                            >
-                                                {num}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <button
-                                        onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                        disabled={currentPage === totalPages}
-                                        className="p-2 rounded-lg border border-stone text-umber hover:bg-linen disabled:opacity-50 transition-colors"
-                                    >
-                                        <BsChevronRight />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
-
-            {/* --- MODAL FORM --- */}
-            {showModal && (
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md">
-                    <div className="bg-white dark:bg-charcoal w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up border border-stone dark:border-gray-700 flex flex-col max-h-[90vh]">
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-umber to-clay p-6 text-white flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-                                    <BsBuilding size={24} />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-serif font-bold tracking-wide">{editingId ? 'Edit Hotel' : 'New Hotel'}</h2>
-                                    <p className="text-white/80 text-sm font-light">Manage your property details and settings</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors backdrop-blur-sm cursor-pointer"
-                            >
-                                <BsX size={24} />
-                            </button>
-                        </div>
-
-                        <div className="flex flex-1 overflow-hidden">
-                            {/* Sidebar Tabs */}
-                            <div className="w-64 bg-linen dark:bg-night border-r border-stone dark:border-gray-800 p-6 space-y-2 shrink-0 hidden md:block">
-                                {[
-                                    { id: 'general', label: 'General Info', icon: BsInfoCircle },
-                                    { id: 'details', label: 'Amenities & Rating', icon: BsStarFill },
-                                    { id: 'contact', label: 'Contact Details', icon: BsTelephone },
-                                    { id: 'media', label: 'Photos & Media', icon: BsImages },
-                                ].map((tab) => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer ${activeTab === tab.id
-                                            ? 'bg-umber text-white shadow-lg shadow-umber/20 translate-x-1'
-                                            : 'text-taupe dark:text-gray-400 hover:bg-white dark:hover:bg-charcoal hover:text-umber dark:hover:text-ivory'
-                                            }`}
-                                    >
-                                        <tab.icon className={activeTab === tab.id ? 'text-gold' : ''} />
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Main Form Area */}
-                            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-charcoal">
-                                <div className="flex-1 overflow-y-auto p-8">
-                                    {/* Mobile Tabs (Visible only on small screens) */}
-                                    <div className="md:hidden flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none">
-                                        {[
-                                            { id: 'general', label: 'General' },
-                                            { id: 'details', label: 'Details' },
-                                            { id: 'contact', label: 'Contact' },
-                                            { id: 'media', label: 'Media' },
-                                        ].map((tab) => (
-                                            <button
-                                                key={tab.id}
-                                                type="button"
-                                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${activeTab === tab.id
-                                                    ? 'bg-umber text-white'
-                                                    : 'bg-linen text-taupe'
-                                                    }`}
-                                            >
-                                                {tab.label}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* TAB CONTENT: GENERAL */}
-                                    {activeTab === 'general' && (
-                                        <div className="space-y-6 animate-fade-in">
-                                            <div className="space-y-4">
-                                                <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
-                                                    Basic Information
-                                                </h3>
-                                                <div className="grid gap-6">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Hotel Name</label>
-                                                        <input
-                                                            type="text"
-                                                            name="name"
-                                                            value={formData.name}
-                                                            onChange={handleInputChange}
-                                                            placeholder="e.g. Grand Plaza Hotel"
-                                                            className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory placeholder-gray-400 transition-all font-medium"
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Address</label>
-                                                        <div className="relative">
-                                                            <BsGeoAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                                            <input
-                                                                type="text"
-                                                                name="address"
-                                                                value={formData.address}
-                                                                onChange={handleInputChange}
-                                                                placeholder="Full property address"
-                                                                className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory transition-all font-medium"
-                                                                required
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Description</label>
-                                                        <textarea
-                                                            name="description"
-                                                            value={formData.description}
-                                                            onChange={handleInputChange}
-                                                            rows={5}
-                                                            placeholder="Describe the property..."
-                                                            className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory transition-all resize-none font-medium"
-                                                            required
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* TAB CONTENT: DETAILS */}
-                                    {activeTab === 'details' && (
-                                        <div className="space-y-6 animate-fade-in">
-                                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
-                                                Property Details
-                                            </h3>
-                                            <div className="grid gap-6">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Star Rating (0-5)</label>
-                                                    <div className="flex items-center gap-4">
-                                                        <input
-                                                            type="number"
-                                                            name="rating"
-                                                            min="0"
-                                                            max="5"
-                                                            step="0.1"
-                                                            value={formData.rating}
-                                                            onChange={handleInputChange}
-                                                            className="w-32 px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-bold text-lg text-center"
-                                                            required
-                                                        />
-                                                        <div className="flex text-yellow-400 text-xl gap-1">
-                                                            {Array.from({ length: 5 }, (_, i) => (
-                                                                <BsStarFill key={i} className={i < Math.round(parseFloat(formData.rating)) ? 'opacity-100' : 'opacity-30'} />
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Amenities</label>
-                                                    <div className="relative">
-                                                        <BsWifi className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                                        <input
-                                                            type="text"
-                                                            name="amenities"
-                                                            placeholder="Swimming Pool, Spa, Gym, Free Wifi..."
-                                                            value={formData.amenities}
-                                                            onChange={handleInputChange}
-                                                            className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
-                                                        />
-                                                    </div>
-                                                    <p className="text-xs text-clay mt-2 flex items-center gap-1">
-                                                        <BsInfoCircle /> Separate amenities with commas
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* TAB CONTENT: CONTACT */}
-                                    {activeTab === 'contact' && (
-                                        <div className="space-y-6 animate-fade-in">
-                                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
-                                                Contact Information
-                                            </h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Phone Number</label>
-                                                    <div className="relative">
-                                                        <BsPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                                        <input
-                                                            type="tel"
-                                                            name="phone"
-                                                            value={formData.phone}
-                                                            onChange={handleInputChange}
-                                                            className="w-full pl-10 pr-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
-                                                    <input
-                                                        type="email"
-                                                        name="email"
-                                                        value={formData.email}
-                                                        onChange={handleInputChange}
-                                                        className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
-                                                    />
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="block text-xs font-bold text-taupe dark:text-gray-400 uppercase tracking-wider mb-2">Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="website"
-                                                        value={formData.website}
-                                                        onChange={handleInputChange}
-                                                        className="w-full px-4 py-3 bg-linen dark:bg-night border border-stone dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-clay outline-none text-ink dark:text-ivory font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* TAB CONTENT: MEDIA */}
-                                    {activeTab === 'media' && (
-                                        <div className="space-y-6 animate-fade-in">
-                                            <h3 className="text-xl font-serif font-bold text-umber dark:text-ivory border-b border-stone dark:border-gray-800 pb-2">
-                                                Gallery & Photos
-                                            </h3>
-
-                                            <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-stone dark:border-gray-700 bg-linen dark:bg-night flex flex-col items-center justify-center relative group hover:border-clay transition-colors cursor-pointer">
-                                                <input
-                                                    type="file"
-                                                    multiple
-                                                    accept="image/*"
-                                                    onChange={handleFileChange}
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                />
-                                                <div className="p-4 rounded-full bg-white dark:bg-ink shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                                                    <BsCloudUpload className="text-3xl text-clay" />
-                                                </div>
-                                                <h4 className="text-lg font-bold text-umber dark:text-ivory">Click to upload photos</h4>
-                                                <p className="text-sm text-taupe dark:text-gray-400 mt-2">SVG, PNG, JPG or GIF (max. 5MB)</p>
-                                            </div>
-
-                                            {formData.files.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <p className="text-sm font-bold text-umber">{formData.files.length} files selected</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {formData.files.map((file, i) => (
-                                                            <div key={i} className="px-3 py-1 bg-stone rounded-md text-xs text-umber">
-                                                                {file.name}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Modal Footer */}
-                                <div className="p-6 bg-gray-50 dark:bg-night border-t border-stone dark:border-gray-800 flex justify-end gap-3 shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowModal(false)}
-                                        className="px-6 py-2.5 rounded-xl text-umber font-bold hover:bg-stone transition-colors cursor-pointer"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="px-8 py-2.5 bg-gradient-to-r from-umber to-clay text-white font-bold rounded-xl shadow-lg shadow-umber/20 hover:shadow-xl hover:shadow-umber/30 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                    >
-                                        {loading ? 'Processing...' : (editingId ? 'Save Changes' : 'Create Hotel')}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            </Modal>
         </AdminLayout>
     );
 };
-
 
 export default ManageHotels;
