@@ -77,6 +77,7 @@ const Rooms: React.FC = () => {
         const r = avail.rows.get(id);
         if (!r) return undefined;
         if (!r.fitsGuests) return { label: `Sleeps ${r.roomType.maxOccupancy}`, tone: 'none' as const, reason: 'too-small' as const };
+        if (r.restriction) return { label: r.restriction, tone: 'none' as const, reason: 'restricted' as const };
         if (r.available === 0) return { label: 'Sold out for your dates', tone: 'none' as const, reason: 'sold-out' as const };
         if (r.available <= 2) return { label: `Only ${r.available} left`, tone: 'low' as const };
         return { label: 'Available', tone: 'ok' as const };

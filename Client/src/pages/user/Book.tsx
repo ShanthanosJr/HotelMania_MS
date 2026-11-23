@@ -118,7 +118,7 @@ const RoomResult: React.FC<{ row: AvailabilityRow; guests: number; selected: boo
                             {hotel && <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">{hotel.name}</p>}
                             <h3 className="font-display text-xl font-semibold text-ink dark:text-cream">{t.name}</h3>
                         </div>
-                        {soldOut ? <Badge tone="danger">Sold out</Badge>
+                        {soldOut && row.restriction ? <Badge tone="danger">{row.restriction}</Badge> : soldOut ? <Badge tone="danger">Sold out</Badge>
                             : tooSmall ? <Badge tone="warning">Max {t.maxOccupancy} guests</Badge>
                                 : row.available <= 3 ? <Badge tone="warning">Only {row.available} left</Badge>
                                     : <Badge tone="success">Available</Badge>}
@@ -139,7 +139,7 @@ const RoomResult: React.FC<{ row: AvailabilityRow; guests: number; selected: boo
                             </div>
                         ) : <span className="text-sm text-taupe">Price on request</span>}
                         <Button onClick={onSelect} disabled={disabled} aria-label={`Select ${t.name}`}>
-                            {soldOut ? 'Sold out' : tooSmall ? `Not for ${guests} guests` : selected ? 'Selected' : 'Select'}
+                            {soldOut ? (row.restriction ? 'Unavailable' : 'Sold out') : tooSmall ? `Not for ${guests} guests` : selected ? 'Selected' : 'Select'}
                         </Button>
                     </div>
                 </div>

@@ -3,6 +3,8 @@ const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const RoomType = require('../models/RoomType');
 const { quote } = require('./pricing');
+const { getPricingConfig } = require('./settings');
+const { loadOverrides, nightlyRates, restrictionFor } = require('./rates');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_NIGHTS = 30;
@@ -106,15 +108,27 @@ const withRoomLock = async (roomId, fn) => {
   }
 };
 
-/** Server-side price breakdown for `nights` in this room's type. */
-const quoteFor = (room, nights) => {
+/**
+ * Server-side price breakdown for a stay in this room's type, using saved charges and the
+ * rate calendar. With enforce (guest bookings), closed nights and minimum stays are refused;
+ * front desk can still book them.
+ */
+const quoteFor = async (room, stay, { enforce = false } = {}) => {
+  const type = room.type;
+  const [config, overrides] = await Promise.all([
+    getPricingConfig(),
+    loadOverrides([type._id], stay.checkInDate, stay.checkOutDate),
+  ]);
+  if (enforce) {
+    const reason = restrictionFor(type, stay, overrides);
+    if (reason) throw new HttpError(409, reason);
+  }
   try {
-    return quote(room.type, nights);
+    return quote(type, stay.nights, config, nightlyRates(type, stay, overrides));
   } catch (err) {
     throw new HttpError(err.status || 400, err.message);
   }
 };
-const priceFor = (room, nights) => quoteFor(room, nights).total;
 
 /** Rooms of a type that are bookable for the whole stay (not under maintenance, no overlapping booking). */
 const findFreeRooms = async (roomTypeId, checkInDate, checkOutDate) => {
@@ -182,16 +196,24 @@ const availability = async ({ checkInDate, checkOutDate, nights, guests = 1, hot
     if (!busy.has(String(r._id))) freeByType[key] = (freeByType[key] || 0) + 1;
   }
 
+  const [config, overrides] = await Promise.all([
+    getPricingConfig(),
+    loadOverrides(types.map(t => t._id), checkInDate, checkOutDate),
+  ]);
+  const stay = { checkInDate, checkOutDate, nights };
+
   return types.map(t => {
     let price = null;
-    try { price = quote(t, nights); } catch { /* type without a price is shown as unavailable */ }
-    const available = price ? (freeByType[String(t._id)] || 0) : 0;
+    try { price = quote(t, nights, config, nightlyRates(t, stay, overrides)); } catch { /* type without a price is shown as unavailable */ }
+    const restriction = restrictionFor(t, stay, overrides);
+    const available = price && !restriction ? (freeByType[String(t._id)] || 0) : 0;
     return {
       roomType: t,
       totalRooms: totalByType[String(t._id)] || 0,
       available,
       fitsGuests: guests <= (t.maxOccupancy || 1),
       quote: price,
+      restriction: restriction || undefined,
     };
   });
 };
@@ -246,7 +268,6 @@ module.exports = {
   parseStay,
   findOverlap,
   withRoomLock,
-  priceFor,
   quoteFor,
   findFreeRooms,
   bookAnyRoomOfType,

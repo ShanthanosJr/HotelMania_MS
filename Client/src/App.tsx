@@ -35,6 +35,10 @@ const ManageTransactions = lazy(() => import('./pages/admin/ManageTransactions')
 const ManageFeedbacks = lazy(() => import('./pages/admin/ManageFeedbacks'));
 const ManageUsers = lazy(() => import('./pages/admin/ManageUsers'));
 const ManageEnquiries = lazy(() => import('./pages/admin/ManageEnquiries'));
+const FrontDesk = lazy(() => import('./pages/admin/FrontDesk'));
+const ReservationsCalendar = lazy(() => import('./pages/admin/ReservationsCalendar'));
+const Housekeeping = lazy(() => import('./pages/admin/Housekeeping'));
+const RatesSettings = lazy(() => import('./pages/admin/RatesSettings'));
 
 // Browser-tab titles per route (detail pages keep the default until they load their own)
 const PAGE_TITLES: Record<string, string> = {
@@ -55,6 +59,10 @@ const PAGE_TITLES: Record<string, string> = {
   '/gallery': 'Gallery',
   '/faq': 'FAQ',
   '/admin/enquiries': 'Enquiries · Admin',
+  '/admin/frontdesk': 'Front desk · Admin',
+  '/admin/calendar': 'Calendar · Admin',
+  '/admin/housekeeping': 'Housekeeping · Admin',
+  '/admin/rates': 'Rates & settings · Admin',
   '/admin': 'Dashboard · Admin',
   '/admin/dashboard': 'Dashboard · Admin',
   '/admin/bookings': 'Bookings · Admin',
@@ -140,6 +148,10 @@ function App() {
             <Route path="/admin/feedbacks" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/feedbacks']}><ManageFeedbacks /></RequireRole>} />
             <Route path="/admin/users" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/users']}><ManageUsers /></RequireRole>} />
             <Route path="/admin/enquiries" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/enquiries']}><ManageEnquiries /></RequireRole>} />
+            <Route path="/admin/frontdesk" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/frontdesk']}><FrontDesk /></RequireRole>} />
+            <Route path="/admin/calendar" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/calendar']}><ReservationsCalendar /></RequireRole>} />
+            <Route path="/admin/housekeeping" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/housekeeping']}><Housekeeping /></RequireRole>} />
+            <Route path="/admin/rates" element={<RequireRole roles={ADMIN_ROUTE_ROLES['/admin/rates']}><RatesSettings /></RequireRole>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

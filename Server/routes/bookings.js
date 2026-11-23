@@ -13,10 +13,11 @@ const {
   bookAnyRoomOfType,
   applyCancellation,
   syncRoomStatus,
-  HOLD_MINUTES,
   populateBooking,
 } = require('../utils/bookingService');
 const { sendBookingEmail } = require('../utils/mailer');
+const { getSettings } = require('../utils/settings');
+const { audit } = require('../utils/audit');
 const router = express.Router();
 router.param('id', require('../middleware/sanitize').validateId);
 
@@ -110,12 +111,13 @@ router.post('/', protect, async (req, res) => {
     const status = staffUser && req.body.status ? req.body.status : 'pending';
     const paymentStatus = staffUser && req.body.paymentStatus ? req.body.paymentStatus : 'pending';
 
+    const { holdMinutes } = await getSettings();
     const create = async (session, room) => {
       if (room.status === 'maintenance') throw new HttpError(400, 'This room is under maintenance');
       if (room.type && room.type.maxOccupancy && guests > room.type.maxOccupancy) {
         throw new HttpError(400, `This room allows up to ${room.type.maxOccupancy} guests`);
       }
-      const pricing = quoteFor(room, stay.nights);
+      const pricing = await quoteFor(room, stay, { enforce: !staffUser });
       const [created] = await Booking.create([{
         user: bookingUser._id,
         room: room._id,
@@ -128,7 +130,7 @@ router.post('/', protect, async (req, res) => {
         status,
         paymentStatus,
         // Guests' online bookings hold the room until paid; front-desk bookings don't expire
-        ...(staffUser ? {} : { holdExpiresAt: new Date(Date.now() + HOLD_MINUTES * 60 * 1000) }),
+        ...(staffUser ? {} : { holdExpiresAt: new Date(Date.now() + holdMinutes * 60 * 1000) }),
       }], { session });
       return created;
     };
@@ -151,6 +153,7 @@ router.post('/', protect, async (req, res) => {
 
     const populated = await populateBooking(Booking.findById(booking._id));
     if (staffUser && populated.status === 'confirmed') sendBookingEmail('confirmed', populated);
+    audit(req.user, 'booking.create', { entity: 'booking', entityId: booking._id, summary: `${populated.confirmationCode} · ${populated.guestDetails && populated.guestDetails.name || 'Guest'} · room ${populated.room && populated.room.roomNumber}` });
     res.status(201).json({ success: true, data: populated });
   } catch (error) {
     sendError(res, error, 'Server error during booking creation');
@@ -179,6 +182,7 @@ router.patch('/:id/cancel', protect, async (req, res) => {
 
     const populated = await populateBooking(Booking.findById(booking._id));
     sendBookingEmail('cancelled', populated);
+    audit(req.user, 'booking.cancel', { entity: 'booking', entityId: booking._id, summary: `${booking.confirmationCode}${booking.refund && booking.refund.status === 'due' ? ` · refund due ${booking.refund.amount}` : ''}` });
     res.status(200).json({
       success: true,
       data: populated,
@@ -227,6 +231,7 @@ router.post('/:id/refund', protect, admin, async (req, res) => {
 
     const populated = await populateBooking(Booking.findById(booking._id));
     sendBookingEmail('refunded', populated);
+    audit(req.user, 'booking.refund', { entity: 'booking', entityId: booking._id, summary: `${booking.confirmationCode} · ${amount}${booking.refund.reference ? ` · ref ${booking.refund.reference}` : ''}` });
     res.status(200).json({ success: true, data: populated, message: 'Refund recorded' });
   } catch (error) {
     sendError(res, error, 'Server error while recording the refund');
@@ -282,7 +287,7 @@ router.put('/:id', protect, frontDesk, async (req, res) => {
           doc.pricing = undefined;
         }
       } else if (stayChanged) {
-        const pricing = quoteFor(room, stay.nights);
+        const pricing = await quoteFor(room, stay);
         doc.pricing = pricing;
         doc.totalPrice = pricing.total;
       }
@@ -299,6 +304,9 @@ router.put('/:id', protect, frontDesk, async (req, res) => {
 
     const populated = await populateBooking(Booking.findById(updated._id));
     if (updated.status === 'cancelled' && !wasCancelled) sendBookingEmail('cancelled', populated);
+    const changes = Object.keys(body).map(k => (k === 'room' ? `room → ${populated.room && populated.room.roomNumber}` : k === 'checkInDate' || k === 'checkOutDate' ? null : `${k} → ${body[k]}`)).filter(Boolean);
+    if (body.checkInDate || body.checkOutDate) changes.unshift(`dates → ${populated.checkInDate.toISOString().slice(0, 10)}–${populated.checkOutDate.toISOString().slice(0, 10)}`);
+    audit(req.user, 'booking.update', { entity: 'booking', entityId: updated._id, summary: `${updated.confirmationCode} · ${changes.join(', ') || 'updated'}` });
     res.status(200).json({ success: true, data: populated });
   } catch (error) {
     sendError(res, error, 'Server error during booking update');

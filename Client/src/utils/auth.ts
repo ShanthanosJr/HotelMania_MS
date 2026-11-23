@@ -21,13 +21,17 @@ export const ADMIN_ROUTE_ROLES: Record<string, Role[]> = {
     '/admin/feedbacks': ['admin', 'receptionist', 'housekeeping'],
     '/admin/users': ['admin'],
     '/admin/enquiries': ['admin', 'receptionist'],
+    '/admin/frontdesk': ['admin', 'receptionist'],
+    '/admin/calendar': ['admin', 'receptionist'],
+    '/admin/housekeeping': ['admin', 'receptionist', 'housekeeping'],
+    '/admin/rates': ['admin'],
 };
 
 /** Landing page after login for each role. */
 export const homeForRole = (role?: string): string => {
     if (role === 'admin') return '/admin/dashboard';
-    if (role === 'receptionist') return '/admin/bookings';
-    if (role === 'housekeeping') return '/admin/feedbacks';
+    if (role === 'receptionist') return '/admin/frontdesk';
+    if (role === 'housekeeping') return '/admin/housekeeping';
     return '/';
 };
 

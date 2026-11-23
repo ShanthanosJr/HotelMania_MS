@@ -1,12 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { HttpError, parseStay, availability } = require('../utils/bookingService');
-const { pricingConfig } = require('../utils/pricing');
+const { getPricingConfig } = require('../utils/settings');
 const router = express.Router();
 
 /** GET /api/availability/config: currency, service charge and tax, so "from" prices match checkout. */
-router.get('/config', (req, res) => {
-  res.status(200).json({ success: true, data: pricingConfig() });
+router.get('/config', async (req, res) => {
+  res.status(200).json({ success: true, data: await getPricingConfig() });
 });
 
 /**
@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
         checkOut: stay.checkOutDate,
         nights: stay.nights,
         guests,
-        ...pricingConfig(),
+        ...(await getPricingConfig()),
         results,
       },
     });

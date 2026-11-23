@@ -55,6 +55,9 @@ app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/service-requests', require('./routes/serviceRequests'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/enquiries', require('./routes/enquiries'));
+app.use('/api/frontdesk', require('./routes/frontdesk'));
+app.use('/api/housekeeping', require('./routes/housekeeping'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.use('/api', (req, res) => res.status(404).json({ message: 'Not found' }));
 

@@ -42,6 +42,8 @@ export interface AvailabilityRow {
     available: number;
     fitsGuests: boolean;
     quote: PriceQuote | null;
+    /** Why it can't be booked online for these dates (closed night, minimum stay). */
+    restriction?: string;
 }
 
 export interface AvailabilityResponse {
