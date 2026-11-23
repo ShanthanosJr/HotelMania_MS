@@ -1,4 +1,5 @@
 // Shared booking types and formatting used by the booking flow, My Bookings and admin.
+import { api } from './api';
 
 export interface PriceQuote {
     nightlyRate: number;
@@ -162,8 +163,11 @@ export const downloadIcs = (b: BookingRecord, hotelName: string, checkInTime = '
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-/** Link into the booking flow, pre-filled with whatever is known. */
-export const bookUrl = (opts: { type?: string; hotel?: unknown; checkIn?: string | null; checkOut?: string | null; guests?: string | number | null } = {}) => {
+/**
+ * Link into the booking flow, pre-filled with whatever is known. With a room type it jumps to
+ * guest details, unless `step: 'stay'` asks to show that room highlighted among the dates first.
+ */
+export const bookUrl = (opts: { type?: string; hotel?: unknown; checkIn?: string | null; checkOut?: string | null; guests?: string | number | null; step?: 'stay' | 'details' } = {}) => {
     const qs = new URLSearchParams();
     if (opts.checkIn) qs.set('in', opts.checkIn);
     if (opts.checkOut) qs.set('out', opts.checkOut);
@@ -173,8 +177,25 @@ export const bookUrl = (opts: { type?: string; hotel?: unknown; checkIn?: string
     if (hotelId) qs.set('hotel', hotelId);
     if (opts.type) {
         qs.set('type', opts.type);
-        qs.set('step', 'details');
+        if (opts.step !== 'stay') qs.set('step', 'details');
     }
     const s = qs.toString();
     return s ? `/book?${s}` : '/book';
+};
+
+export interface PricingConfig { currency: string; serviceChargePercent: number; taxPercent: number }
+let pricingConfigPromise: Promise<PricingConfig> | null = null;
+
+/** Currency and charges used at checkout, so "from" prices on the site use the same currency. */
+export const loadPricingConfig = (): Promise<PricingConfig> => {
+    if (!pricingConfigPromise) {
+        pricingConfigPromise = api.get('/api/availability/config')
+            .then(r => (r.ok ? r.json() : Promise.reject(new Error('config'))))
+            .then(j => j.data as PricingConfig)
+            .catch(() => {
+                pricingConfigPromise = null; // try again next time
+                return { currency: 'LKR', serviceChargePercent: 0, taxPercent: 0 };
+            });
+    }
+    return pricingConfigPromise;
 };

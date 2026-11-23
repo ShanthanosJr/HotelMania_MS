@@ -9,6 +9,14 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          // Charts are only used by staff pages: keep them in one chunk of their own
+          manualChunks: (id: string) => (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') ? 'charts' : undefined),
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': { target: apiTarget, changeOrigin: true, secure: false },

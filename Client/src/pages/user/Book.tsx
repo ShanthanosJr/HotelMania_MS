@@ -207,8 +207,10 @@ const Book: React.FC = () => {
     const rows = useMemo(() => {
         if (!data) return [];
         const score = (r: AvailabilityRow) => (r.available > 0 && r.fitsGuests && r.quote ? 0 : 1);
-        return [...data.results].sort((a, b) => score(a) - score(b) || (a.quote?.total ?? 0) - (b.quote?.total ?? 0));
-    }, [data]);
+        // A room the guest picked elsewhere on the site comes first
+        const picked = (r: AvailabilityRow) => (r.roomType._id === typeId ? 0 : 1);
+        return [...data.results].sort((a, b) => picked(a) - picked(b) || score(a) - score(b) || (a.quote?.total ?? 0) - (b.quote?.total ?? 0));
+    }, [data, typeId]);
 
     const selected = rows.find(r => r.roomType._id === typeId) || null;
     const selectedBookable = !!selected && selected.available > 0 && selected.fitsGuests && !!selected.quote;

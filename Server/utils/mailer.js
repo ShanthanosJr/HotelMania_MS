@@ -103,6 +103,18 @@ const TEMPLATES = {
   }),
 };
 
+const deliver = async (kind, to, subject, html, extra = {}) => {
+  const message = { from: process.env.MAIL_FROM || `${BRAND()} <no-reply@hotelmania.local>`, to, subject, html, ...extra };
+  sent.push({ kind, to, subject });
+  if (sent.length > 50) sent.shift();
+  const t = getTransporter();
+  if (t) {
+    await t.sendMail(message);
+  } else if (process.env.NODE_ENV !== 'test') {
+    console.log(`[mail] (SMTP not configured) ${kind} → ${to}: ${subject}`);
+  }
+};
+
 /**
  * Sends a booking email. `booking` must be populated (user, room.type, room.hotel).
  * Fire-and-forget: never throws.
@@ -112,20 +124,43 @@ const sendBookingEmail = async (kind, booking) => {
     const to = recipient(booking);
     if (!to || !TEMPLATES[kind]) return;
     const { subject, html } = TEMPLATES[kind](booking);
-    const message = { from: process.env.MAIL_FROM || `${BRAND()} <no-reply@hotelmania.local>`, to, subject, html };
-
-    sent.push({ kind, to, subject });
-    if (sent.length > 50) sent.shift();
-
-    const t = getTransporter();
-    if (t) {
-      await t.sendMail(message);
-    } else if (process.env.NODE_ENV !== 'test') {
-      console.log(`[mail] (SMTP not configured) ${kind} → ${to}: ${subject}`);
-    }
+    await deliver(kind, to, subject, html);
   } catch (err) {
     console.error(`[mail] could not send ${kind} email:`, err.message);
   }
 };
 
-module.exports = { sendBookingEmail, sentEmails: sent };
+const TOPIC_LABELS = {
+  general: 'General question', reservation: 'Reservation', events: 'Events & weddings',
+  dining: 'Dining', spa: 'Spa & wellness', feedback: 'Feedback',
+};
+
+/**
+ * Contact form: an acknowledgement to the guest, and the full message to the hotel
+ * inbox (ENQUIRY_INBOX, else SMTP_USER) with Reply-To set to the guest.
+ */
+const sendEnquiryEmails = async (enquiry) => {
+  try {
+    const topic = TOPIC_LABELS[enquiry.topic] || 'Enquiry';
+    const stay = enquiry.checkIn
+      ? `<p>Dates: ${escapeHtml(fmtDate(enquiry.checkIn))}${enquiry.checkOut ? ` – ${escapeHtml(fmtDate(enquiry.checkOut))}` : ''}${enquiry.guests ? ` · ${escapeHtml(enquiry.guests)} guests` : ''}</p>`
+      : '';
+    const quoted = `<blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #D4AF37;background:#F9F7F2;white-space:pre-wrap">${escapeHtml(enquiry.message)}</blockquote>`;
+
+    await deliver('enquiry-ack', enquiry.email, `We received your message — ${BRAND()}`, layout(`Thank you, ${escapeHtml(String(enquiry.name).split(' ')[0])}`, `
+      <p>Thanks for getting in touch. Our team usually replies within one working day.</p>
+      <p><strong>${escapeHtml(topic)}</strong></p>${stay}${quoted}`));
+
+    const inbox = process.env.ENQUIRY_INBOX || process.env.SMTP_USER;
+    if (inbox) {
+      await deliver('enquiry-staff', inbox, `[${topic}] ${enquiry.name}`, layout(`New enquiry: ${topic}`, `
+        <p><strong>${escapeHtml(enquiry.name)}</strong> &lt;${escapeHtml(enquiry.email)}&gt;${enquiry.phone ? ` · ${escapeHtml(enquiry.phone)}` : ''}</p>
+        ${stay}${quoted}
+        <p><a href="${clientUrl()}/admin/enquiries" style="color:#8B6914">Open in admin</a></p>`), { replyTo: enquiry.email });
+    }
+  } catch (err) {
+    console.error('[mail] could not send enquiry email:', err.message);
+  }
+};
+
+module.exports = { sendBookingEmail, sendEnquiryEmails, sentEmails: sent };

@@ -14,12 +14,15 @@ interface FieldShellProps {
     error?: string;
     required?: boolean;
     className?: string;
+    /** Use this id for the control instead of a generated one. */
+    id?: string;
     children: (ids: { id: string; describedBy?: string }) => React.ReactNode;
 }
 
 /** Label + control + hint/error, with ids wired for screen readers. */
-const FieldShell: React.FC<FieldShellProps> = ({ label, hint, error, required, className = '', children }) => {
-    const id = useId();
+const FieldShell: React.FC<FieldShellProps> = ({ label, hint, error, required, className = '', id: fixedId, children }) => {
+    const generatedId = useId();
+    const id = fixedId || generatedId;
     const hintId = `${id}-hint`;
     const errorId = `${id}-error`;
     const describedBy = [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') || undefined;
@@ -45,11 +48,11 @@ type Common = { label?: React.ReactNode; hint?: React.ReactNode; error?: string;
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & Common>(
     ({ label, hint, error, containerClassName, className = '', required, ...rest }, ref) => (
-        <FieldShell label={label} hint={hint} error={error} required={required} className={containerClassName}>
+        <FieldShell label={label} hint={hint} error={error} required={required} className={containerClassName} id={rest.id}>
             {({ id, describedBy }) => (
                 <input
                     ref={ref}
-                    id={rest.id ?? id}
+                    id={id}
                     required={required}
                     aria-invalid={error ? true : undefined}
                     aria-describedby={describedBy}
@@ -64,11 +67,11 @@ Input.displayName = 'Input';
 
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement> & Common>(
     ({ label, hint, error, containerClassName, className = '', required, children, ...rest }, ref) => (
-        <FieldShell label={label} hint={hint} error={error} required={required} className={containerClassName}>
+        <FieldShell label={label} hint={hint} error={error} required={required} className={containerClassName} id={rest.id}>
             {({ id, describedBy }) => (
                 <select
                     ref={ref}
-                    id={rest.id ?? id}
+                    id={id}
                     required={required}
                     aria-invalid={error ? true : undefined}
                     aria-describedby={describedBy}
@@ -85,11 +88,11 @@ Select.displayName = 'Select';
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement> & Common>(
     ({ label, hint, error, containerClassName, className = '', required, rows = 4, ...rest }, ref) => (
-        <FieldShell label={label} hint={hint} error={error} required={required} className={containerClassName}>
+        <FieldShell label={label} hint={hint} error={error} required={required} className={containerClassName} id={rest.id}>
             {({ id, describedBy }) => (
                 <textarea
                     ref={ref}
-                    id={rest.id ?? id}
+                    id={id}
                     rows={rows}
                     required={required}
                     aria-invalid={error ? true : undefined}

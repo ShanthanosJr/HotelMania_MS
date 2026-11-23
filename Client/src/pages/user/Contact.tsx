@@ -1,825 +1,187 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { BsEnvelope, BsGeoAlt, BsTelephone, BsWhatsapp, BsCheckCircle } from 'react-icons/bs';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import PageHero from '../../components/PageHero';
+import { Button, Card, Input, Select, Textarea } from '../../components/ui';
 import { api } from '../../utils/api';
-import { SITE, mapEmbedUrl } from '../../config/site';
-import alexandraImg from '../../assets/alexandra_reed.png';
-import danielImg from '../../assets/daniel_hart.png';
-import mayaImg from '../../assets/maya_chen.png';
+import { getStoredUser } from '../../utils/auth';
+import { addDays, todayInput } from '../../utils/booking';
+import { SITE, directionsUrl, mapEmbedUrl, telHref, whatsappHref } from '../../config/site';
+import { ENQUIRY_TOPICS, FAQS, IMAGES, OFFERS } from '../../config/content';
 
-const heroImage =
-    'https://images.pexels.com/photos/189296/pexels-photo-189296.jpeg?auto=compress&cs=tinysrgb&w=1600';
+type Form = { name: string; email: string; phone: string; topic: string; checkIn: string; checkOut: string; guests: string; message: string; website: string };
+type Errors = Partial<Record<keyof Form, string>>;
 
-type ReviewForm = {
-    room: string;
-    rating: string;
-    comment: string;
-};
-
-type StatusState = {
-    sending: boolean;
-    success: string;
-    error: string;
-};
-
-type RoomType = {
-    name?: string;
-};
-
-type BookingRoom = {
-    _id?: string;
-    type?: RoomType | string;
-};
-
-type Booking = {
-    _id?: string;
-    id?: string;
-    status?: string;
-    checkOutDate?: string;
-    room?: BookingRoom;
-};
-
-type ServiceRequestState = {
-    bookingId: string;
-    roomId: string;
-    type: 'cleaning' | 'food' | 'repair' | string;
-};
-
-type HubStatusState = {
-    loading: boolean;
-    error: string;
-    success: string;
+const validate = (f: Form): Errors => {
+    const e: Errors = {};
+    if (!f.name.trim()) e.name = 'Please tell us your name.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = 'Please enter a valid email so we can reply.';
+    if (f.message.trim().length < 10) e.message = 'Please write a little more (at least 10 characters).';
+    if (f.checkIn && f.checkOut && f.checkOut <= f.checkIn) e.checkOut = 'Check-out must be after check-in.';
+    return e;
 };
 
 const Contact: React.FC = () => {
-    const [form, setForm] = useState<ReviewForm>({
-        room: '',
-        rating: '',
-        comment: '',
+    const [params] = useSearchParams();
+    const user = getStoredUser();
+    const offer = OFFERS.find(o => o.slug === params.get('offer'));
+    const initialTopic = ENQUIRY_TOPICS.some(t => t.value === params.get('topic')) ? params.get('topic')! : offer ? 'reservation' : 'general';
+
+    const [form, setForm] = useState<Form>({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: typeof user?.phone === 'string' ? user.phone : '',
+        topic: initialTopic,
+        checkIn: '',
+        checkOut: '',
+        guests: '',
+        message: offer ? `Hello, I'm interested in the "${offer.title}" offer. ` : '',
+        website: '',
     });
-    const [status, setStatus] = useState<StatusState>({
-        sending: false,
-        success: '',
-        error: '',
+    const [errors, setErrors] = useState<Errors>({});
+    const [sending, setSending] = useState(false);
+    const [sent, setSent] = useState<string | null>(null);
+    const [serverError, setServerError] = useState('');
+
+    const field = (k: keyof Form) => ({
+        value: form[k],
+        error: errors[k],
+        onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+            setForm(f => ({ ...f, [k]: e.target.value }));
+            if (errors[k]) setErrors(er => ({ ...er, [k]: undefined }));
+        },
     });
 
-    const [completedBookings, setCompletedBookings] = useState<Booking[]>([]);
-
-    const [showServiceModal, setShowServiceModal] = useState(false);
-    const [bookings, setBookings] = useState<Booking[]>([]);
-    const [serviceRequest, setServiceRequest] = useState<ServiceRequestState>({
-        bookingId: '',
-        roomId: '',
-        type: 'cleaning',
-    });
-    const [serviceHubStatus, setServiceHubStatus] = useState<HubStatusState>({
-        loading: false,
-        error: '',
-        success: '',
-    });
-
-    const isAuthenticated = () => {
-        const token = localStorage.getItem('token');
-        return token !== null && token !== undefined && token !== '';
-    };
-
-    const handleChange: React.ChangeEventHandler<
-        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    > = e => {
-        const { name, value } = e.target;
-        setForm(prev => ({ ...prev, [name]: value }));
-    };
-
-    const fetchCompletedBookings = async () => {
-        if (!isAuthenticated()) return;
-        try {
-            const response = await api.get('/api/bookings/my-bookings');
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    (errorData && errorData.message) ||
-                    'Failed to fetch your bookings',
-                );
-            }
-            const data = await response.json();
-            if (data.success && Array.isArray(data.data)) {
-                const completed: Booking[] = data.data.filter(
-                    (booking: Booking) =>
-                        booking.status === 'checked_out' &&
-                        booking.checkOutDate &&
-                        new Date(booking.checkOutDate).getTime() < new Date().getTime(),
-                );
-                setCompletedBookings(completed);
-            }
-        } catch (err) {
-            console.error('Error fetching completed bookings:', err);
-        }
-    };
-
-    const handleSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
+    const submit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setStatus({ sending: true, success: '', error: '' });
-
-        try {
-            const response = await api.post('/api/reviews', {
-                room: form.room,
-                rating: parseInt(form.rating, 10),
-                comment: form.comment,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    (errorData && errorData.message) || 'Failed to submit review',
-                );
-            }
-
-            const data = await response.json();
-            if (data.success) {
-                setStatus({
-                    sending: false,
-                    success: 'Your review has been submitted successfully!',
-                    error: '',
-                });
-                setForm({ room: '', rating: '', comment: '' });
-            }
-        } catch (err: unknown) {
-            const message =
-                err && typeof err === 'object' && 'message' in err
-                    ? String((err as Error).message)
-                    : 'Something went wrong. Please try again.';
-            setStatus({
-                sending: false,
-                success: '',
-                error: message,
-            });
-        }
-    };
-
-    const fetchBookings = async () => {
-        if (!isAuthenticated()) return;
-        try {
-            setServiceHubStatus(prev => ({ ...prev, loading: true, error: '' }));
-            const response = await api.get('/api/bookings/my-bookings');
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    (errorData && errorData.message) ||
-                    'Failed to fetch your bookings',
-                );
-            }
-            const data = await response.json();
-            if (data.success && Array.isArray(data.data)) {
-                const confirmed: Booking[] = data.data.filter(
-                    (booking: Booking) =>
-                        booking.status === 'confirmed' ||
-                        booking.status === 'checked_in',
-                );
-                setBookings(confirmed);
-            }
-            setServiceHubStatus(prev => ({ ...prev, loading: false }));
-        } catch (err: unknown) {
-            const message =
-                err && typeof err === 'object' && 'message' in err
-                    ? String((err as Error).message)
-                    : 'Error loading bookings';
-            setServiceHubStatus({ loading: false, error: message, success: '' });
-        }
-    };
-
-    useEffect(() => {
-        if (isAuthenticated()) {
-            fetchBookings();
-            fetchCompletedBookings();
-        }
-        // Load once on mount; the fetchers only read state setters
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const handleServiceSubmit: React.FormEventHandler<HTMLFormElement> = async e => {
-        e.preventDefault();
-
-        if (!serviceRequest.bookingId || !serviceRequest.roomId) {
-            setServiceHubStatus({
-                loading: false,
-                error: 'Please select both booking and room, and choose a service type.',
-                success: '',
-            });
+        const found = validate(form);
+        setErrors(found);
+        setServerError('');
+        if (Object.keys(found).length) {
+            document.getElementById(`contact-${Object.keys(found)[0]}`)?.focus();
             return;
         }
-
+        setSending(true);
         try {
-            setServiceHubStatus(prev => ({ ...prev, loading: true, error: '' }));
-
-            const selectedBooking = bookings.find(
-                b => b._id === serviceRequest.bookingId,
-            );
-            if (!selectedBooking) {
-                throw new Error('Selected booking not found');
-            }
-
-            const response = await api.post('/api/service-requests', {
-                room: serviceRequest.roomId,
-                type: serviceRequest.type,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    (errorData && errorData.message) ||
-                    'Failed to submit service request',
-                );
-            }
-
-            const data = await response.json();
-            if (data.success) {
-                setServiceHubStatus({
-                    loading: false,
-                    error: '',
-                    success: 'Service request submitted successfully!',
-                });
-                setServiceRequest({ bookingId: '', roomId: '', type: 'cleaning' });
-
-                setTimeout(() => {
-                    setShowServiceModal(false);
-                    setServiceHubStatus({ loading: false, error: '', success: '' });
-                }, 2000);
-            }
-        } catch (err: unknown) {
-            const message =
-                err && typeof err === 'object' && 'message' in err
-                    ? String((err as Error).message)
-                    : 'Error submitting service request';
-            setServiceHubStatus({ loading: false, error: message, success: '' });
+            const res = await api.post('/api/enquiries', { ...form, guests: form.guests || undefined });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.message || 'We could not send your message. Please try again.');
+            setSent(form.name.split(' ')[0] || 'there');
+        } catch (err) {
+            setServerError(err instanceof Error ? err.message : 'We could not send your message.');
+        } finally {
+            setSending(false);
         }
     };
 
-    const handleBookingChange: React.ChangeEventHandler<HTMLSelectElement> = e => {
-        const bookingId = e.target.value;
-        const selected = bookings.find(b => b._id === bookingId);
-        setServiceRequest(prev => ({
-            ...prev,
-            bookingId,
-            roomId: selected?.room?._id || '',
-        }));
-    };
-
-    const handleRoomChange: React.ChangeEventHandler<HTMLSelectElement> = e => {
-        setServiceRequest(prev => ({
-            ...prev,
-            roomId: e.target.value,
-        }));
-    };
+    const showDates = ['reservation', 'events', 'general'].includes(form.topic);
+    const today = todayInput();
 
     return (
-        <div className="min-h-screen bg-ivory text-ink font-body dark:bg-night dark:text-cream transition-colors duration-300">
+        <div className="min-h-screen bg-ivory font-body text-ink dark:bg-night dark:text-cream">
             <Navbar />
+            <PageHero eyebrow="Contact" title="We'd love to hear from you"
+                subtitle="Questions about a stay, an event or a special request? Send us a message and our team will reply within one working day."
+                image={IMAGES.lobby} />
 
-            {/* HERO WITH OVERLAY + TAGLINE */}
-            <section className="relative flex min-h-[480px] items-center justify-center overflow-hidden">
-                <div
-                    className="absolute inset-0 bg-cover bg-center scale-[1.06]"
-                    style={{ backgroundImage: `url(${heroImage})` }}
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(44,36,22,0.9)_0%,rgba(139,105,20,0.82)_45%,rgba(184,212,227,0.3)_100%)]" />
-                <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-col px-6 py-16 text-white">
-                    <p className="mb-2 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-sand mt-10 dark:text-[#A8A29E]">
-                        Contact Hotelmania
-                    </p>
-                    <h1
-                        className="mb-3 text-3xl md:text-4xl lg:text-[2.6rem] dark:text-cream"
-                        style={{ fontFamily: 'Playfair Display, serif' }}
-                    >
-                        Every Question, Seamlessly Answered
-                    </h1>
-                    <p className="max-w-xl text-[0.96rem] leading-7 text-cream dark:text-gray-300">
-                        From service requests during your stay to long-term partnership
-                        inquiries, the concierge and support teams are only a message away.
-                    </p>
-                    <div className="mt-6 flex flex-wrap gap-4 text-[0.8rem]">
-                        <div className="rounded-full bg-black/35 px-4 py-2">
-                            24/7 Concierge Emails
-                        </div>
-                        <div className="rounded-full bg-black/35 px-4 py-2">
-                            Dedicated Stay Specialists
-                        </div>
-                        <div className="rounded-full bg-black/35 px-4 py-2">
-                            Response within 24 hours
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <main className="mx-auto max-w-[1400px] px-6 py-12 space-y-12">
-                {/* STATS / QUICK CONTACT STRIP */}
-                <section className="grid gap-4 rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(92,64,51,0.1)] md:grid-cols-3 dark:bg-gray-800">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cream text-bronze dark:bg-gray-700 dark:text-gold">
-                            ✉️
-                        </div>
-                        <div>
-                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-bronze dark:text-gold">
-                                Email Us
+            <main id="main" className="mx-auto grid max-w-[1400px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.4fr_1fr] lg:gap-14">
+                <Card className="p-6 sm:p-10">
+                    {sent ? (
+                        <div role="status" className="flex flex-col items-start py-8">
+                            <BsCheckCircle className="text-5xl text-emerald-600" aria-hidden="true" />
+                            <h2 className="mt-6 font-display text-3xl text-ink dark:text-cream">Thank you, {sent}.</h2>
+                            <p className="mt-3 max-w-lg leading-7 text-taupe dark:text-gray-300">
+                                Your message is on its way to our team. We have emailed you a copy and will reply to {form.email} within one working day.
+                                If it's urgent, please call <a href={telHref(SITE.phone)} className="font-semibold text-bronze underline dark:text-gold">{SITE.phone}</a>.
                             </p>
-                            <p className="text-[0.9rem] text-ink dark:text-cream">
-                                <a href={`mailto:${SITE.email}`} className="hover:underline">{SITE.email}</a>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cream text-bronze dark:bg-gray-700 dark:text-gold">
-                            ☎️
-                        </div>
-                        <div>
-                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-bronze dark:text-gold">
-                                Call
-                            </p>
-                            <p className="text-[0.9rem] text-ink dark:text-cream">
-                                <a href={`tel:${SITE.phone.replace(/\s+/g, '')}`} className="hover:underline">{SITE.phone}</a>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cream text-bronze dark:bg-gray-700 dark:text-gold">
-                            📍
-                        </div>
-                        <div>
-                            <p className="text-[0.8rem] uppercase tracking-[0.14em] text-bronze dark:text-gold">
-                                Visit
-                            </p>
-                            <p className="text-[0.9rem] text-ink dark:text-cream">
-                                {SITE.address}
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* SERVICE HUB + LOCATION CARD */}
-                <section className="grid gap-8 lg:grid-cols-[1.5fr,1fr]">
-                    {/* Service Hub */}
-                    <div className="rounded-2xl bg-white p-6 shadow-[0_4px_24px_rgba(92,64,51,0.12)] dark:bg-gray-800">
-                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
-                                    In-Stay Service Hub
-                                </p>
-                                <h2
-                                    className="text-xl md:text-2xl dark:text-cream"
-                                    style={{ fontFamily: 'Playfair Display, serif' }}
-                                >
-                                    Request Additional Services During Your Stay
-                                </h2>
-                                <p className="mt-1 text-[0.9rem] text-taupe dark:text-gray-300">
-                                    Cleaning, food and beverage, and maintenance requests routed
-                                    directly to your current room.
-                                </p>
+                            <div className="mt-8 flex flex-wrap gap-3">
+                                <Button onClick={() => { setSent(null); setForm(f => ({ ...f, message: '', checkIn: '', checkOut: '', guests: '' })); }} variant="secondary">Send another message</Button>
+                                <Link to="/book" className="inline-flex items-center rounded bg-bronze px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white hover:bg-bronze-deep dark:bg-gold dark:text-night">Book a stay</Link>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowServiceModal(true)}
-                                className="rounded-full border-2 border-bronze bg-bronze px-5 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-bronze transition dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
-                                disabled={!isAuthenticated()}
-                            >
-                                Open Service Hub
-                            </button>
                         </div>
-
-                        {!isAuthenticated() ? (
-                            <div className="rounded-xl bg-ivory px-4 py-4 text-[0.9rem] text-taupe dark:bg-gray-700 dark:text-gray-300">
-                                Sign in to see active bookings and request in-stay services.
-                            </div>
-                        ) : bookings.length === 0 ? (
-                            <div className="rounded-xl bg-ivory px-4 py-4 text-[0.9rem] text-taupe dark:bg-gray-700 dark:text-gray-300">
-                                You do not have any confirmed or checked-in bookings right
-                                now. Services are available while a stay is active.
-                            </div>
-                        ) : (
-                            <div className="space-y-2 text-[0.9rem] text-taupe dark:text-gray-300">
-                                {bookings.slice(0, 3).map(b => (
-                                    <div
-                                        key={b._id || b.id}
-                                        className="flex justify-between rounded-xl bg-cream px-4 py-3 dark:bg-gray-700"
-                                    >
-                                        <div>
-                                            <p className="text-[0.85rem] font-semibold dark:text-cream">
-                                                Booking {b._id || 'N/A'}
-                                            </p>
-                                            <p className="text-[0.85rem] dark:text-gray-300">
-                                                Room:{' '}
-                                                {typeof b.room?.type === 'object' &&
-                                                    b.room?.type?.name
-                                                    ? b.room.type.name
-                                                    : 'Room'}{' '}
-                                                • Status: {b.status}
-                                            </p>
+                    ) : (
+                        <form onSubmit={submit} noValidate aria-labelledby="form-title">
+                            <h2 id="form-title" className="font-display text-2xl text-ink sm:text-3xl dark:text-cream">Send us a message</h2>
+                            <p className="mt-2 text-sm text-taupe dark:text-gray-400">Fields marked * are required.</p>
+                            <div className="mt-8 grid gap-5 sm:grid-cols-2">
+                                <Input id="contact-name" label="Your name" required autoComplete="name" {...field('name')} />
+                                <Input id="contact-email" label="Email" type="email" required autoComplete="email" {...field('email')} />
+                                <Input id="contact-phone" label="Phone" type="tel" autoComplete="tel" hint="Optional, if you'd like a call back" {...field('phone')} />
+                                <Select id="contact-topic" label="Topic" {...field('topic')}>
+                                    {ENQUIRY_TOPICS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </Select>
+                                {showDates && (
+                                    <>
+                                        <Input id="contact-checkIn" label="Arrival" type="date" min={today} hint="Optional"
+                                            {...field('checkIn')}
+                                            onChange={e => setForm(f => ({ ...f, checkIn: e.target.value, checkOut: f.checkOut && f.checkOut > e.target.value ? f.checkOut : e.target.value ? addDays(e.target.value, 1) : '' }))} />
+                                        <div className="grid grid-cols-[1fr_7rem] gap-3">
+                                            <Input id="contact-checkOut" label="Departure" type="date" min={form.checkIn ? addDays(form.checkIn, 1) : today} {...field('checkOut')} />
+                                            <Input id="contact-guests" label="Guests" type="number" min={1} max={50} inputMode="numeric" {...field('guests')} />
                                         </div>
-                                    </div>
-                                ))}
+                                    </>
+                                )}
+                                <Textarea id="contact-message" label="Message" required rows={6} containerClassName="sm:col-span-2" maxLength={2000}
+                                    hint={`${form.message.length} / 2000`} {...field('message')} />
+                                {/* Honeypot for bots: hidden from people and screen readers */}
+                                <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+                                    <label htmlFor="contact-website">Website</label>
+                                    <input id="contact-website" tabIndex={-1} autoComplete="off" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} />
+                                </div>
                             </div>
-                        )}
-
-                        {serviceHubStatus.error && (
-                            <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[0.85rem] text-rose-800 border border-rose-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">
-                                {serviceHubStatus.error}
-                            </p>
-                        )}
-                        {serviceHubStatus.success && (
-                            <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-[0.85rem] text-emerald-800 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800">
-                                {serviceHubStatus.success}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Location / Map style card */}
-                    <div className="rounded-2xl bg-white p-6 shadow-[0_4px_24px_rgba(92,64,51,0.12)] dark:bg-gray-800">
-                        <h2
-                            className="mb-2 text-xl md:text-2xl dark:text-cream"
-                            style={{ fontFamily: 'Playfair Display, serif' }}
-                        >
-                            Visit {SITE.name}
-                        </h2>
-                        <p className="text-[0.95rem] text-ink font-semibold dark:text-cream">
-                            {SITE.name}
-                        </p>
-                        <p className="text-[0.9rem] text-taupe dark:text-gray-300">
-                            {SITE.address}
-                        </p>
-                        <p className="mt-3 text-[0.9rem] text-taupe dark:text-gray-300">
-                            Steps from the Galle Face promenade, with easy access to Colombo's
-                            business district, dining and the ocean front.
-                        </p>
-                        <div className="mt-4 h-64 overflow-hidden rounded-xl border border-wheat dark:border-gray-600">
-                            <iframe
-                                title={`${SITE.name} location`}
-                                src={mapEmbedUrl(SITE.address)}
-                                width="100%"
-                                height="100%"
-                                style={{ border: 0 }}
-                                allowFullScreen={true}
-                                loading="lazy"
-                            />
-                        </div>
-                    </div>
-                </section>
-
-                {/* TEAM / FOUNDERS SECTION */}
-                <section className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(92,64,51,0.1)] dark:bg-gray-800">
-                    <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                        <div className="max-w-xl">
-                            <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
-                                The Hotelmania Team
-                            </p>
-                            <h2
-                                className="text-xl md:text-2xl dark:text-cream"
-                                style={{ fontFamily: 'Playfair Display, serif' }}
-                            >
-                                Crafted by Hoteliers, Designers, and Engineers
-                            </h2>
-                            <p className="mt-1 text-[0.9rem] text-taupe dark:text-gray-300">
-                                Hotelmania was shaped by people who live and breathe
-                                hospitality, ensuring every interaction feels graceful and
-                                considered.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-6 md:grid-cols-3 text-[0.9rem] text-taupe dark:text-gray-300">
-                        <div className="flex flex-col gap-2 rounded-xl bg-ivory p-4 dark:bg-gray-700">
-                            <img
-                                src={alexandraImg}
-                                alt="Alexandra Reed"
-                                className="h-16 w-16 rounded-full object-cover border-2 border-bronze/20"
-                            />
-                            <div>
-                                <h3
-                                    className="text-[1rem] font-semibold text-ink dark:text-cream"
-                                    style={{ fontFamily: 'Playfair Display, serif' }}
-                                >
-                                    Alexandra Reed
-                                </h3>
-                                <p className="text-[0.85rem] text-bronze dark:text-gold">
-                                    Co‑Founder &amp; Experience Director
-                                </p>
+                            {serverError && <p role="alert" className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200">{serverError}</p>}
+                            <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-xs leading-5 text-taupe dark:text-gray-400">We only use your details to reply. See our <Link to="/policies#privacy" className="underline">privacy policy</Link>.</p>
+                                <Button type="submit" size="lg" loading={sending}>Send message</Button>
                             </div>
-                            <p className="dark:text-gray-300">
-                                Oversees the guest journey to ensure Hotelmania mirrors the
-                                warmth and polish of a true luxury stay.
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-2 rounded-xl bg-ivory p-4 dark:bg-gray-700">
-                            <img
-                                src={danielImg}
-                                alt="Daniel Hart"
-                                className="h-16 w-16 rounded-full object-cover border-2 border-bronze/20"
-                            />
-                            <div>
-                                <h3
-                                    className="text-[1rem] font-semibold text-ink dark:text-cream"
-                                    style={{ fontFamily: 'Playfair Display, serif' }}
-                                >
-                                    Daniel Hart
-                                </h3>
-                                <p className="text-[0.85rem] text-bronze dark:text-gold">
-                                    Co‑Founder &amp; Technical Lead
-                                </p>
-                            </div>
-                            <p className="dark:text-gray-300">
-                                Crafts the systems that connect rooms, bookings, and profiles
-                                into a seamless platform.
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-2 rounded-xl bg-ivory p-4 dark:bg-gray-700">
-                            <img
-                                src={mayaImg}
-                                alt="Maya Chen"
-                                className="h-16 w-16 rounded-full object-cover border-2 border-bronze/20"
-                            />
-                            <div>
-                                <h3
-                                    className="text-[1rem] font-semibold text-ink dark:text-cream"
-                                    style={{ fontFamily: 'Playfair Display, serif' }}
-                                >
-                                    Maya Chen
-                                </h3>
-                                <p className="text-[0.85rem] text-bronze dark:text-gold">
-                                    Design &amp; Brand Lead
-                                </p>
-                            </div>
-                            <p className="dark:text-gray-300">
-                                Shapes the visual language, from typography to color, to
-                                capture the Hotelmania personality.
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* REVIEW FORM + SUPPORT INFO */}
-                <section className="grid gap-8 lg:grid-cols-[1.5fr,1fr]">
-                    {/* Review form */}
-                    <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(92,64,51,0.1)] dark:bg-gray-800">
-                        <div className="mb-4 max-w-xl">
-                            <p className="mb-1 text-[0.85rem] font-semibold uppercase tracking-[0.18em] text-bronze dark:text-gold">
-                                Share Your Experience
-                            </p>
-                            <h2
-                                className="text-xl md:text-2xl dark:text-cream"
-                                style={{ fontFamily: 'Playfair Display, serif' }}
-                            >
-                                Tell Us About Your Stay
-                            </h2>
-                            <p className="mt-1 text-[0.9rem] text-taupe dark:text-gray-300">
-                                Reviews help refine the little details, from pillow menus to
-                                check-in rituals, so each new stay feels even better.
-                            </p>
-                        </div>
-
-                        <form className="space-y-4" onSubmit={handleSubmit}>
-                            <div className="flex flex-col gap-1">
-                                <label className="text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
-                                    Completed stay
-                                </label>
-                                <select
-                                    name="room"
-                                    value={form.room}
-                                    onChange={handleChange}
-                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
-                                >
-                                    <option value="">Choose a room / booking</option>
-                                    {completedBookings.map(booking => (
-                                        <option
-                                            key={booking._id || booking.id}
-                                            value={booking.room?._id || ''}
-                                            className="dark:bg-gray-700 dark:text-cream"
-                                        >
-                                            {booking._id} –{' '}
-                                            {typeof booking.room?.type === 'object' &&
-                                                booking.room?.type?.name
-                                                ? booking.room.type.name
-                                                : 'Room'}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <label className="text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
-                                    Rating
-                                </label>
-                                <select
-                                    name="rating"
-                                    value={form.rating}
-                                    onChange={handleChange}
-                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
-                                >
-                                    <option value="">Select rating</option>
-                                    <option value="5">5 – Excellent</option>
-                                    <option value="4">4 – Very Good</option>
-                                    <option value="3">3 – Good</option>
-                                    <option value="2">2 – Fair</option>
-                                    <option value="1">1 – Poor</option>
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <label className="text-[0.85rem] font-semibold text-taupe dark:text-gray-300">
-                                    Comments
-                                </label>
-                                <textarea
-                                    name="comment"
-                                    value={form.comment}
-                                    onChange={handleChange}
-                                    rows={4}
-                                    placeholder="What made your stay memorable? What could be refined?"
-                                    className="w-full rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink placeholder:text-[#B8A58B] focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:placeholder:text-gray-400"
-                                />
-                            </div>
-
-                            {status.error && (
-                                <p className="rounded-lg bg-rose-50 px-3 py-2 text-[0.85rem] text-rose-800 border border-rose-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">
-                                    {status.error}
-                                </p>
-                            )}
-                            {status.success && (
-                                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[0.85rem] text-emerald-800 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800">
-                                    {status.success}
-                                </p>
-                            )}
-
-                            <button
-                                type="submit"
-                                disabled={status.sending}
-                                className="mt-2 inline-flex items-center justify-center rounded border-2 border-bronze bg-bronze px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.16em] text-white hover:bg-transparent hover:text-bronze transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
-                            >
-                                {status.sending ? 'Sending...' : 'Submit Review'}
-                            </button>
                         </form>
-                    </div>
+                    )}
+                </Card>
 
-                    {/* FAQ / Support */}
-                    <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(92,64,51,0.1)] dark:bg-gray-800">
-                        <h2
-                            className="mb-3 text-xl md:text-2xl dark:text-cream"
-                            style={{ fontFamily: 'Playfair Display, serif' }}
-                        >
-                            Questions, Answered
-                        </h2>
-                        <div className="space-y-3 text-[0.9rem] text-taupe dark:text-gray-300">
-                            <div>
-                                <p className="font-semibold text-ink dark:text-cream">
-                                    How quickly will someone respond?
-                                </p>
-                                <p className="dark:text-gray-300">
-                                    For active stays, service requests are routed instantly to
-                                    the on-duty team. For emails, expect a reply within 24
-                                    hours.
-                                </p>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-ink dark:text-cream">
-                                    Can I modify a booking through this page?
-                                </p>
-                                <p className="dark:text-gray-300">
-                                    Booking changes are handled via your bookings section. Use
-                                    this page for service requests and general questions.
-                                </p>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-ink dark:text-cream">
-                                    Do I need an account to submit requests?
-                                </p>
-                                <p className="dark:text-gray-300">
-                                    An account is required to link services to your room and to
-                                    submit stay-linked reviews.
-                                </p>
-                            </div>
-                        </div>
+                <aside className="space-y-8">
+                    <div className="space-y-5">
+                        {[
+                            { icon: <BsTelephone />, label: 'Call reservations', value: SITE.phone, href: telHref(SITE.phone) },
+                            { icon: <BsEnvelope />, label: 'Email', value: SITE.email, href: `mailto:${SITE.email}` },
+                            ...(SITE.whatsapp ? [{ icon: <BsWhatsapp />, label: 'WhatsApp', value: 'Message us', href: whatsappHref(SITE.whatsapp, 'Hello, I have a question about a stay.') }] : []),
+                            { icon: <BsGeoAlt />, label: 'Address', value: SITE.address, href: directionsUrl(SITE.address) },
+                        ].map(c => (
+                            <a key={c.label} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer"
+                                className="group flex items-start gap-4 rounded-xl border border-sand bg-white p-5 transition-colors hover:border-bronze dark:border-graphite dark:bg-charcoal dark:hover:border-gold">
+                                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-parchment text-lg text-bronze dark:bg-gold/15 dark:text-gold" aria-hidden="true">{c.icon}</span>
+                                <span>
+                                    <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-taupe dark:text-gray-400">{c.label}</span>
+                                    <span className="mt-1 block break-words font-semibold text-ink group-hover:text-bronze dark:text-cream dark:group-hover:text-gold">{c.value}</span>
+                                </span>
+                            </a>
+                        ))}
+                        <p className="text-sm text-taupe dark:text-gray-400">Reception is open 24 hours. Check-in from {SITE.checkInTime}, check-out by {SITE.checkOutTime}.</p>
                     </div>
-                </section>
+                    <div className="overflow-hidden rounded-2xl border border-sand dark:border-graphite">
+                        <iframe title={`Map showing ${SITE.name}`} src={mapEmbedUrl(SITE.address)} loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+                            className="h-72 w-full border-0 dark:[filter:invert(0.9)_hue-rotate(180deg)]" />
+                    </div>
+                </aside>
             </main>
 
-            {/* SERVICE MODAL (BOOKING + ROOM + TYPE) */}
-            {showServiceModal && (
-                <div
-                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4"
-                    onClick={() => setShowServiceModal(false)}
-                >
-                    <div
-                        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-800"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between border-b border-sand px-6 py-4 dark:border-gray-600">
-                            <h2
-                                className="text-lg md:text-xl dark:text-cream"
-                                style={{ fontFamily: 'Playfair Display, serif' }}
-                            >
-                                Request a Service
-                            </h2>
-                            <button
-                                type="button"
-                                onClick={() => setShowServiceModal(false)}
-                                className="text-2xl leading-none text-taupe hover:text-bronze dark:text-gray-300 dark:hover:text-gold"
-                            >
-                                ×
-                            </button>
-                        </div>
-                        <form className="px-6 py-5 space-y-4" onSubmit={handleServiceSubmit}>
-                            <div className="flex flex-col gap-1 text-[0.9rem]">
-                                <label className="font-semibold text-taupe dark:text-gray-300">
-                                    Booking
-                                </label>
-                                <select
-                                    value={serviceRequest.bookingId}
-                                    onChange={handleBookingChange}
-                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
-                                >
-                                    <option value="">Choose a booking</option>
-                                    {bookings.map(b => (
-                                        <option key={b._id || b.id} value={b._id} className="dark:bg-gray-700 dark:text-cream">
-                                            {b._id} –{' '}
-                                            {typeof b.room?.type === 'object' &&
-                                                b.room?.type?.name
-                                                ? b.room.type.name
-                                                : 'Room'}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col gap-1 text-[0.9rem]">
-                                <label className="font-semibold text-taupe dark:text-gray-300">
-                                    Room
-                                </label>
-                                <select
-                                    value={serviceRequest.roomId}
-                                    onChange={handleRoomChange}
-                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
-                                >
-                                    <option value="">Select room</option>
-                                    {bookings
-                                        .filter(b => b._id === serviceRequest.bookingId)
-                                        .map(b => (
-                                            <option
-                                                key={b._id || b.id}
-                                                value={b.room?._id || ''}
-                                                className="dark:bg-gray-700 dark:text-cream"
-                                            >
-                                                {b.room?._id || 'Room'} –{' '}
-                                                {typeof b.room?.type === 'object' &&
-                                                    b.room?.type?.name
-                                                    ? b.room.type.name
-                                                    : 'Room'}
-                                            </option>
-                                        ))}
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col gap-1 text-[0.9rem]">
-                                <label className="font-semibold text-taupe dark:text-gray-300">
-                                    Service Type
-                                </label>
-                                <select
-                                    value={serviceRequest.type}
-                                    onChange={e =>
-                                        setServiceRequest(prev => ({
-                                            ...prev,
-                                            type: e.target.value,
-                                        }))
-                                    }
-                                    className="rounded border border-wheat bg-ivory px-3 py-2.5 text-[0.9rem] text-ink focus:border-bronze focus:bg-white focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-cream dark:focus:border-gold"
-                                >
-                                    <option value="cleaning">Cleaning</option>
-                                    <option value="food">Food &amp; Beverage</option>
-                                    <option value="repair">Maintenance / Repair</option>
-                                </select>
-                            </div>
-
-                            {serviceHubStatus.error && (
-                                <p className="rounded-lg bg-rose-50 px-3 py-2 text-[0.85rem] text-rose-800 border border-rose-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">
-                                    {serviceHubStatus.error}
-                                </p>
-                            )}
-                            {serviceHubStatus.success && (
-                                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[0.85rem] text-emerald-800 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800">
-                                    {serviceHubStatus.success}
-                                </p>
-                            )}
-
-                            <div className="flex justify-end pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={serviceHubStatus.loading}
-                                    className="rounded border-2 border-bronze bg-bronze px-5 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white hover:bg-transparent hover:text-bronze transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-ink dark:border-gold dark:hover:bg-transparent dark:hover:text-gold"
-                                >
-                                    {serviceHubStatus.loading
-                                        ? 'Submitting...'
-                                        : 'Submit Request'}
-                                </button>
-                            </div>
-                        </form>
+            <section className="border-t border-sand bg-cream py-16 dark:border-graphite dark:bg-charcoal" aria-labelledby="quick-faq">
+                <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
+                    <h2 id="quick-faq" className="font-display text-3xl text-ink dark:text-cream">Quick answers</h2>
+                    <div className="mt-8 divide-y divide-wheat border-y border-wheat dark:divide-graphite dark:border-graphite">
+                        {FAQS.slice(0, 5).map(f => (
+                            <details key={f.q} className="group py-5">
+                                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 font-semibold text-ink dark:text-cream">
+                                    {f.q}<span aria-hidden="true" className="text-xl text-bronze transition-transform group-open:rotate-45 dark:text-gold">+</span>
+                                </summary>
+                                <p className="mt-3 max-w-3xl leading-7 text-taupe dark:text-gray-300">{f.a}</p>
+                            </details>
+                        ))}
                     </div>
+                    <Link to="/faq" className="mt-6 inline-block text-xs font-semibold uppercase tracking-[0.18em] text-bronze hover:underline dark:text-gold">All questions →</Link>
                 </div>
-            )}
-
+            </section>
             <Footer />
         </div>
     );

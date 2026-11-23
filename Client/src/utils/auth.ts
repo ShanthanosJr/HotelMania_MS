@@ -20,6 +20,7 @@ export const ADMIN_ROUTE_ROLES: Record<string, Role[]> = {
     '/admin/transactions': ['admin'],
     '/admin/feedbacks': ['admin', 'receptionist', 'housekeeping'],
     '/admin/users': ['admin'],
+    '/admin/enquiries': ['admin', 'receptionist'],
 };
 
 /** Landing page after login for each role. */

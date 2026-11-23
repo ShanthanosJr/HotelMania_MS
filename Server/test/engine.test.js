@@ -26,6 +26,13 @@ const book = (auth, body) => request(app).post('/api/bookings').set('Authorizati
 const avail = (qs) => request(app).get(`/api/availability?${new URLSearchParams(qs)}`);
 
 describe('availability', () => {
+  it('publishes the pricing config for "from" prices', async () => {
+    process.env.SERVICE_CHARGE_PERCENT = '10';
+    const res = await request(app).get('/api/availability/config').expect(200);
+    assert.equal(res.body.data.serviceChargePercent, 10);
+    assert.ok(res.body.data.currency);
+  });
+
   it('lists room types with free-room counts and a full price', async () => {
     process.env.SERVICE_CHARGE_PERCENT = '10';
     process.env.TAX_PERCENT = '18';
